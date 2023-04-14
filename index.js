@@ -188,19 +188,30 @@ app.get("/bookride", async (req, res) => {
     res.json(bookResult);
 });
 
-app.get("/postride", async (req, res) => {
+app.post("/postride", async (req, res) => {
     // consider not getting all the data from the query and instead only taking the latitude figures? Could cost an extra API call
     // check that driver doesn't already have a ride scheduled within 1-2 (?) hours/duration of this ride
-    const { fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, secondaryTextFrom, mainTextTo, secondaryTextTo, pricePerSeat, driver, datetime } = req.query;
-    const postQuery = "INSERT INTO rides (fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, secondaryTextFrom, mainTextTo, secondaryTextTo, pricePerSeat, driver, datetime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-    const postResult = await pool.query(postQuery, [fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, secondaryTextFrom, mainTextTo, secondaryTextTo, pricePerSeat, driver, datetime]);
+    const { fromLatitude, fromLongitude, toLatitude,
+            toLongitude, mainTextFrom,
+            mainTextTo, pricePerSeat,
+            driver, datetime, car } = req.body;
+    const postQuery = "INSERT INTO rides (fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, mainTextTo, pricePerSeat, driver, datetime, car) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    const postResult = await pool.query(postQuery, [fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, mainTextTo, pricePerSeat, driver, datetime, car]);
     res.json(postResult);
 });
 
 app.get("/userinfo", async (req, res) => {
     const { uid } = req.query;
-    const userQuery = `SELECT firstName, lastName, phone, email, balance, driver, rating, profilePicture, gender FROM users WHERE id=?`;
-    const userResult = await pool.query(userQuery, [uid]);
+    const userQuery = `SELECT firstName, lastName, phone, email, balance, rating, profilePicture, gender FROM users WHERE id=?`;
+    let userResult = await pool.query(userQuery, [uid]);
+
+    userResult[0][0].driver = 0;
+    const licenseQuery = 'SELECT status FROM licenses WHERE driver=? AND expirydate > CURDATE()';
+    const licenseResult = await pool.query(licenseQuery, [uid]);
+    if(licenseResult[0].length === 1) {
+        userResult[0][0].driver = licenseResult[0][0].status;
+    }
+
     res.json(userResult[0][0]);
 });
 
@@ -291,7 +302,7 @@ app.get("/pastrides", async (req, res) => {
 app.get("/driverrides", async (req, res) => {
     const uid = req.query.uid;
     const limit = req.query.limit;
-    const isDriverQuery = "SELECT COUNT(*) as count FROM users WHERE driver=1 AND id=?";
+    const isDriverQuery = "SELECT COUNT(*) as count FROM licenses WHERE status=1 AND driver=?";
     const isDriverResult = await pool.query(isDriverQuery, [uid]);
 
     if (isDriverResult[0][0].count > 0) {
@@ -331,10 +342,13 @@ app.get("/tripdetails", async (req, res) => {
 });
 
 app.get("/cars", async( req, res) => {
-    const { uid } = req.query;
-    const carsQuery = "SELECT * FROM cars WHERE driver=?";
-    const carsResult = await pool.query(carsQuery, [uid]);
-    console.log(carsResult);
+    const { uid, approved } = req.query;
+    let carsQuery = "SELECT id,brand,year,model,color,licensePlateLetters,licensePlateNumbers,approved FROM cars WHERE driver=?";
+    values = [uid];
+    if(approved) {
+        carsQuery += " AND approved=1";
+    }
+    const carsResult = await pool.query(carsQuery, values);
     res.json(carsResult[0]);
 });
 
@@ -500,6 +514,54 @@ app.get("/wallet", async (req, res) => {
     }
 
     res.json(result);
+});
+
+app.post("/newcar", async (req, res) => {
+    const {uid, brand, year, model, color, licensePlateLetters, licensePlateNumbers, license_front, license_back} = req.body;
+
+    const carQuery = "INSERT INTO cars (driver, brand, year, model, color, licensePlateLetters, licensePlateNumbers, license_front, license_back) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    const carResult = await pool.query(carQuery, [uid, brand, year, model, color, licensePlateLetters, licensePlateNumbers, license_front, license_back]);
+    if(carResult) {
+        res.json({success: 1});
+    }
+});
+
+app.post("/submitlicense", async(req, res) => {
+    const { uid, frontSide, backSide } = req.body;
+    const licenseQuery = "INSERT INTO licenses (driver, front, back) VALUES (?,?,?)";
+    const licenseResult = await pool.query(licenseQuery, [uid, frontSide, backSide]);
+    res.json(licenseResult);
+});
+
+app.get("/license", async(req, res) => {
+    const { uid } = req.query;
+    const licenseQuery = "SELECT expirydate, status FROM licenses WHERE driver=? AND (expirydate IS NULL OR expirydate > CURDATE()) ORDER BY expirydate DESC";
+    const licenseResult = await pool.query(licenseQuery, [uid]);
+
+    if(licenseResult[0].length >= 1) {
+        res.json(licenseResult[0][0]);
+    } else {
+        res.status(404).json({error: "No license on record"})
+    }
+});
+
+app.get("/announcements", async(req, res) => {
+    const announcementId = req.query?.id;
+    const active = req.query?.active;
+
+    let result;
+    if(announcementId) {
+        const query = "SELECT * FROM announcements WHERE id=?";
+        result = await pool.query(query, [announcementId]);
+    } else if(active) {
+        const query = "SELECT * FROM announcements WHERE active=1";
+        result = await pool.query(query);
+    } else {
+        const query = "SELECT * FROM announcements";
+        result = await pool.query(query);
+    }
+
+    res.json(result[0]);
 });
 
 app.listen(config.app.port, () => {
