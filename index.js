@@ -169,7 +169,7 @@ app.get("/nearbyrides", async (req, res) => {
 
 app.get("/ridedetails", async (req, res) => {
     const { rideId } = req.query;
-    const rideQuery = "SELECT rides.id, fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, secondaryTextFrom, mainTextTo, secondaryTextTo, pricePerSeat, rides.datetime, users.firstName, users.lastName, users.rating, users.profilePicture FROM rides, users WHERE rides.id=? AND users.id=rides.driver";
+    const rideQuery = "SELECT rides.id, fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, mainTextTo, pricePerSeat, rides.datetime, users.firstName, users.lastName, users.rating, users.profilePicture FROM rides, users WHERE rides.id=? AND users.id=rides.driver";
     const rideResult = await pool.query(rideQuery, [rideId]);
 
     const seatsQuery = `SELECT COUNT(*) as count FROM passengers WHERE ride=?`;
@@ -192,9 +192,9 @@ app.post("/postride", async (req, res) => {
     // consider not getting all the data from the query and instead only taking the latitude figures? Could cost an extra API call
     // check that driver doesn't already have a ride scheduled within 1-2 (?) hours/duration of this ride
     const { fromLatitude, fromLongitude, toLatitude,
-            toLongitude, mainTextFrom,
-            mainTextTo, pricePerSeat,
-            driver, datetime, car } = req.body;
+        toLongitude, mainTextFrom,
+        mainTextTo, pricePerSeat,
+        driver, datetime, car } = req.body;
     const postQuery = "INSERT INTO rides (fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, mainTextTo, pricePerSeat, driver, datetime, car) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     const postResult = await pool.query(postQuery, [fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, mainTextTo, pricePerSeat, driver, datetime, car]);
     res.json(postResult);
@@ -208,7 +208,7 @@ app.get("/userinfo", async (req, res) => {
     userResult[0][0].driver = 0;
     const licenseQuery = 'SELECT status FROM licenses WHERE driver=? AND expirydate > CURDATE()';
     const licenseResult = await pool.query(licenseQuery, [uid]);
-    if(licenseResult[0].length === 1) {
+    if (licenseResult[0].length === 1) {
         userResult[0][0].driver = licenseResult[0][0].status;
     }
 
@@ -222,7 +222,7 @@ app.get("/upcomingrides", async (req, res) => {
 
     const passengerQuery = "SELECT DISTINCT R.id, R.mainTextFrom, R.mainTextTo, R.pricePerSeat, R.datetime FROM passengers AS P, rides AS R WHERE (R.datetime >= CURRENT_TIMESTAMP AND R.status!=4 AND R.status != 2) AND ((P.passenger=? AND P.ride=R.id AND (P.status!=2 AND P.status!=4 AND P.status!=-1)) OR (R.driver=?))" + (after ? " AND R.datetime>? " : " ") + "ORDER BY R.status DESC, R.datetime ASC" + (limit ? ` LIMIT ?` : '');;
     let passengerResult = null;
-    if(after) {
+    if (after) {
         after = new Date(parseInt(after)).toISOString();
         console.log(after);
     }
@@ -263,7 +263,7 @@ app.get("/pastrides", async (req, res) => {
 
     const passengerQuery = "SELECT DISTINCT R.id, R.mainTextFrom, R.mainTextTo, R.pricePerSeat, R.datetime FROM passengers AS P, rides AS R WHERE ((P.passenger=? AND P.ride=R.id) OR (R.driver=?))" + (after ? " AND R.datetime<? " : " ") + "ORDER BY R.datetime DESC" + (limit ? ` LIMIT ?` : '');;
     let passengerResult = null;
-    if(after) {
+    if (after) {
         after = new Date(parseInt(after)).toISOString();
         console.log(after);
     }
@@ -318,13 +318,13 @@ app.get("/driverrides", async (req, res) => {
 app.get("/tripdetails", async (req, res) => {
     const { uid, tripId } = req.query;
 
-    const tripQuery = "SELECT (R.driver=?) as isDriver, R.fromLatitude, R.fromLongitude, R.toLatitude, R.toLongitude, R.mainTextFrom, R.secondaryTextFrom, R.mainTextTo, R.secondaryTextTo, R.pricePerSeat, R.datetime, R.status, U.firstName, U.lastName, U.phone, U.rating, U.profilePicture FROM rides as R, users as U WHERE R.driver=U.id AND R.id=?";
+    const tripQuery = "SELECT (R.driver=?) as isDriver, R.fromLatitude, R.fromLongitude, R.toLatitude, R.toLongitude, R.mainTextFrom, R.mainTextTo, R.pricePerSeat, R.datetime, R.status, U.id, U.firstName, U.lastName, U.phone, U.rating, U.profilePicture FROM rides as R, users as U WHERE R.driver=U.id AND R.id=?";
     let tripResult = await pool.query(tripQuery, [uid, tripId]);
     tripResult = tripResult[0][0];
 
     let countSeatsOccupied = 0;
     if (tripResult.isDriver === 1) {
-        const seatsQuery = `SELECT P.id, P.paymentMethod, P.status, U.firstName, U.lastName, U.phone, U.rating, U.profilePicture FROM passengers as P, users as U WHERE P.ride=? AND U.id=P.passenger`;
+        const seatsQuery = `SELECT P.passenger AS id, P.paymentMethod, P.status, U.firstName, U.lastName, U.phone, U.rating, U.profilePicture FROM passengers as P, users as U WHERE P.ride=? AND U.id=P.passenger`;
         const seatsResult = await pool.query(seatsQuery, [tripId]);
 
         countSeatsOccupied = seatsResult[0].length;
@@ -341,11 +341,11 @@ app.get("/tripdetails", async (req, res) => {
     res.json(tripResult);
 });
 
-app.get("/cars", async( req, res) => {
+app.get("/cars", async (req, res) => {
     const { uid, approved } = req.query;
     let carsQuery = "SELECT id,brand,year,model,color,licensePlateLetters,licensePlateNumbers,approved FROM cars WHERE driver=?";
     values = [uid];
-    if(approved) {
+    if (approved) {
         carsQuery += " AND approved=1";
     }
     const carsResult = await pool.query(carsQuery, values);
@@ -498,7 +498,7 @@ app.get("/passengerdetails", async (req, res) => {
 
 app.get("/wallet", async (req, res) => {
     const { uid } = req.query;
-    
+
     const walletQuery = "SELECT balance FROM users WHERE id=?";
     const walletResult = await pool.query(walletQuery, [uid]);
 
@@ -509,7 +509,7 @@ app.get("/wallet", async (req, res) => {
     result.balance = walletResult[0][0].balance;
     result.cards = [];
 
-    for(const card of cardsResult[0]) {
+    for (const card of cardsResult[0]) {
         result.cards.push(helper.getCardDetails(card));
     }
 
@@ -517,43 +517,43 @@ app.get("/wallet", async (req, res) => {
 });
 
 app.post("/newcar", async (req, res) => {
-    const {uid, brand, year, model, color, licensePlateLetters, licensePlateNumbers, license_front, license_back} = req.body;
+    const { uid, brand, year, model, color, licensePlateLetters, licensePlateNumbers, license_front, license_back } = req.body;
 
     const carQuery = "INSERT INTO cars (driver, brand, year, model, color, licensePlateLetters, licensePlateNumbers, license_front, license_back) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
     const carResult = await pool.query(carQuery, [uid, brand, year, model, color, licensePlateLetters, licensePlateNumbers, license_front, license_back]);
-    if(carResult) {
-        res.json({success: 1});
+    if (carResult) {
+        res.json({ success: 1 });
     }
 });
 
-app.post("/submitlicense", async(req, res) => {
+app.post("/submitlicense", async (req, res) => {
     const { uid, frontSide, backSide } = req.body;
     const licenseQuery = "INSERT INTO licenses (driver, front, back) VALUES (?,?,?)";
     const licenseResult = await pool.query(licenseQuery, [uid, frontSide, backSide]);
     res.json(licenseResult);
 });
 
-app.get("/license", async(req, res) => {
+app.get("/license", async (req, res) => {
     const { uid } = req.query;
     const licenseQuery = "SELECT expirydate, status FROM licenses WHERE driver=? AND (expirydate IS NULL OR expirydate > CURDATE()) ORDER BY expirydate DESC";
     const licenseResult = await pool.query(licenseQuery, [uid]);
 
-    if(licenseResult[0].length >= 1) {
+    if (licenseResult[0].length >= 1) {
         res.json(licenseResult[0][0]);
     } else {
-        res.status(404).json({error: "No license on record"})
+        res.status(404).json({ error: "No license on record" })
     }
 });
 
-app.get("/announcements", async(req, res) => {
+app.get("/announcements", async (req, res) => {
     const announcementId = req.query?.id;
     const active = req.query?.active;
 
     let result;
-    if(announcementId) {
+    if (announcementId) {
         const query = "SELECT * FROM announcements WHERE id=?";
         result = await pool.query(query, [announcementId]);
-    } else if(active) {
+    } else if (active) {
         const query = "SELECT * FROM announcements WHERE active=1";
         result = await pool.query(query);
     } else {
@@ -562,6 +562,78 @@ app.get("/announcements", async(req, res) => {
     }
 
     res.json(result[0]);
+});
+
+app.post("/createcommunity", async (req, res) => {
+    const { name, picture, description, private, uid } = req.body;
+    const communityQuery = "INSERT INTO communities (name, picture, description, private, createdBy) VALUES (?, ?, ?, ?, ?)";
+    const communityResult = pool.query(communityQuery, [name, picture, description, private, uid]);
+    if(communityResult) {
+        res.json({success: 1});
+    } else {
+        console.log(communityResult);
+        res.json({error: 1});
+    }
+});
+
+app.get("/communities", async(req, res) => {
+    // find some way to order recommended communities (maybe fastest growing communities)
+    let { page } = req.query;
+    if(!page) { page = 1; }
+    const pageLimit = 3;
+    const communitiesQuery = "SELECT id, name, picture, description, private FROM communities LIMIT "+pageLimit+" OFFSET ?";
+    const values = [ (page-1)*pageLimit ];
+
+    const communitiesResult = await pool.query(communitiesQuery, values);
+    console.log(communitiesResult);
+    res.json(communitiesResult[0]);
+});
+
+app.get("/mycommunities", async(req, res) => {
+    const {uid} = req.query;
+    const communitiesQuery = "SELECT C.id,C.picture,C.name FROM communities as C, communitymembers as M WHERE M.community=C.id AND M.user=?";
+    const communitiesResult = await pool.query(communitiesQuery, [uid]);
+
+    res.json(communitiesResult[0]);
+});
+
+app.get("/myfeed", async(req, res) => {
+    let {uid, page} = req.query;
+    if(!page) { page = 1; }
+    const pageLimit = 3;
+    const feedQuery = "SELECT C.id as community_id, C.name as community_name, R.id as ride_id, R.mainTextFrom, R.mainTextTo, R.pricePerSeat, U.firstName, U.lastName, R.datetime, COUNT(S.id) AS seatsOccupied FROM communities as C, rides as R, communitymembers as M, ridecommunities as RC, passengers as S, users as U WHERE U.id = R.driver AND RC.ride = R.id AND RC.community = C.id AND M.community = C.id AND M.user=? AND R.datetime > CURDATE() AND S.ride = R.id ORDER BY R.datePosted DESC, R.datetime ASC LIMIT "+pageLimit+" OFFSET ?";
+    const feedResult = await pool.query(feedQuery, [uid, (page-1)*pageLimit]);
+
+    res.json(feedResult[0]);
+});
+
+app.get("/loadchat", async(req, res) => {
+    let {uid, receiver} = req.query;
+    const chatLoadQuery = "SELECT U.firstName, U.lastName, U.profilePicture, U.rating FROM users WHERE id=?";
+    const values = [receiver];
+    const chatLoadResult = await pool.query(chatLoadQuery, values);
+    res.json(chatLoadResult[0]);
+});
+
+app.get("/chathistory", async(req, res) => {
+    let {uid, receiver, page} = req.query; // last = last received message id
+
+    if(!page) { page = 1 }
+    const pageLimit = 10;
+
+    const chatQuery = "SELECT id, message, datetime, sender, receiver FROM chatmessages WHERE (sender=? AND receiver=?) OR (receiver=? AND sender=?) ORDER BY datetime DESC LIMIT "+pageLimit+" OFFSET ?";
+    const chatResult = await pool.query(chatQuery, [uid, receiver, uid, receiver, (page-1)*pageLimit]);
+    res.json(chatResult[0]);
+});
+
+app.get("/newmessages", async(req, res) => {
+    let {uid, receiver, last} = req.query;
+
+    const newMessageQuery = "SELECT id, message, datetime, sender, receiver FROM chatmessages WHERE (sender=? AND receiver=?) AND id>? ORDER BY datetime DESC";
+    const values=[receiver, uid, last];
+    const newMessageResult = await pool.query(newMessageQuery, values);
+
+    res.json(newMessageResult[0]);
 });
 
 app.listen(config.app.port, () => {
