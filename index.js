@@ -568,72 +568,96 @@ app.post("/createcommunity", async (req, res) => {
     const { name, picture, description, private, uid } = req.body;
     const communityQuery = "INSERT INTO communities (name, picture, description, private, createdBy) VALUES (?, ?, ?, ?, ?)";
     const communityResult = pool.query(communityQuery, [name, picture, description, private, uid]);
-    if(communityResult) {
-        res.json({success: 1});
+    if (communityResult) {
+        res.json({ success: 1 });
     } else {
         console.log(communityResult);
-        res.json({error: 1});
+        res.json({ error: 1 });
     }
 });
 
-app.get("/communities", async(req, res) => {
+app.get("/communities", async (req, res) => {
     // find some way to order recommended communities (maybe fastest growing communities)
     let { page } = req.query;
-    if(!page) { page = 1; }
+    if (!page) { page = 1; }
     const pageLimit = 3;
-    const communitiesQuery = "SELECT id, name, picture, description, private FROM communities LIMIT "+pageLimit+" OFFSET ?";
-    const values = [ (page-1)*pageLimit ];
+    const communitiesQuery = "SELECT id, name, picture, description, private FROM communities LIMIT " + pageLimit + " OFFSET ?";
+    const values = [(page - 1) * pageLimit];
 
     const communitiesResult = await pool.query(communitiesQuery, values);
     console.log(communitiesResult);
     res.json(communitiesResult[0]);
 });
 
-app.get("/mycommunities", async(req, res) => {
-    const {uid} = req.query;
+app.get("/mycommunities", async (req, res) => {
+    const { uid } = req.query;
     const communitiesQuery = "SELECT C.id,C.picture,C.name FROM communities as C, communitymembers as M WHERE M.community=C.id AND M.user=?";
     const communitiesResult = await pool.query(communitiesQuery, [uid]);
 
     res.json(communitiesResult[0]);
 });
 
-app.get("/myfeed", async(req, res) => {
-    let {uid, page} = req.query;
-    if(!page) { page = 1; }
+app.get("/myfeed", async (req, res) => {
+    let { uid, page } = req.query;
+    if (!page) { page = 1; }
     const pageLimit = 3;
-    const feedQuery = "SELECT C.id as community_id, C.name as community_name, R.id as ride_id, R.mainTextFrom, R.mainTextTo, R.pricePerSeat, U.firstName, U.lastName, R.datetime, COUNT(S.id) AS seatsOccupied FROM communities as C, rides as R, communitymembers as M, ridecommunities as RC, passengers as S, users as U WHERE U.id = R.driver AND RC.ride = R.id AND RC.community = C.id AND M.community = C.id AND M.user=? AND R.datetime > CURDATE() AND S.ride = R.id ORDER BY R.datePosted DESC, R.datetime ASC LIMIT "+pageLimit+" OFFSET ?";
-    const feedResult = await pool.query(feedQuery, [uid, (page-1)*pageLimit]);
+    const feedQuery = "SELECT C.id as community_id, C.name as community_name, R.id as ride_id, R.mainTextFrom, R.mainTextTo, R.pricePerSeat, U.firstName, U.lastName, R.datetime, COUNT(S.id) AS seatsOccupied FROM communities as C, rides as R, communitymembers as M, ridecommunities as RC, passengers as S, users as U WHERE U.id = R.driver AND RC.ride = R.id AND RC.community = C.id AND M.community = C.id AND M.user=? AND R.datetime > CURDATE() AND S.ride = R.id ORDER BY R.datePosted DESC, R.datetime ASC LIMIT " + pageLimit + " OFFSET ?";
+    const feedResult = await pool.query(feedQuery, [uid, (page - 1) * pageLimit]);
 
     res.json(feedResult[0]);
 });
 
-app.get("/loadchat", async(req, res) => {
-    let {uid, receiver} = req.query;
-    const chatLoadQuery = "SELECT U.firstName, U.lastName, U.profilePicture, U.rating FROM users WHERE id=?";
+app.get("/loadchat", async (req, res) => {
+    let { receiver } = req.query;
+    const chatLoadQuery = "SELECT U.firstName, U.lastName, U.profilePicture, U.rating FROM users as U WHERE id=?";
     const values = [receiver];
     const chatLoadResult = await pool.query(chatLoadQuery, values);
-    res.json(chatLoadResult[0]);
+    res.json(chatLoadResult[0][0]);
 });
 
-app.get("/chathistory", async(req, res) => {
-    let {uid, receiver, page} = req.query; // last = last received message id
+app.get("/chathistory", async (req, res) => {
+    let { uid, receiver, page } = req.query; // last = last received message id
 
-    if(!page) { page = 1 }
+    if (!page) { page = 1 }
     const pageLimit = 10;
 
-    const chatQuery = "SELECT id, message, datetime, sender, receiver FROM chatmessages WHERE (sender=? AND receiver=?) OR (receiver=? AND sender=?) ORDER BY datetime DESC LIMIT "+pageLimit+" OFFSET ?";
-    const chatResult = await pool.query(chatQuery, [uid, receiver, uid, receiver, (page-1)*pageLimit]);
+    const chatQuery = "SELECT id, message, datetime, sender, receiver FROM chatmessages WHERE (sender=? AND receiver=?) OR (receiver=? AND sender=?) ORDER BY datetime DESC LIMIT " + pageLimit + " OFFSET ?";
+    const chatResult = await pool.query(chatQuery, [uid, receiver, uid, receiver, (page - 1) * pageLimit]);
+    
+    
+    if(chatResult[0].length !== 0) {
+        const updateQuery = "UPDATE chatmessages SET messageread=1 WHERE sender=? AND receiver=? AND messageread=0";
+        const updateResult = await pool.query(updateQuery, [receiver, uid]);    
+    }
+
     res.json(chatResult[0]);
 });
 
-app.get("/newmessages", async(req, res) => {
-    let {uid, receiver, last} = req.query;
+app.get("/newmessages", async (req, res) => {
+    console.log("new messages polled");
+    let { uid, receiver } = req.query;
 
-    const newMessageQuery = "SELECT id, message, datetime, sender, receiver FROM chatmessages WHERE (sender=? AND receiver=?) AND id>? ORDER BY datetime DESC";
-    const values=[receiver, uid, last];
+
+    const newMessageQuery = "SELECT id, message, datetime, sender, receiver FROM chatmessages WHERE (sender=? AND receiver=?) AND messageread=0 ORDER BY datetime DESC";
+    const values = [receiver, uid];
     const newMessageResult = await pool.query(newMessageQuery, values);
 
+    if(newMessageResult[0].length !== 0) {
+        const updateQuery = "UPDATE chatmessages SET messageread=1 WHERE sender=? AND receiver=? AND messageread=0";
+        const updateResult = await pool.query(updateQuery, [receiver, uid]);    
+    }
+
     res.json(newMessageResult[0]);
+});
+
+
+app.get("/sendmessage", async(req, res) => {
+    let { uid, receiver, message } = req.query;
+
+    const sendMessageQuery = "INSERT INTO chatmessages (message, sender, receiver) VALUES (?,?,?)";
+    const sendMessageResult = await pool.query(sendMessageQuery, [message, uid, receiver]);
+    
+    res.json({ id: sendMessageResult[0].insertId });
 });
 
 app.listen(config.app.port, () => {
