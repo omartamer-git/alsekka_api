@@ -609,10 +609,17 @@ app.get("/myfeed", async (req, res) => {
 
 app.get("/loadchat", async (req, res) => {
     let { receiver } = req.query;
-    const chatLoadQuery = "SELECT U.firstName, U.lastName, U.profilePicture, U.rating FROM users as U WHERE id=?";
+    const chatLoadQuery = "SELECT U.firstName, U.lastName, U.profilePicture FROM users as U WHERE id=?";
     const values = [receiver];
     const chatLoadResult = await pool.query(chatLoadQuery, values);
     res.json(chatLoadResult[0][0]);
+});
+
+app.get("/chats", async (req, res) => {
+    let { uid } = req.query;
+    const chatsQuery = "SELECT DISTINCT users.id, users.firstName, users.lastName, users.profilePicture FROM chatmessages JOIN users ON(chatmessages.sender = users.id OR chatmessages.receiver = users.id) WHERE(chatmessages.sender = ? OR chatmessages.receiver = ?) AND users.id != ?";
+    const chatsResult = await pool.query(chatsQuery, [uid, uid, uid]);
+    res.json(chatsResult[0]);
 });
 
 app.get("/chathistory", async (req, res) => {
@@ -623,11 +630,11 @@ app.get("/chathistory", async (req, res) => {
 
     const chatQuery = "SELECT id, message, datetime, sender, receiver FROM chatmessages WHERE (sender=? AND receiver=?) OR (receiver=? AND sender=?) ORDER BY datetime DESC LIMIT " + pageLimit + " OFFSET ?";
     const chatResult = await pool.query(chatQuery, [uid, receiver, uid, receiver, (page - 1) * pageLimit]);
-    
-    
-    if(chatResult[0].length !== 0) {
+
+
+    if (chatResult[0].length !== 0) {
         const updateQuery = "UPDATE chatmessages SET messageread=1 WHERE sender=? AND receiver=? AND messageread=0";
-        const updateResult = await pool.query(updateQuery, [receiver, uid]);    
+        const updateResult = await pool.query(updateQuery, [receiver, uid]);
     }
 
     res.json(chatResult[0]);
@@ -642,21 +649,21 @@ app.get("/newmessages", async (req, res) => {
     const values = [receiver, uid];
     const newMessageResult = await pool.query(newMessageQuery, values);
 
-    if(newMessageResult[0].length !== 0) {
+    if (newMessageResult[0].length !== 0) {
         const updateQuery = "UPDATE chatmessages SET messageread=1 WHERE sender=? AND receiver=? AND messageread=0";
-        const updateResult = await pool.query(updateQuery, [receiver, uid]);    
+        const updateResult = await pool.query(updateQuery, [receiver, uid]);
     }
 
     res.json(newMessageResult[0]);
 });
 
 
-app.get("/sendmessage", async(req, res) => {
+app.get("/sendmessage", async (req, res) => {
     let { uid, receiver, message } = req.query;
 
     const sendMessageQuery = "INSERT INTO chatmessages (message, sender, receiver) VALUES (?,?,?)";
     const sendMessageResult = await pool.query(sendMessageQuery, [message, uid, receiver]);
-    
+
     res.json({ id: sendMessageResult[0].insertId });
 });
 
