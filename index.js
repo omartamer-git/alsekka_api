@@ -11,6 +11,7 @@ const app = express();
 /*
 Handle SQL errors
 Add user authentication 
+Check all logical error possibilities for each endpoint
 */
 
 app.use(express.json());
@@ -49,8 +50,10 @@ app.get("/accountavailable", async (req, res) => {
 
 app.get("/createaccount", async (req, res) => {
     let { fname, lname, phone, email, password, gender } = req.query;
-
+    fname = fname.charAt(0).toUpperCase() + fname.slice(1);
+    lname = lname.charAt(0).toUpperCase() + lname.slice(1);
     email = email.toLowerCase();
+
     if (phone && email && password) {
         if (helper.isValidEmail(email)) {
             try {
@@ -139,13 +142,18 @@ app.get("/login", async (req, res) => {
 
 app.get("/nearbyrides", async (req, res) => {
     const maxDistance = 20000;
-    const { startLng, startLat, endLng, endLat, date } = req.query;
-    if (startLng && startLat && endLng && endLat) {
-        const rideQuery = `SELECT *, 
+    let { startLng, startLat, endLng, endLat, date, gender } = req.query;
+    if (!gender) {
+        gender = 2;
+    }
+    if (startLng && startLat && endLng && endLat && date) {
+        let values = [startLat, startLng, startLat, endLat, endLng, endLat, date, gender];
+        let rideQuery = `SELECT *, 
         ( 6371 * acos( cos( radians(?) ) * cos( radians( fromLatitude ) ) * cos( radians( fromLongitude ) - radians(?) ) + sin( radians(?) ) * sin( radians( fromLatitude ) ) ) ) AS distanceStart,
         ( 6371 * acos( cos( radians(?) ) * cos( radians( toLatitude ) ) * cos( radians( toLongitude ) - radians(?) ) + sin( radians(?) ) * sin( radians( toLatitude ) ) ) ) AS distanceEnd 
-        FROM rides HAVING distanceStart <= 50 AND distanceEnd <= 50  AND datetime >= ? ORDER BY datetime, distanceStart, distanceEnd`;
-        const rideResult = await pool.query(rideQuery, [startLat, startLng, startLat, endLat, endLng, endLat, date]);
+        FROM rides HAVING distanceStart <= 50 AND distanceEnd <= 50 AND datetime >= ? AND gender=? ORDER BY datetime, distanceStart, distanceEnd`;
+
+        const rideResult = await pool.query(rideQuery, values);
         let result = [];
         for (const ride of rideResult[0]) {
             const seatsQuery = `SELECT COUNT(*) as count FROM passengers WHERE ride=?`;
@@ -169,7 +177,7 @@ app.get("/nearbyrides", async (req, res) => {
 
 app.get("/ridedetails", async (req, res) => {
     const { rideId } = req.query;
-    const rideQuery = "SELECT rides.id, fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, mainTextTo, pricePerSeat, rides.datetime, users.firstName, users.lastName, users.rating, users.profilePicture FROM rides, users WHERE rides.id=? AND users.id=rides.driver";
+    const rideQuery = "SELECT rides.id, fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, mainTextTo, pricePerSeat, rides.datetime, users.id AS uid, users.firstName, users.lastName, users.rating, users.profilePicture FROM rides, users WHERE rides.id=? AND users.id=rides.driver";
     const rideResult = await pool.query(rideQuery, [rideId]);
 
     const seatsQuery = `SELECT COUNT(*) as count FROM passengers WHERE ride=?`;
@@ -184,7 +192,9 @@ app.get("/ridedetails", async (req, res) => {
 app.get("/bookride", async (req, res) => {
     const { uid, rideId, paymentMethod } = req.query;
     const bookQuery = "INSERT INTO passengers (passenger, ride, paymentMethod) VALUES (?, ?, ?)";
-    const bookResult = await pool.query(bookQuery, [uid, rideId, paymentMethod]);
+    const bookValues = [uid, rideId, paymentMethod];
+    console.log(bookValues);
+    const bookResult = await pool.query(bookQuery, bookValues);
     res.json(bookResult);
 });
 
@@ -196,7 +206,8 @@ app.post("/postride", async (req, res) => {
         mainTextTo, pricePerSeat,
         driver, datetime, car } = req.body;
     const postQuery = "INSERT INTO rides (fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, mainTextTo, pricePerSeat, driver, datetime, car) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-    const postResult = await pool.query(postQuery, [fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, mainTextTo, pricePerSeat, driver, datetime, car]);
+    const queryValues = [fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, mainTextTo, pricePerSeat, driver, datetime, car];
+    const postResult = await pool.query(postQuery, queryValues);
     res.json(postResult);
 });
 
@@ -409,7 +420,7 @@ app.get("/startride", async (req, res) => {
 
 app.get("/checkin", async (req, res) => {
     const { tripId, passenger } = req.query;
-    const checkInQuery = "UPDATE passengers SET status=1 WHERE id=? AND ride=?";
+    const checkInQuery = "UPDATE passengers SET status=1 WHERE passenger=? AND ride=?";
     const checkInResult = await pool.query(checkInQuery, [passenger, tripId]);
 
     if (checkInResult[0].affectedRows === 1) {
@@ -422,7 +433,7 @@ app.get("/checkin", async (req, res) => {
 app.get("/checkout", async (req, res) => {
     let { tripId, passenger, amountPaid, rating } = req.query;
     amountPaid = parseFloat(amountPaid);
-    const balanceQuery = "SELECT U.id, U.rating, U.numRatings, balance, pricePerSeat FROM users AS U, passengers AS P, rides as R WHERE u.id = P.passenger AND P.id=? AND R.id=?";
+    const balanceQuery = "SELECT U.id, U.rating, U.numRatings, balance, pricePerSeat FROM users AS U, passengers AS P, rides as R WHERE u.id = P.passenger AND P.passenger=? AND R.id=?";
     const balanceResult = await pool.query(balanceQuery, [passenger, tripId]);
 
     if (balanceResult[0][0]) {
@@ -445,11 +456,8 @@ app.get("/checkout", async (req, res) => {
             const updateBalanceQuery = "UPDATE users SET balance=?, rating=?, numRatings=numRatings+1 WHERE id=?";
             const updateBalanceResult = await pool.query(updateBalanceQuery, [newBalance, newRating, uid]);
 
-            const checkInQuery = "UPDATE passengers SET status=2 WHERE id=? AND ride=?";
+            const checkInQuery = "UPDATE passengers SET status=2 WHERE passenger=? AND ride=?";
             const checkInResult = await pool.query(checkInQuery, [passenger, tripId]);
-
-
-
 
             if (checkInResult[0].affectedRows === 1) {
                 res.json({ success: 1 });
@@ -476,7 +484,7 @@ app.get("/noshow", async (req, res) => {
 
 app.get("/passengerdetails", async (req, res) => {
     const { tripId, passenger } = req.query;
-    const passengerQuery = "SELECT U.firstName, U.lastName, P.paymentMethod, R.pricePerSeat, U.balance FROM passengers as P, users as U, rides as R WHERE P.id=? AND ride=? AND P.passenger=U.id AND R.id = ?";
+    const passengerQuery = "SELECT U.firstName, U.lastName, P.paymentMethod, R.pricePerSeat, U.balance FROM passengers as P, users as U, rides as R WHERE P.passenger=? AND ride=? AND P.passenger=U.id AND R.id = ?";
     const passengerResult = await pool.query(passengerQuery, [passenger, tripId, tripId]);
 
     if (passengerResult[0][0]) {
@@ -601,10 +609,39 @@ app.get("/myfeed", async (req, res) => {
     let { uid, page } = req.query;
     if (!page) { page = 1; }
     const pageLimit = 3;
-    const feedQuery = "SELECT C.id as community_id, C.name as community_name, R.id as ride_id, R.mainTextFrom, R.mainTextTo, R.pricePerSeat, U.firstName, U.lastName, R.datetime, COUNT(S.id) AS seatsOccupied FROM communities as C, rides as R, communitymembers as M, ridecommunities as RC, passengers as S, users as U WHERE U.id = R.driver AND RC.ride = R.id AND RC.community = C.id AND M.community = C.id AND M.user=? AND R.datetime > CURDATE() AND S.ride = R.id ORDER BY R.datePosted DESC, R.datetime ASC LIMIT " + pageLimit + " OFFSET ?";
-    const feedResult = await pool.query(feedQuery, [uid, (page - 1) * pageLimit]);
+    const feedQuery =
+        `SELECT
+            C.name as 'community_name',
+            R.id as 'ride_id',
+            R.mainTextFrom,
+            R.mainTextTo,
+            R.pricePerSeat,
+            D.firstName,
+            D.lastName,
+            R.datetime
+        FROM
+            rides as R
+            JOIN users as D ON R.driver=D.id
+            JOIN ridecommunities as RC ON RC.ride = R.id
+            JOIN communities as C ON C.id = RC.community
+            JOIN communitymembers AS CM ON CM.community = C.id
+        WHERE
+            CM.user = ? AND
+            R.datetime > CURDATE()
+        ORDER BY
+            R.datetime DESC
+        LIMIT ${pageLimit}
+        OFFSET ?`;
+    const feedResults = await pool.query(feedQuery, [uid, (page - 1) * pageLimit]);
 
-    res.json(feedResult[0]);
+    for(let feedResult of feedResults[0]) {
+        const seatsQuery = `SELECT COUNT(*) as count FROM passengers WHERE ride=?`;
+        const seatsResult = await pool.query(seatsQuery, [feedResult.rid]);
+        const countSeatsOccupied = seatsResult[0][0].count;
+        feedResult.seatsOccupied = countSeatsOccupied;
+    }
+
+    res.json(feedResults[0]);
 });
 
 app.get("/loadchat", async (req, res) => {
@@ -666,6 +703,26 @@ app.get("/sendmessage", async (req, res) => {
 
     res.json({ id: sendMessageResult[0].insertId });
 });
+
+
+app.post("/addbank", async (req, res) => {
+    let { uid, fullName, bankName, accNumber, swiftCode } = req.body;
+
+    const addBankQuery = "INSERT INTO bankaccounts (fullName, bankName, accNumber, swiftCode, user) = VALUES (?, ?, ?, ?, ?)";
+    const addBankResult = await pool.query(addBankQuery, [fullName, bankName, accNumber, swiftCode, uid]);
+
+    res.json(addBankResult[0]);
+});
+
+app.get("/banks", async (req, res) => {
+    let { uid } = req.query;
+
+    const banksQuery = "SELECT * FROM bankaccounts WHERE user=?";
+    const banksResult = await pool.query(banksQuery, [uid]);
+
+    res.json(banksResult[0]);
+});
+
 
 app.listen(config.app.port, () => {
     console.log(`API listening at http://localhost:${config.app.port}`);
