@@ -1,4 +1,6 @@
 const express = require("express");
+// ADD CORS
+
 const mysql = require("mysql2");
 const bcrypt = require("bcrypt");
 
@@ -6,6 +8,7 @@ const config = require("./config");
 const pool = require("./mysql-pool");
 const helper = require("./helper");
 const errors = require("./errors");
+
 const app = express();
 
 /*
@@ -21,123 +24,86 @@ app.use(
     })
 );
 
+const log4js = require("log4js");
+const userService = require("./services/userService");
+const rideService = require("./services/rideService");
+const carService = require("./services/carService");
+const appService = require("./services/appService");
+const communityService = require("./services/communityService");
+const chatService = require("./services/chatService");
+
+log4js.configure({
+    appenders: {
+        console: { type: 'console' },
+        file: {
+            type: 'file',
+            filename: 'logs/app.log',
+            maxLogSize: 10485760, // 10 MB
+            backups: 5,
+            compress: true,
+            level: 'warn' // Only log messages at the warn level or higher
+        }
+    },
+    categories: {
+        default: { appenders: ['console', 'file'], level: 'debug' }
+    }
+});
+const logger = log4js.getLogger();
 
 
 app.get("/accountavailable", async (req, res) => {
     const { phone, email } = req.query;
-    if (phone) {
-        const phoneQuery = 'SELECT COUNT(*) as count FROM users WHERE phone = ?';
-        const phoneResult = await pool.query(phoneQuery, [phone]);
-
-        if (phoneResult[0][0].count == 0) {
-            res.json({ success: '1' });
-        } else {
-            res.json({ success: '0' });
-        }
-    } else if (email) {
-        const emailQuery = 'SELECT COUNT(*) as count FROM users WHERE email = ?';
-        const emailResult = await pool.query(emailQuery, [email]);
-        if (emailResult[0][0].count == 0) {
-            res.json({ success: '1' });
-        } else {
-            res.json({ success: '0' });
-        }
-    } else {
-        res.status(400).json(errors.missinginfo);
+    if (!phone || !email) {
+        return res.status(400).json({ error: "Phone or email parameters are required." });
     }
-});
 
+    const available = userService.accountAvailable(phone, email).then(
+        available => {
+            const success = available ? 1 : 0;
+            res.json({ success: success });
+        }
+    ).catch(
+        err => {
+            console.error(err);
+        }
+    );
+});
 
 app.get("/createaccount", async (req, res) => {
     let { fname, lname, phone, email, password, gender } = req.query;
-    fname = fname.charAt(0).toUpperCase() + fname.slice(1);
-    lname = lname.charAt(0).toUpperCase() + lname.slice(1);
-    email = email.toLowerCase();
-
-    if (phone && email && password) {
-        if (helper.isValidEmail(email)) {
-            try {
-                const emailQuery = 'SELECT COUNT(*) as count FROM users WHERE email = ?';
-                const phoneQuery = 'SELECT COUNT(*) as count FROM users WHERE phone = ?';
-
-                const emailResult = await pool.query(emailQuery, [email]);
-                const phoneResult = await pool.query(phoneQuery, [phone]);
-                if (emailResult[0][0].count > 0) {
-                    res.status(400).json(errors.emailinuse);
-                } else if (phoneResult[0][0].count > 0) {
-                    res.status(400).json(errors.phoneinuse);
-                } else {
-                    bcrypt.hash(password, 10, async (err, hash) => {
-                        if (err) {
-                            res.status(500);
-                        } else {
-                            const [result] = await pool.query('INSERT INTO users (firstname, lastname, phone, email, password, gender) VALUES (?, ?, ?, ?, ?, ?)', [fname, lname, phone, email, hash, gender]);
-                            res.json({ success: 1 });
-                        }
-                    });
-
-                }
-
-            } catch (err) {
-                res.json(err);
-            }
-        } else {
-            res.json(errors.invalidemail);
-        }
-    } else {
-        res.status(400).json(errors.missinginfo);
+    if (!fname || !lname || !phone || !email || !password || !gender) {
+        return res.status(400).json({ error: "Some required fields are missing" });
     }
+    if (!helper.isValidEmail(email)) {
+        return res.status(400).json({ error: "Invalid Email" });
+    }
+
+    userService.createUser(req.query).then(
+        newUser => {
+            res.status(201).json({ success: 1, id: newUser.id })
+        }
+    ).catch(
+        err => {
+            res.status(500).json({ error: err });
+        }
+    );
 });
 
 app.get("/login", async (req, res) => {
     const { phone, email, password } = req.query;
-    if (phone) {
-        const phoneQuery = 'SELECT id, password FROM users WHERE phone = ?';
-
-        const phoneResult = await pool.query(phoneQuery, [phone]);
-
-        if (phoneResult[0][0] === undefined) {
-            res.json(errors.incorrectlogin);
-        } else {
-            const hashedPassword = phoneResult[0][0].password;
-            const uid = phoneResult[0][0].id;
-
-
-            bcrypt.compare(password, hashedPassword, (err, result) => {
-                if (err) {
-                    res.status(500);
-                } else if (result) {
-                    res.json({ success: 1, id: uid });
-                } else {
-                    res.json(errors.incorrectlogin);
-                }
-            });
-        }
-
-    } else if (email) {
-        const emailQuery = 'SELECT id, password FROM users WHERE email = ?';
-
-        const emailResult = await pool.query(emailQuery, [email]);
-        if (emailResult[0][0] === undefined) {
-            res.json(errors.incorrectlogin);
-        } else {
-            const hashedPassword = emailResult[0][0].password;
-            const uid = emailResult[0][0].id;
-
-
-            bcrypt.compare(password, hashedPassword, (err, result) => {
-                if (err) {
-                    res.status(500);
-                } else if (result) {
-                    res.json({ id: uid });
-                } else {
-                    res.json(errors.incorrectlogin);
-                }
-            });
-        }
-    } else {
-        res.status(400).json(errors.missinginfo);
+    if ((!phone && !email) || !password) {
+        return res.status(400).json({ error: "Some required fields are missing" });
     }
+
+    userService.loginUser(req.query).then(
+        userAccount => {
+            return res.status(201).json({ success: 1, id: userAccount.id });
+        }
+    ).catch(
+        err => {
+            res.status(err).json({ error: 1 });
+        }
+    );
 });
 
 app.get("/nearbyrides", async (req, res) => {
@@ -146,581 +112,548 @@ app.get("/nearbyrides", async (req, res) => {
     if (!gender) {
         gender = 2;
     }
-    if (startLng && startLat && endLng && endLat && date) {
-        let values = [startLat, startLng, startLat, endLat, endLng, endLat, date, gender];
-        let rideQuery = `SELECT *, 
-        ( 6371 * acos( cos( radians(?) ) * cos( radians( fromLatitude ) ) * cos( radians( fromLongitude ) - radians(?) ) + sin( radians(?) ) * sin( radians( fromLatitude ) ) ) ) AS distanceStart,
-        ( 6371 * acos( cos( radians(?) ) * cos( radians( toLatitude ) ) * cos( radians( toLongitude ) - radians(?) ) + sin( radians(?) ) * sin( radians( toLatitude ) ) ) ) AS distanceEnd 
-        FROM rides HAVING distanceStart <= 50 AND distanceEnd <= 50 AND datetime >= ? AND gender=? ORDER BY datetime, distanceStart, distanceEnd`;
-
-        const rideResult = await pool.query(rideQuery, values);
-        let result = [];
-        for (const ride of rideResult[0]) {
-            const seatsQuery = `SELECT COUNT(*) as count FROM passengers WHERE ride=?`;
-            const seatsResult = await pool.query(seatsQuery, [ride.id]);
-            const countSeatsOccupied = seatsResult[0][0].count;
-            result.push({
-                "id": ride.id,
-                "mainTextFrom": ride.mainTextFrom,
-                "mainTextTo": ride.mainTextTo,
-                "pricePerSeat": ride.pricePerSeat,
-                "datetime": ride.datetime,
-                "seatsOccupied": countSeatsOccupied,
-            });
-        }
-        res.json(result);
-
-    } else {
-        res.status(409);
+    if (!startLng || !startLat || !endLng || !endLat || !date) {
+        return res.status(400).json({ error: "Some required fields are missing" });
     }
+
+    rideService.getNearbyRides(req.query).then(
+        result => res.status(200).json(result)
+    ).catch(err => {
+        console.error(err);
+        res.status(500).json({ error: 1 })
+    });
+    /*
+    // let values = [startLat, startLng, startLat, endLat, endLng, endLat, date, gender];
+    // let rideQuery = `SELECT *, 
+    //     ( 6371 * acos( cos( radians(?) ) * cos( radians( fromLatitude ) ) * cos( radians( fromLongitude ) - radians(?) ) + sin( radians(?) ) * sin( radians( fromLatitude ) ) ) ) AS distanceStart,
+    //     ( 6371 * acos( cos( radians(?) ) * cos( radians( toLatitude ) ) * cos( radians( toLongitude ) - radians(?) ) + sin( radians(?) ) * sin( radians( toLatitude ) ) ) ) AS distanceEnd 
+    //     FROM rides HAVING distanceStart <= 50 AND distanceEnd <= 50 AND datetime >= ? AND gender=? ORDER BY datetime, distanceStart, distanceEnd`;
+
+    // const rideResult = await pool.query(rideQuery, values);
+    // let result = [];
+    // for (const ride of rideResult[0]) {
+    //     const seatsQuery = `SELECT COUNT(*) as count FROM passengers WHERE ride=?`;
+    //     const seatsResult = await pool.query(seatsQuery, [ride.id]);
+    //     const countSeatsOccupied = seatsResult[0][0].count;
+    //     result.push({
+    //         "id": ride.id,
+    //         "mainTextFrom": ride.mainTextFrom,
+    //         "mainTextTo": ride.mainTextTo,
+    //         "pricePerSeat": ride.pricePerSeat,
+    //         "datetime": ride.datetime,
+    //         "seatsOccupied": countSeatsOccupied,
+    //     });
+    // }
+    // res.json(result); */
 });
 
 app.get("/ridedetails", async (req, res) => {
     const { rideId } = req.query;
-    const rideQuery = "SELECT rides.id, fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, mainTextTo, pricePerSeat, rides.datetime, users.id AS uid, users.firstName, users.lastName, users.rating, users.profilePicture FROM rides, users WHERE rides.id=? AND users.id=rides.driver";
-    const rideResult = await pool.query(rideQuery, [rideId]);
+    if (!rideId) {
+        return res.status(400).json({ error: "Some required fields are mising" });
+    }
 
-    const seatsQuery = `SELECT COUNT(*) as count FROM passengers WHERE ride=?`;
-    const seatsResult = await pool.query(seatsQuery, [rideId]);
-    const countSeatsOccupied = seatsResult[0][0].count;
-
-    rideResult[0][0].seatsOccupied = countSeatsOccupied;
-
-    res.json(rideResult[0][0]);
+    rideService.getRideDetails(req.query).then(
+        (ride) => {
+            res.status(200).json(ride);
+        }
+    ).catch(
+        err => {
+            res.status(err).json({ error: "Ride not found" });
+        }
+    );
 });
 
 app.get("/bookride", async (req, res) => {
     const { uid, rideId, paymentMethod } = req.query;
-    const bookQuery = "INSERT INTO passengers (passenger, ride, paymentMethod) VALUES (?, ?, ?)";
-    const bookValues = [uid, rideId, paymentMethod];
-    console.log(bookValues);
-    const bookResult = await pool.query(bookQuery, bookValues);
-    res.json(bookResult);
+    if (!uid || !rideId || !paymentMethod) {
+        return res.status(400).json({ error: "Some required fields are missing" });
+    }
+
+    rideService.bookRide(req.query).then(
+        newPassenger => {
+            return res.json({ id: newPassenger.id })
+        }
+    ).catch(err => {
+        return res.status(500).json({ error: "Unexpected server error occured" })
+    });
 });
 
 app.post("/postride", async (req, res) => {
     // consider not getting all the data from the query and instead only taking the latitude figures? Could cost an extra API call
     // check that driver doesn't already have a ride scheduled within 1-2 (?) hours/duration of this ride
+    // mainTextFrom/mainTextTo probably needs to be fetched from google api instead to prevent malicious use
+
     const { fromLatitude, fromLongitude, toLatitude,
         toLongitude, mainTextFrom,
         mainTextTo, pricePerSeat,
         driver, datetime, car } = req.body;
-    const postQuery = "INSERT INTO rides (fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, mainTextTo, pricePerSeat, driver, datetime, car) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-    const queryValues = [fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, mainTextTo, pricePerSeat, driver, datetime, car];
-    const postResult = await pool.query(postQuery, queryValues);
-    res.json(postResult);
+    if (!fromLatitude || !fromLongitude || !toLatitude || !toLongitude ||
+        !mainTextFrom || !mainTextTo || !pricePerSeat || !driver || !car ||
+        !datetime
+    ) {
+        return res.status(400).json({ error: "Some required fields are missing" });
+    }
+
+    rideService.postRide(req.body).then(ride => {
+        res.json(ride);
+    }).catch(err => {
+        res.status(500).json({ error: "Unexpected server error occured" });
+    });
 });
 
 app.get("/userinfo", async (req, res) => {
     const { uid } = req.query;
-    const userQuery = `SELECT firstName, lastName, phone, email, balance, rating, profilePicture, gender FROM users WHERE id=?`;
-    let userResult = await pool.query(userQuery, [uid]);
-
-    userResult[0][0].driver = 0;
-    const licenseQuery = 'SELECT status FROM licenses WHERE driver=? AND expirydate > CURDATE()';
-    const licenseResult = await pool.query(licenseQuery, [uid]);
-    if (licenseResult[0].length === 1) {
-        userResult[0][0].driver = licenseResult[0][0].status;
+    if (!uid) {
+        return res.status(400).json({ error: "Some required fields are missing" });
     }
 
-    res.json(userResult[0][0]);
+    userService.userInfo(req.query).then(user => {
+        res.json(user);
+    }).catch(err => {
+        console.error(err);
+        res.status(500).json({ error: "Unexpected server error occured" })
+    });
 });
 
 app.get("/upcomingrides", async (req, res) => {
     const uid = req.query.uid;
-    const limit = req.query.limit;
-    let after = req.query.after;
+    let limit = req.query.limit;
 
-    const passengerQuery = "SELECT DISTINCT R.id, R.mainTextFrom, R.mainTextTo, R.pricePerSeat, R.datetime FROM passengers AS P, rides AS R WHERE (R.datetime >= CURRENT_TIMESTAMP AND R.status!=4 AND R.status != 2) AND ((P.passenger=? AND P.ride=R.id AND (P.status!=2 AND P.status!=4 AND P.status!=-1)) OR (R.driver=?))" + (after ? " AND R.datetime>? " : " ") + "ORDER BY R.status DESC, R.datetime ASC" + (limit ? ` LIMIT ?` : '');;
-    let passengerResult = null;
-    if (after) {
-        after = new Date(parseInt(after)).toISOString();
-        console.log(after);
+    if (limit) {
+        req.query.limit = parseInt(limit);
     }
 
-    if (after && limit) {
-        passengerResult = await pool.query(passengerQuery, [uid, uid, after, parseInt(limit)]);
-    } else if (after) {
-        passengerResult = await pool.query(passengerQuery, [uid, uid, after]);
-    } else if (limit) {
-        passengerResult = await pool.query(passengerQuery, [uid, uid, parseInt(limit)]);
-    } else {
-        passengerResult = await pool.query(passengerQuery, [uid, uid]);
+    if (!uid) {
+        return res.status(400).json({ error: "Some required fields are missing" });
     }
 
-    let result = [];
-    for (const ridePassenger of passengerResult[0]) {
-        const seatsQuery = `SELECT COUNT(*) as count FROM passengers WHERE ride=?`;
-        const seatsResult = await pool.query(seatsQuery, [ridePassenger.id]);
-        const countSeatsOccupied = seatsResult[0][0].count;
-
-        result.push({
-            "id": ridePassenger.id,
-            "mainTextFrom": ridePassenger.mainTextFrom,
-            "mainTextTo": ridePassenger.mainTextTo,
-            "pricePerSeat": ridePassenger.pricePerSeat,
-            "datetime": ridePassenger.datetime,
-            "seatsOccupied": countSeatsOccupied,
-        });
-    }
+    let result = await rideService.getUpcomingRides(req.query);
 
     res.json(result);
 });
 
 app.get("/pastrides", async (req, res) => {
     const uid = req.query.uid;
-    const limit = req.query.limit;
+    let limit = req.query.limit;
     let after = req.query.after;
 
-    const passengerQuery = "SELECT DISTINCT R.id, R.mainTextFrom, R.mainTextTo, R.pricePerSeat, R.datetime FROM passengers AS P, rides AS R WHERE ((P.passenger=? AND P.ride=R.id) OR (R.driver=?))" + (after ? " AND R.datetime<? " : " ") + "ORDER BY R.datetime DESC" + (limit ? ` LIMIT ?` : '');;
-    let passengerResult = null;
-    if (after) {
-        after = new Date(parseInt(after)).toISOString();
-        console.log(after);
+    if (limit) {
+        req.query.limit = parseInt(limit);
     }
 
-    if (after && limit) {
-        passengerResult = await pool.query(passengerQuery, [uid, uid, after, parseInt(limit)]);
-    } else if (after) {
-        passengerResult = await pool.query(passengerQuery, [uid, uid, after]);
-    } else if (limit) {
-        passengerResult = await pool.query(passengerQuery, [uid, uid, parseInt(limit)]);
-    } else {
-        passengerResult = await pool.query(passengerQuery, [uid, uid]);
-    }
-
-    let result = [];
-
-
-    for (const ridePassenger of passengerResult[0]) {
-        const seatsQuery = `SELECT COUNT(*) as count FROM passengers WHERE ride=?`;
-        const seatsResult = await pool.query(seatsQuery, [ridePassenger.id]);
-        const countSeatsOccupied = seatsResult[0][0].count;
-
-        result.push({
-            "id": ridePassenger.id,
-            "mainTextFrom": ridePassenger.mainTextFrom,
-            "mainTextTo": ridePassenger.mainTextTo,
-            "pricePerSeat": ridePassenger.pricePerSeat,
-            "datetime": ridePassenger.datetime,
-            "seatsOccupied": countSeatsOccupied,
-        });
-    }
+    const result = await rideService.getPastRides(req.query);
 
     res.json(result);
 });
 
 app.get("/driverrides", async (req, res) => {
     const uid = req.query.uid;
-    const limit = req.query.limit;
-    const isDriverQuery = "SELECT COUNT(*) as count FROM licenses WHERE status=1 AND driver=?";
-    const isDriverResult = await pool.query(isDriverQuery, [uid]);
-
-    if (isDriverResult[0][0].count > 0) {
-        const rideQuery = "SELECT * FROM rides WHERE driver=? " + (limit ? ` LIMIT ${limit}` : '');
-        const rideResult = await pool.query(rideQuery, [uid]);
-
-        res.json(rideResult[0]);
-    } else {
-        res.json([{ 'driver': '0' }]);
+    let limit = req.query.limit;
+    if (limit) {
+        req.query.limit = parseInt(limit);
     }
+
+    const driverRides = await rideService.getDriverRides(req.query);
+    res.json(driverRides);
 });
 
 app.get("/tripdetails", async (req, res) => {
     const { uid, tripId } = req.query;
+    rideService.getTripDetails(req.query).then(tripResult => {
+        res.json(tripResult);
+    }).catch(err => {
+        if (err === 404) {
+            return res.status(404).json({ error: "Trip not found" });
+        }
+        if (err === 401) {
+            return res.status(401).json({ error: "Unauthorized" });
+        }
+        console.error(err);
+        res.status(500).json({ error: "Unexpected error occured" });
 
-    const tripQuery = "SELECT (R.driver=?) as isDriver, R.fromLatitude, R.fromLongitude, R.toLatitude, R.toLongitude, R.mainTextFrom, R.mainTextTo, R.pricePerSeat, R.datetime, R.status, U.id, U.firstName, U.lastName, U.phone, U.rating, U.profilePicture FROM rides as R, users as U WHERE R.driver=U.id AND R.id=?";
-    let tripResult = await pool.query(tripQuery, [uid, tripId]);
-    tripResult = tripResult[0][0];
-
-    let countSeatsOccupied = 0;
-    if (tripResult.isDriver === 1) {
-        const seatsQuery = `SELECT P.passenger AS id, P.paymentMethod, P.status, U.firstName, U.lastName, U.phone, U.rating, U.profilePicture FROM passengers as P, users as U WHERE P.ride=? AND U.id=P.passenger`;
-        const seatsResult = await pool.query(seatsQuery, [tripId]);
-
-        countSeatsOccupied = seatsResult[0].length;
-        tripResult.passengers = seatsResult[0];
-    } else {
-        const seatsQuery = `SELECT COUNT(*) as count FROM passengers WHERE ride=?`;
-        const seatsResult = await pool.query(seatsQuery, [tripId]);
-        countSeatsOccupied = seatsResult[0][0].count;
-    }
-
-
-    tripResult.seatsOccupied = countSeatsOccupied;
-
-    res.json(tripResult);
+    });
 });
 
 app.get("/cars", async (req, res) => {
     const { uid, approved } = req.query;
-    let carsQuery = "SELECT id,brand,year,model,color,licensePlateLetters,licensePlateNumbers,approved FROM cars WHERE driver=?";
-    values = [uid];
-    if (approved) {
-        carsQuery += " AND approved=1";
+    if (!uid) {
+        return res.status(400).json({ error: "Some required fields are missing" });
     }
-    const carsResult = await pool.query(carsQuery, values);
-    res.json(carsResult[0]);
+
+    carService.getCars(req.query).then(cars => {
+        return res.json(cars);
+    }).catch(err => {
+        console.error(err);
+        return res.status(500).json({ error: "Unexpected server error occured" });
+    }
+    );
 });
 
 app.get("/cancelride", async (req, res) => {
     const { tripId } = req.query;
 
-    const tripQuery = "SELECT status, datetime FROM rides WHERE id=?";
-    const tripResult = await pool.query(tripQuery, [tripId]);
-    if (tripResult[0].length === 1 && tripResult[0][0].status === 0) {
-        const currDate = new Date().getTime();
-        const tripDate = new Date(tripResult[0][0].datetime).getTime();
-
-        const timeToTrip = tripDate - currDate;
-        if (timeToTrip >= 1000 * 60 * 60 * 12) {
-            const cancelQuery = "UPDATE rides SET status=4 WHERE id=?";
-            const cancelResult = await pool.query(cancelQuery, [tripId]);
-            if (cancelResult[0].affectedRows === 1) {
-                res.json({ success: 1 });
-            } else {
-                res.json({ error: 0 });
-            }
-        } else {
-            // handle this better
-            res.json({ tt: "insufficient" });
-        }
-    } else {
-        res.json(tripResult[0][0]);
+    if (!tripId) {
+        return res.status(400).json({ error: "Some required fields are missing" });
     }
+
+    rideService.cancelRide(req.query).then(cancelStatus => {
+        if (!cancelStatus) {
+            return res.status(406).json({ error: "Could not cancel ride" });
+        }
+        return res.json({ success: 1 });
+    }).catch(err => {
+        if (err === 404) {
+            return res.status(500).json({ error: "Not found" });
+        } else {
+            return res.status(500).json({ error: "Unexpected server error occured" });
+        }
+    });
 });
 
 app.get("/startride", async (req, res) => {
     const { tripId } = req.query;
 
-    const tripQuery = "SELECT status, datetime FROM rides WHERE id=?";
-    const tripResult = await pool.query(tripQuery, [tripId]);
-    if (tripResult[0].length === 1 && tripResult[0][0].status === 0) {
-        const currDate = new Date().getTime();
-        const tripDate = new Date(tripResult[0][0].datetime).getTime();
-
-        const timeToTrip = tripDate - currDate;
-
-        if (timeToTrip <= 1000 * 60 * 60 * 1) {
-            const startQuery = "UPDATE rides SET status=1 WHERE id=?";
-            const startResult = await pool.query(startQuery, [tripId]);
-            if (startResult[0].affectedRows === 1) {
-                res.json({ success: 1 });
-            } else {
-                res.json({ error: 0 });
-            }
-        } else {
-            // handle this better
-            res.json({ tt: "insufficient" });
-        }
-    } else {
-        res.json(tripResult[0][0]);
+    if (!tripId) {
+        return res.status(400).json({ error: "Some required fields are missing" });
     }
+
+    rideService.startRide(req.query).then(cancelStatus => {
+        if (!cancelStatus) {
+            return res.status(406).json({ error: "Could not start ride" });
+        }
+        return res.json({ success: 1 });
+    }).catch(err => {
+        if (err === 404) {
+            return res.status(500).json({ error: "Not found" });
+        } else if (err === 401) {
+            return res.status(401).json({ error: "Ride is not ready yet" })
+        } else {
+            return res.status(500).json({ error: "Unexpected server error occured" });
+        }
+    });
 });
 
 app.get("/checkin", async (req, res) => {
     const { tripId, passenger } = req.query;
-    const checkInQuery = "UPDATE passengers SET status=1 WHERE passenger=? AND ride=?";
-    const checkInResult = await pool.query(checkInQuery, [passenger, tripId]);
-
-    if (checkInResult[0].affectedRows === 1) {
-        res.json({ success: 1 });
-    } else {
-        res.json({ error: 0 });
+    if (!tripId || !passenger) {
+        return res.status(400).json({ error: "Some required fields are missing" });
     }
+
+    rideService.checkIn(req.query).then(
+        response => {
+            return res.json({ success: 1 });
+        }
+    ).catch(
+        err => {
+            if (err === 404) {
+                return res.status(404).json({ error: "Ride not found" });
+            } else {
+                console.error(err);
+                return res.status(500).json({ error: "Unexpected server error occured" });
+            }
+        }
+    );
 });
 
 app.get("/checkout", async (req, res) => {
     let { tripId, passenger, amountPaid, rating } = req.query;
-    amountPaid = parseFloat(amountPaid);
-    const balanceQuery = "SELECT U.id, U.rating, U.numRatings, balance, pricePerSeat FROM users AS U, passengers AS P, rides as R WHERE u.id = P.passenger AND P.passenger=? AND R.id=?";
-    const balanceResult = await pool.query(balanceQuery, [passenger, tripId]);
 
-    if (balanceResult[0][0]) {
-        const result = balanceResult[0][0];
-        const uid = result.id;
-        let balance = result.balance;
-        const pricePerSeat = result.pricePerSeat;
-
-        let amountDue = 0;
-        if (balance < pricePerSeat) {
-            amountDue = pricePerSeat - balance;
-        }
-
-
-        if (amountPaid >= amountDue) {
-            // new balance = current balance - amount due + amount paid
-            const newBalance = balance - amountDue + amountPaid;
-            const newRating = ((result.rating * result.numRatings) + parseFloat(rating)) / (result.numRatings + 1)
-            console.log(newRating);
-            const updateBalanceQuery = "UPDATE users SET balance=?, rating=?, numRatings=numRatings+1 WHERE id=?";
-            const updateBalanceResult = await pool.query(updateBalanceQuery, [newBalance, newRating, uid]);
-
-            const checkInQuery = "UPDATE passengers SET status=2 WHERE passenger=? AND ride=?";
-            const checkInResult = await pool.query(checkInQuery, [passenger, tripId]);
-
-            if (checkInResult[0].affectedRows === 1) {
-                res.json({ success: 1 });
-            } else {
-                res.json({ error: 0 });
-            }
-        } else {
-            // ??? error
-        }
+    if (!tripId || !passenger || !amountPaid) {
+        return res.status(400).json({ error: "Some required fields are missing" });
     }
+
+    rideService.checkOut(req.query).then(response => {
+        return res.json({ success: 1 });
+    }).catch(err => {
+        if (err === 404) {
+            return res.status(404).json({ error: "Ride not found" });
+        } else {
+            console.log(err);
+            return res.status(500).json({ error: "Unexpected server error occured" });
+        }
+    });
+
 });
 
 app.get("/noshow", async (req, res) => {
     const { tripId, passenger } = req.query;
-    const checkInQuery = "UPDATE passengers SET status=-1 WHERE id=? AND ride=?";
-    const checkInResult = await pool.query(checkInQuery, [passenger, tripId]);
-
-    if (checkInResult[0].affectedRows === 1) {
-        res.json({ success: 1 });
-    } else {
-        res.json({ error: 0 });
+    if (!tripId || !passenger) {
+        return res.status(400).json({ error: "Some required fields are missing" });
     }
+
+    rideService.noShow(req.query).then(
+        response => {
+            return res.json({ success: 1 });
+        }
+    ).catch(
+        err => {
+            if (err === 404) {
+                return res.status(404).json({ error: "Ride not found" });
+            } else {
+                return res.status(500).json({ error: "Unexpected server error occured" });
+            }
+        }
+    );
 });
 
 app.get("/passengerdetails", async (req, res) => {
     const { tripId, passenger } = req.query;
-    const passengerQuery = "SELECT U.firstName, U.lastName, P.paymentMethod, R.pricePerSeat, U.balance FROM passengers as P, users as U, rides as R WHERE P.passenger=? AND ride=? AND P.passenger=U.id AND R.id = ?";
-    const passengerResult = await pool.query(passengerQuery, [passenger, tripId, tripId]);
-
-    if (passengerResult[0][0]) {
-        const result = passengerResult[0][0];
-        let amountDue = 0;
-        if (result.balance < result.pricePerSeat) {
-            amountDue = result.pricePerSeat - result.balance;
+    rideService.getPassengerDetails(req.query).then(passengerDetails => {
+        return res.json(passengerDetails);
+    }).catch(err => {
+        if (err === 404) {
+            return res.status(404).json({ error: "Ride not found" });
+        } else {
+            return res.status(500).json({ error: "Unexpected server error occured" });
         }
-        res.json({
-            firstName: result.firstName,
-            lastName: result.lastName,
-            paymentMethod: result.paymentMethod,
-            amountDue: amountDue
-        });
-    } else {
-        res.json({ error: 0 });
-    }
+    });
 });
 
 app.get("/wallet", async (req, res) => {
     const { uid } = req.query;
-
-    const walletQuery = "SELECT balance FROM users WHERE id=?";
-    const walletResult = await pool.query(walletQuery, [uid]);
-
-    const cardsQuery = "SELECT cardnumber FROM cards WHERE user=?";
-    const cardsResult = await pool.query(cardsQuery, [uid]);
-
-    result = {};
-    result.balance = walletResult[0][0].balance;
-    result.cards = [];
-
-    for (const card of cardsResult[0]) {
-        result.cards.push(helper.getCardDetails(card));
-    }
-
-    res.json(result);
+    userService.getWallet(req.query).then(walletDetails => {
+        return res.json(walletDetails);
+    }).catch(err => {
+        if (err === 404) {
+            return res.status(404).json({ error: "User not found" });
+        } else {
+            return res.status(500).json({ error: "Unexpected server error occured" });
+        }
+    });
 });
 
 app.post("/newcar", async (req, res) => {
     const { uid, brand, year, model, color, licensePlateLetters, licensePlateNumbers, license_front, license_back } = req.body;
 
-    const carQuery = "INSERT INTO cars (driver, brand, year, model, color, licensePlateLetters, licensePlateNumbers, license_front, license_back) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-    const carResult = await pool.query(carQuery, [uid, brand, year, model, color, licensePlateLetters, licensePlateNumbers, license_front, license_back]);
-    if (carResult) {
-        res.json({ success: 1 });
+    if (!uid || !brand || !year || !model || !color || !licensePlateLetters ||
+        !licensePlateNumbers || !license_front || !license_back) {
+        return res.status(400).json({ error: "Some required fields are missing" });
     }
+    
+    carService.newCar(req.body).then(newCar => {
+        res.json({ success: 1 });
+    }).catch(err => {
+        console.error(err);
+        return res.status(500).json({ error: "Unexpected server error occured" });
+    });
 });
 
 app.post("/submitlicense", async (req, res) => {
     const { uid, frontSide, backSide } = req.body;
-    const licenseQuery = "INSERT INTO licenses (driver, front, back) VALUES (?,?,?)";
-    const licenseResult = await pool.query(licenseQuery, [uid, frontSide, backSide]);
-    res.json(licenseResult);
+
+    userService.submitLicense(req.body).then(license => {
+        return res.json({ success: 1 });
+    }).catch(err => {
+        console.error(err);
+        return res.status(500).json({ error: "Unexpected server error occured" });
+    });
 });
 
 app.get("/license", async (req, res) => {
     const { uid } = req.query;
-    const licenseQuery = "SELECT expirydate, status FROM licenses WHERE driver=? AND (expirydate IS NULL OR expirydate > CURDATE()) ORDER BY expirydate DESC";
-    const licenseResult = await pool.query(licenseQuery, [uid]);
-
-    if (licenseResult[0].length >= 1) {
-        res.json(licenseResult[0][0]);
-    } else {
-        res.status(404).json({ error: "No license on record" })
+    if (!uid) {
+        return res.status(400).json({ error: "Some required fields are missing" });
     }
+
+    userService.getLicense(req.query).then(license => {
+        return res.json(license);
+    }).catch(err => {
+        console.error(err);
+        return res.status(500).json({ error: "Unexpected server error occured" });
+    });
 });
 
 app.get("/announcements", async (req, res) => {
     const announcementId = req.query?.id;
     const active = req.query?.active;
 
-    let result;
     if (announcementId) {
-        const query = "SELECT * FROM announcements WHERE id=?";
-        result = await pool.query(query, [announcementId]);
-    } else if (active) {
-        const query = "SELECT * FROM announcements WHERE active=1";
-        result = await pool.query(query);
+        appService.getAnnouncement(announcementId).then(announcement => {
+            return res.json(announcement);
+        }).catch(err => {
+            if (err === 404) {
+                return res.status(404).json({ error: "Not found" });
+            } else {
+                return res.status(500).json({ error: "Unexpected server error occured" });
+            }
+        });
     } else {
-        const query = "SELECT * FROM announcements";
-        result = await pool.query(query);
+        appService.getAnnouncements(active).then(announcements => {
+            return res.json(announcements);
+        }).catch(err => {
+            console.error(err);
+            return res.status(500).json({ error: "Unexpected server error occured" });
+        });
     }
-
-    res.json(result[0]);
 });
 
 app.post("/createcommunity", async (req, res) => {
     const { name, picture, description, private, uid } = req.body;
-    const communityQuery = "INSERT INTO communities (name, picture, description, private, createdBy) VALUES (?, ?, ?, ?, ?)";
-    const communityResult = pool.query(communityQuery, [name, picture, description, private, uid]);
-    if (communityResult) {
-        res.json({ success: 1 });
-    } else {
-        console.log(communityResult);
-        res.json({ error: 1 });
-    }
+    communityService.createCommunity(req.body).then(community => {
+        return res.json({ success: 1 });
+    }).catch(err => {
+        return res.status(500).json({ error: "Unexpected server error occured" });
+    });
+
 });
 
 app.get("/communities", async (req, res) => {
     // find some way to order recommended communities (maybe fastest growing communities)
     let { page } = req.query;
-    if (!page) { page = 1; }
-    const pageLimit = 3;
-    const communitiesQuery = "SELECT id, name, picture, description, private FROM communities LIMIT " + pageLimit + " OFFSET ?";
-    const values = [(page - 1) * pageLimit];
+    if (!page) { req.query.page = 1; }
 
-    const communitiesResult = await pool.query(communitiesQuery, values);
-    console.log(communitiesResult);
-    res.json(communitiesResult[0]);
+    communityService.getCommunities(req.query).then(communities => {
+        res.json(communities);
+    }).catch(error => {
+        return res.status(500).json({ error: "Unexpected server error occured" });
+    });
+
 });
 
 app.get("/mycommunities", async (req, res) => {
     const { uid } = req.query;
-    const communitiesQuery = "SELECT C.id,C.picture,C.name FROM communities as C, communitymembers as M WHERE M.community=C.id AND M.user=?";
-    const communitiesResult = await pool.query(communitiesQuery, [uid]);
+    if (!uid) {
+        return res.status(400).json({ error: "Some required fields are missing" });
+    }
 
-    res.json(communitiesResult[0]);
+    communityService.getUserCommunities(req.query).then(communities => {
+        return res.json(communities.Communities);
+    }).catch(err => {
+        console.error(err);
+        return res.status(500).json({ error: "Unexpected server error occured" });
+    });
 });
 
 app.get("/myfeed", async (req, res) => {
     let { uid, page } = req.query;
-    if (!page) { page = 1; }
-    const pageLimit = 3;
-    const feedQuery =
-        `SELECT
-            C.name as 'community_name',
-            R.id as 'ride_id',
-            R.mainTextFrom,
-            R.mainTextTo,
-            R.pricePerSeat,
-            D.firstName,
-            D.lastName,
-            R.datetime
-        FROM
-            rides as R
-            JOIN users as D ON R.driver=D.id
-            JOIN ridecommunities as RC ON RC.ride = R.id
-            JOIN communities as C ON C.id = RC.community
-            JOIN communitymembers AS CM ON CM.community = C.id
-        WHERE
-            CM.user = ? AND
-            R.datetime > CURDATE()
-        ORDER BY
-            R.datetime DESC
-        LIMIT ${pageLimit}
-        OFFSET ?`;
-    const feedResults = await pool.query(feedQuery, [uid, (page - 1) * pageLimit]);
-
-    for(let feedResult of feedResults[0]) {
-        const seatsQuery = `SELECT COUNT(*) as count FROM passengers WHERE ride=?`;
-        const seatsResult = await pool.query(seatsQuery, [feedResult.rid]);
-        const countSeatsOccupied = seatsResult[0][0].count;
-        feedResult.seatsOccupied = countSeatsOccupied;
+    if (!page) { req.query.page = 1; }
+    if (!uid) {
+        return res.status(500).json({ error: "Unexpected server error occured" });
     }
-
-    res.json(feedResults[0]);
+    communityService.getUserFeed(req.query).then(feed => {
+        return res.json(feed);
+    }).catch(err => {
+        console.error(err);
+        return res.status(500).json({ error: "Unexpected server error occured" });
+    })
 });
 
 app.get("/loadchat", async (req, res) => {
     let { receiver } = req.query;
-    const chatLoadQuery = "SELECT U.firstName, U.lastName, U.profilePicture FROM users as U WHERE id=?";
-    const values = [receiver];
-    const chatLoadResult = await pool.query(chatLoadQuery, values);
-    res.json(chatLoadResult[0][0]);
+    chatService.loadChat(req.query).then(user => {
+        return res.json(user);
+    }).catch(err => {
+        if (err === 404) {
+            return res.status(500).json({ error: "Unexpected server error occured" });
+        } else {
+            console.error(err);
+            return res.status(500).json({ error: "Unexpected server error occured" });
+        }
+    });
 });
 
+// CONTINUE HERE
 app.get("/chats", async (req, res) => {
     let { uid } = req.query;
-    const chatsQuery = "SELECT DISTINCT users.id, users.firstName, users.lastName, users.profilePicture FROM chatmessages JOIN users ON(chatmessages.sender = users.id OR chatmessages.receiver = users.id) WHERE(chatmessages.sender = ? OR chatmessages.receiver = ?) AND users.id != ?";
-    const chatsResult = await pool.query(chatsQuery, [uid, uid, uid]);
-    res.json(chatsResult[0]);
+    if (!uid) {
+        return res.status(400).json({ error: "Some required fields are missing" });
+    }
+
+    chatService.getChats(req.query).then(chats => {
+        return res.json(chats);
+    }).catch(err => {
+        console.error(err);
+        return res.status(500).json({ error: "Unexpected server error occured" });
+    });
 });
 
 app.get("/chathistory", async (req, res) => {
     let { uid, receiver, page } = req.query; // last = last received message id
 
-    if (!page) { page = 1 }
-    const pageLimit = 10;
-
-    const chatQuery = "SELECT id, message, datetime, sender, receiver FROM chatmessages WHERE (sender=? AND receiver=?) OR (receiver=? AND sender=?) ORDER BY datetime DESC LIMIT " + pageLimit + " OFFSET ?";
-    const chatResult = await pool.query(chatQuery, [uid, receiver, uid, receiver, (page - 1) * pageLimit]);
-
-
-    if (chatResult[0].length !== 0) {
-        const updateQuery = "UPDATE chatmessages SET messageread=1 WHERE sender=? AND receiver=? AND messageread=0";
-        const updateResult = await pool.query(updateQuery, [receiver, uid]);
+    if (!page) { req.query.page = 1 }
+    if (!uid || !receiver) {
+        return res.status(400).json({ error: "Some required fields are missing" });
     }
 
-    res.json(chatResult[0]);
+    chatService.getChatHistory(req.query).then(chatHistory => {
+        return res.json(chatHistory);
+    }
+    ).catch(err => {
+        console.error(err);
+        return res.status(500).json({ error: "Unexpected server error occured" });
+    }
+    );
 });
 
 app.get("/newmessages", async (req, res) => {
     console.log("new messages polled");
     let { uid, receiver } = req.query;
 
-
-    const newMessageQuery = "SELECT id, message, datetime, sender, receiver FROM chatmessages WHERE (sender=? AND receiver=?) AND messageread=0 ORDER BY datetime DESC";
-    const values = [receiver, uid];
-    const newMessageResult = await pool.query(newMessageQuery, values);
-
-    if (newMessageResult[0].length !== 0) {
-        const updateQuery = "UPDATE chatmessages SET messageread=1 WHERE sender=? AND receiver=? AND messageread=0";
-        const updateResult = await pool.query(updateQuery, [receiver, uid]);
+    if (!uid || !receiver) {
+        return res.status(400).json({ error: "Some required fields are missing" });
     }
 
-    res.json(newMessageResult[0]);
+    chatService.getNewMessages(req.query).then(newMessages => {
+        return res.json(newMessages);
+    }
+    ).catch(err => {
+        console.error(err);
+        return res.status(500).json({ error: "Unexpected server error occured" });
+    }
+    );
 });
 
 
 app.get("/sendmessage", async (req, res) => {
     let { uid, receiver, message } = req.query;
 
-    const sendMessageQuery = "INSERT INTO chatmessages (message, sender, receiver) VALUES (?,?,?)";
-    const sendMessageResult = await pool.query(sendMessageQuery, [message, uid, receiver]);
-
-    res.json({ id: sendMessageResult[0].insertId });
+    if (!uid || !receiver || !message) {
+        return res.status(400).json({ error: "Some required fields are missing" });
+    }
+    chatService.sendMessage(req.query).then(sendMessageResult => {
+        return res.json({ id: sendMessageResult.id });
+    }
+    ).catch(err => {
+        console.error(err);
+        return res.status(500).json({ error: "Unexpected server error occured" });
+    }
+    );
 });
 
 
 app.post("/addbank", async (req, res) => {
     let { uid, fullName, bankName, accNumber, swiftCode } = req.body;
 
-    const addBankQuery = "INSERT INTO bankaccounts (fullName, bankName, accNumber, swiftCode, user) = VALUES (?, ?, ?, ?, ?)";
-    const addBankResult = await pool.query(addBankQuery, [fullName, bankName, accNumber, swiftCode, uid]);
+    if (!uid || !fullName || !bankName || !accNumber || !swiftCode) {
+        return res.status(400).json({ error: "Some required fields are missing" });
+    }
 
-    res.json(addBankResult[0]);
+    userService.addBank(req.body).then(addBankResult => {
+        return res.json({ id: addBankResult.id });
+    }
+    ).catch(err => {
+        console.error(err);
+        return res.status(500).json({ error: "Unexpected server error occured" });
+    }
+    );
 });
 
 app.get("/banks", async (req, res) => {
     let { uid } = req.query;
 
-    const banksQuery = "SELECT * FROM bankaccounts WHERE user=?";
-    const banksResult = await pool.query(banksQuery, [uid]);
+    if (!uid) {
+        return res.status(400).json({ error: "Some required fields are missing" });
+    }
 
-    res.json(banksResult[0]);
+    userService.getBanks(req.query).then(banks => {
+        return res.json(banks);
+    }
+    ).catch(err => {
+        console.error(err);
+        return res.status(500).json({ error: "Unexpected server error occured" });
+    }
+    );
 });
 
 

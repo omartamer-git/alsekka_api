@@ -507,7 +507,7 @@ ALTER TABLE `licenses`
 --
 ALTER TABLE `passengers`
   ADD CONSTRAINT `FK_passengerId` FOREIGN KEY (`passenger`) REFERENCES `users` (`id`),
-  ADD CONSTRAINT `FK_rideId` FOREIGN KEY (`ride`) REFERENCES `rides` (`id`),
+  ADD CONSTRAINT `FK_RideId` FOREIGN KEY (`ride`) REFERENCES `rides` (`id`),
   ADD CONSTRAINT `fk_driver_user` FOREIGN KEY (`ride`) REFERENCES `users` (`id`),
   ADD CONSTRAINT `fk_passenger_user` FOREIGN KEY (`passenger`) REFERENCES `users` (`id`);
 
