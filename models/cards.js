@@ -7,11 +7,15 @@ module.exports = function(sequelize, DataTypes) {
       allowNull: false,
       primaryKey: true
     },
-    cardnumber: {
+    cardNumber: {
       type: DataTypes.STRING(19),
       allowNull: false
     },
-    cardexpiry: {
+    cardholderName: {
+      type: DataTypes.STRING(50),
+      allowNull: false
+    },
+    cardExpiry: {
       type: DataTypes.CHAR(5),
       allowNull: false
     }

@@ -19,6 +19,10 @@ module.exports = function(sequelize, DataTypes) {
       type: DataTypes.TEXT,
       allowNull: false
     },
+    joinQuestion: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
     private: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
