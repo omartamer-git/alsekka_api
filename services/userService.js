@@ -69,6 +69,8 @@ async function loginUser({ phone, email, password }) {
 }
 
 async function userInfo({ uid }) {
+    console.log("HELLOOOOO??");
+    console.log(uid);
     const user = await User.findByPk(uid,
         {
             attributes: [
@@ -102,12 +104,13 @@ async function userInfo({ uid }) {
 }
 
 async function getWallet({ uid }) {
+    console.log("hello??");
     const walletDetails = await User.findByPk(uid, {
         attributes: ['balance'],
         include: [
             {
                 model: Card,
-                attributes: ['cardnumber'],
+                attributes: ['cardNumber'],
             }
         ]
     });
@@ -151,12 +154,12 @@ async function getLicense({ uid }) {
     return license;
 }
 
-async function addBank({ uid, fullName, bankName, accountNumber, swiftCode }) {
+async function addBank({ uid, fullName, bankName, accNumber, swiftCode }) {
     const bank = await BankAccount.create({
         UserId: uid,
         fullName: fullName,
         bankName: bankName,
-        accountNumber: accountNumber,
+        accNumber: accNumber,
         swiftCode: swiftCode
     });
 
@@ -173,6 +176,41 @@ async function getBanks({ uid }) {
     return bank;
 }
 
+async function addNewCard({ uid, cardNumber, cardExpiry, cardholderName }) {
+    console.log("hello");
+    const card = await Card.create({
+        UserId: uid,
+        cardholderName: cardholderName,
+        cardNumber: cardNumber,
+        cardExpiry: cardExpiry
+    });
+
+    return card;
+}
+
+async function updateName({uid, firstName, lastName}) {
+    const user = await User.findByPk(uid);
+    user.firstName = firstName;
+    user.lastName = lastName;
+    await user.save();
+    return user;
+}
+
+async function updateEmail({uid, email}) {
+    const user = await User.findByPk(uid);
+    user.email = email;
+    await user.save();
+    return user;
+}
+
+async function updatePhone({uid, phone}) {
+    const user = await User.findByPk(uid);
+    user.phone = phone;
+    await user.save();
+    return user;
+}
+
+
 
 module.exports = {
     accountAvailable,
@@ -183,5 +221,9 @@ module.exports = {
     submitLicense,
     getLicense,
     addBank,
-    getBanks
+    getBanks,
+    updateName,
+    updateEmail,
+    updatePhone,
+    addNewCard
 }

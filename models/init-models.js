@@ -82,7 +82,8 @@ function initModels(sequelize) {
     RideCommunity,
     Ride,
     User,
-    sequelize
+    sequelize,
+    CommunityMember
   };
 }
 module.exports = initModels;

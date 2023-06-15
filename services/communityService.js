@@ -1,5 +1,5 @@
 const { Op } = require("sequelize");
-const { Community, User, Ride, sequelize, RideCommunity } = require("../models");
+const { Community, User, Ride, sequelize, RideCommunity, CommunityMember } = require("../models");
 
 async function createCommunity({ name, picture, description, private, uid }) {
     const community = Community.create({
@@ -35,7 +35,28 @@ async function getUserCommunities({ uid }) {
     return communitiesResult;
 }
 
-async function getUserFeed({ uid, page }) {
+async function getCommunityDetails({ communityId, uid }) {
+    const communityDetails = await Community.findOne({
+        where: {
+            id: communityId
+        },
+        attributes: ['joinQuestion'],
+        include: [
+            {
+                model: User,
+                as: 'Member',
+                where: {
+                    id: uid
+                },
+                required: false
+            }
+        ]
+    });
+
+    return communityDetails;
+}
+
+async function getUserFeed({ uid, communityId, page }) {
     const feed = await Ride.findAll({
         where: {
             datetime: {
@@ -55,6 +76,7 @@ async function getUserFeed({ uid, page }) {
                 model: Community,
                 through: {
                     model: RideCommunity,
+                    where: communityId ? { CommunityId: communityId } : undefined
                 },
                 attributes: [['name', 'community_name']],
                 include: [
@@ -78,9 +100,50 @@ async function getUserFeed({ uid, page }) {
     })
     return feed;
 }
+
+async function searchCommunities({ name, page }) {
+    const communities = await Community.findAll({
+        where: {
+            name: {
+                [Op.like]: `%${name}%`
+            }
+        },
+        limit: 5,
+        offset: (page - 1) * 5
+    });
+
+    return communities;
+}
+
+async function joinCommunity({ uid, communityId, answer }) {
+    const community = await Community.findByPk(communityId);
+    if (community.private) {
+        if(!answer) {
+            throw 400;
+        }
+        const member = await CommunityMember.create({
+            joinAnswer: answer,
+            joinStatus: 'PENDING',
+            UserId: uid,
+            CommunityId: communityId
+        });
+        return member;
+    } else {
+        const joinRequest = await CommunityMember.create({
+            UserId: uid,
+            CommunityId: communityId,
+            joinStatus: 'APPROVED'
+        });
+        return joinRequest;
+    }
+}
+
 module.exports = {
     createCommunity,
     getCommunities,
     getUserCommunities,
-    getUserFeed
+    getUserFeed,
+    searchCommunities,
+    getCommunityDetails,
+    joinCommunity
 };

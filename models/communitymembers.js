@@ -7,6 +7,15 @@ module.exports = function(sequelize, DataTypes) {
       allowNull: false,
       primaryKey: true
     },
+    joinAnswer: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: null
+    },
+    joinStatus: {
+      type: DataTypes.ENUM('PENDING', 'REJECTED', 'APPROVED'),
+      allowNull: false,
+    }
   }, {
     sequelize,
     timestamps: true,

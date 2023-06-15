@@ -4,7 +4,8 @@ function isValidEmail(email) {
 }
 
 function getCardDetails(card) {
-    const typeIdentifier = card.cardnumber.charAt(0);
+    console.log(card);
+    const typeIdentifier = card.cardNumber.charAt(0);
     let type = null;
     if(typeIdentifier == '2' || typeIdentifier == '5') {
         type = 'mastercard';
@@ -14,7 +15,7 @@ function getCardDetails(card) {
         type = 'other';
     }
 
-    const finalNumbers = card.cardnumber.substring(12);
+    const finalNumbers = card.cardNumber.substring(12);
     const returnResult = {
         type: type,
         number: finalNumbers

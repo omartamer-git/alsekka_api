@@ -91,6 +91,8 @@ app.get("/createaccount", async (req, res) => {
 
 app.get("/login", async (req, res) => {
     const { phone, email, password } = req.query;
+    console.log(req.query);
+    console.log("HOLALA");
     if ((!phone && !email) || !password) {
         return res.status(400).json({ error: "Some required fields are missing" });
     }
@@ -203,10 +205,12 @@ app.post("/postride", async (req, res) => {
 });
 
 app.get("/userinfo", async (req, res) => {
+    console.log("/userinfo");
     const { uid } = req.query;
     if (!uid) {
         return res.status(400).json({ error: "Some required fields are missing" });
     }
+    console.log("uid: " + uid);
 
     userService.userInfo(req.query).then(user => {
         res.json(user);
@@ -415,6 +419,7 @@ app.get("/wallet", async (req, res) => {
     userService.getWallet(req.query).then(walletDetails => {
         return res.json(walletDetails);
     }).catch(err => {
+        console.error(err);
         if (err === 404) {
             return res.status(404).json({ error: "User not found" });
         } else {
@@ -525,6 +530,20 @@ app.get("/mycommunities", async (req, res) => {
     });
 });
 
+app.get("/communitydetails", async(req, res) => {
+    const { communityId, uid } = req.query;
+    if (!communityId || !uid) {
+        return res.status(400).json({ error: "Some required fields are missing" });
+    }
+
+    communityService.getCommunityDetails(req.query).then(community => {
+        return res.json(community);
+    }).catch(err => {
+        console.error(err);
+        return res.status(500).json({ error: "Unexpected server error occured" });
+    });
+});
+
 app.get("/myfeed", async (req, res) => {
     let { uid, page } = req.query;
     if (!page) { req.query.page = 1; }
@@ -622,7 +641,7 @@ app.get("/sendmessage", async (req, res) => {
 });
 
 
-app.post("/addbank", async (req, res) => {
+app.post("/bankaccount", async (req, res) => {
     let { uid, fullName, bankName, accNumber, swiftCode } = req.body;
 
     if (!uid || !fullName || !bankName || !accNumber || !swiftCode) {
@@ -637,6 +656,21 @@ app.post("/addbank", async (req, res) => {
         return res.status(500).json({ error: "Unexpected server error occured" });
     }
     );
+});
+
+app.post("/card", async(req, res) => {
+    let { uid, cardNumber, cardExpiry, cardholderName } = req.body;
+    if (!uid || !cardNumber || !cardExpiry || !cardholderName) {
+        return res.status(400).json({ error: "Some required fields are missing" });
+    }
+
+    userService.addNewCard(req.body).then(addCardResult => {
+        return res.json({ id: addCardResult.id });
+    }
+    ).catch(err => {
+        console.error(err);
+        return res.status(500).json({ error: "Unexpected server error occured" });
+    });
 });
 
 app.get("/banks", async (req, res) => {
@@ -654,6 +688,88 @@ app.get("/banks", async (req, res) => {
         return res.status(500).json({ error: "Unexpected server error occured" });
     }
     );
+});
+
+app.patch("/name", async (req, res) => {
+    let { uid, firstName, lastName } = req.body;
+
+    if (!uid || !firstName || !lastName) {
+        return res.status(400).json({ error: "Some required fields are missing" });
+    }
+
+    userService.updateName(req.body).then(updateNameResult => {
+        return res.json({ success: 1 });
+    }
+    ).catch(err => {
+        console.error(err);
+        return res.status(500).json({ error: "Unexpected server error occured" });
+    }
+    );
+});
+
+
+app.patch("/phone", async (req, res) => {
+    let { uid, phone } = req.body;
+
+    if (!uid || !phone) {
+        return res.status(400).json({ error: "Some required fields are missing" });
+    }
+
+    userService.updatePhone(req.body).then(updatePhoneResult => {
+        return res.json({ success: 1 });
+    }
+    ).catch(err => {
+        console.error(err);
+        return res.status(500).json({ error: "Unexpected server error occured" });
+    }
+    );
+});
+
+
+app.patch("/email", async (req, res) => {
+    let { uid, email } = req.body;
+
+    if (!uid || !email) {
+        return res.status(400).json({ error: "Some required fields are missing" });
+    }
+
+    userService.updateEmail(req.body).then(updateEmailResult => {
+        return res.json({ success: 1 });
+    }
+    ).catch(err => {
+        console.error(err);
+        return res.status(500).json({ error: "Unexpected server error occured" });
+    }
+    );
+});
+
+app.get("/searchcommunities", async (req, res) => {
+    let { name, page } = req.query;
+    if(!name) {
+        return res.status(400).json({ error: "Some required fields are missing" });
+    }
+    if(!page) {
+        req.query.page = 1;
+    }
+    communityService.searchCommunities(req.query).then(searchResult => {
+        return res.json(searchResult);
+    }).catch(err => {
+        console.error(err);
+        return res.status(500).json({ error: "Unexpected server error occured" });
+    });
+});
+
+app.post("/joincommunity", async (req, res) => {
+    let { uid, communityId, answer } = req.body;
+    if(!uid || !communityId) {
+        return res.status(400).json({ error: "Some required fields are missing" });
+    }
+    communityService.joinCommunity(req.body).then(joinResult => {
+        return res.json({ success: 1 });
+    }).catch(err => {
+        console.error(err);
+        return res.status(500).json({ error: "Unexpected server error occured" });
+    });
 });
 
 
