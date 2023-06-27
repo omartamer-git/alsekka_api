@@ -53,7 +53,7 @@ const logger = log4js.getLogger();
 
 app.get("/accountavailable", async (req, res, next) => {
     const { phone, email } = req.query;
-    if (!phone || !email) {
+    if (!phone && !email) {
         return next(new BadRequestError());
     }
 
@@ -84,8 +84,6 @@ app.get("/login", async (req, res, next) => {
     if ((!phone && !email) || !password) {
         return next(new BadRequestError());
     }
-
-
 
     userService.loginUser(req.query).then(
         userAccount => {
@@ -449,7 +447,6 @@ app.get("/loadchat", async (req, res, next) => {
     });
 });
 
-// CONTINUE HERE
 app.get("/chats", async (req, res, next) => {
     let { uid } = req.query;
     if (!uid) {
@@ -505,12 +502,13 @@ app.get("/sendmessage", async (req, res, next) => {
 
 app.post("/bankaccount", async (req, res, next) => {
     let { uid, fullName, bankName, accNumber, swiftCode } = req.body;
-
+    console.log(req.body);
     if (!uid || !fullName || !bankName || !accNumber || !swiftCode) {
         return next(new BadRequestError());
     }
 
     userService.addBank(req.body).then(addBankResult => {
+        console.log({ id: addBankResult.id });
         return res.json({ id: addBankResult.id });
     }
     ).catch(next);
@@ -544,7 +542,7 @@ app.get("/banks", async (req, res, next) => {
 app.patch("/name", async (req, res, next) => {
     let { uid, firstName, lastName } = req.body;
 
-    if (!uid || !firstName || !lastName) {
+    if (!uid || !firstName || !lastName || firstName.length < 2 || firstName.length > 20 || lastName.length < 2 || lastName.length > 20) {
         return next(new BadRequestError());
     }
 
