@@ -1,6 +1,7 @@
 const { Sequelize, Op, literal } = require('sequelize');
 const { Car, User, License } = require('../models');
 
+
 async function getCars({uid, approved}) {
     const carsQuery = await Car.findAll({
         where: {

@@ -1,7 +1,17 @@
 const { Op } = require("sequelize");
 const { Community, User, Ride, sequelize, RideCommunity, CommunityMember } = require("../models");
+const { BadRequestError, NotAcceptableError, NotFoundError, ConflictError } = require("../errors/Errors")
 
 async function createCommunity({ name, picture, description, private, uid }) {
+    const duplicateCommunity = Community.findOne({
+        where: {
+            name: name
+        }
+    });
+    if(duplicateCommunity !== null) {
+        throw new ConflictError("Community with this name already exists.");
+        return;
+    }
     const community = Community.create({
         name: name,
         picture: picture,
@@ -52,6 +62,10 @@ async function getCommunityDetails({ communityId, uid }) {
             }
         ]
     });
+
+    if(communityDetails === null) {
+        throw new NotFoundError("Community not found");
+    }
 
     return communityDetails;
 }
@@ -117,9 +131,12 @@ async function searchCommunities({ name, page }) {
 
 async function joinCommunity({ uid, communityId, answer }) {
     const community = await Community.findByPk(communityId);
+    if(community === null) {
+        throw new NotFoundError();
+    }
     if (community.private) {
-        if(!answer) {
-            throw 400;
+        if (!answer) {
+            throw new BadRequestError();
         }
         const member = await CommunityMember.create({
             joinAnswer: answer,
