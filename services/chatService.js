@@ -1,12 +1,13 @@
 const { User, ChatMessage } = require("../models");
 const { Sequelize, Op, literal } = require('sequelize');
+const { NotFoundError } = require("../errors/Errors")
 
 async function loadChat({ receiver }) {
     const user = await User.findByPk(receiver, {
         attributes: ['firstName', 'lastName', 'profilePicture']
     });
     if (user === null) {
-        throw 404;
+        throw new NotFoundError();
     }
     return user;
 }
@@ -59,7 +60,6 @@ async function getChats({ uid }) {
         }
         newChats.push(chat);
         pairs.push(pair);
-        console.log(pair);
     }
     return newChats;
 }
@@ -105,18 +105,25 @@ async function getNewMessages({ uid, receiver }) {
     });
 
     for (const message of newMessages) {
-        message.messageread = 1;
-        message.save();
+        if(message.messageread !== 1) {
+            message.messageread = 1;
+            message.save();    
+        }
     }
     return newMessages;
 }
 
 async function sendMessage({ uid, receiver, message }) {
-    const newMessage = await ChatMessage.create({
-        SenderId: uid,
-        ReceiverId: receiver,
-        message: message
-    });
+    try {
+        const newMessage = await ChatMessage.create({
+            SenderId: uid,
+            ReceiverId: receiver,
+            message: message
+        });
+    } catch(err) {
+        throw new NotFoundError();
+    }
+
 
     return newMessage;
 }

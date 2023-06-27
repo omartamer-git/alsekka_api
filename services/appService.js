@@ -1,9 +1,10 @@
 const { Announcement } = require("../models")
+const { NotFoundError } = require("../errors/Errors")
 
 async function getAnnouncement(announcementId) {
     const announcement = await Announcement.findByPk(announcementId);
     if(announcement === null) {
-        throw 404;
+        throw new NotFoundError();
     }
     return announcement;
 }

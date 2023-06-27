@@ -2,13 +2,15 @@ const { Op } = require("sequelize");
 const { User, License, sequelize, Card, BankAccount } = require("../models");
 const bcrypt = require("bcrypt");
 const { getCardDetails } = require("../helper");
+const { UnauthorizedError, NotFoundError, ConflictError, InternalServerError } = require("../errors/Errors")
+
 
 async function accountAvailable(phone, email) {
     let userAccount;
     if (phone) {
-        userAccount = await User.findOne({ where: { phone: phone } });
+        userAccount = await User.findOne({ where: { phone: phone }, attributes: ['id'] });
     } else if (email) {
-        userAccount = await User.findOne({ where: { email: email } });
+        userAccount = await User.findOne({ where: { email: email }, attributes: ['id'] });
     }
     return (userAccount === null);
 }
@@ -21,9 +23,9 @@ async function createUser({ fname, lname, phone, email, password, gender }) {
     const emailAvailable = accountAvailable(undefined, email);
     const phoneAvailable = accountAvailable(phone, undefined);
     if (!emailAvailable) {
-        throw new Error("Email is already in use");
+        throw new ConflictError("Email is already in use");
     } else if (!phoneAvailable) {
-        throw new Error("Phone number is already in use")
+        throw new ConflictError("Phone number is already in use")
     }
 
     try {
@@ -38,8 +40,7 @@ async function createUser({ fname, lname, phone, email, password, gender }) {
         });
         return newUser;
     } catch (e) {
-        console.error(e);
-        throw new Error("Unexpected error occured");
+        throw new InternalServerError();
     }
 }
 
@@ -52,25 +53,18 @@ async function loginUser({ phone, email, password }) {
     }
 
     if (userAccount === null) {
-        throw 401;
+        throw new UnauthorizedError();
     }
 
-    try {
-        const result = await bcrypt.compare(password, userAccount.password);
-        if (result) {
-            return userAccount;
-        } else {
-            throw 401;
-        }
-    } catch (e) {
-        console.error(e);
-        throw 500;
+    const result = await bcrypt.compare(password, userAccount.password);
+    if (result) {
+        return userAccount;
+    } else {
+        throw new UnauthorizedError();
     }
 }
 
 async function userInfo({ uid }) {
-    console.log("HELLOOOOO??");
-    console.log(uid);
     const user = await User.findByPk(uid,
         {
             attributes: [
@@ -100,11 +94,14 @@ async function userInfo({ uid }) {
             ]
         });
 
+    if (user === null) {
+        throw new NotFoundError("User not found");
+    }
+
     return user;
 }
 
 async function getWallet({ uid }) {
-    console.log("hello??");
     const walletDetails = await User.findByPk(uid, {
         attributes: ['balance'],
         include: [
@@ -116,7 +113,7 @@ async function getWallet({ uid }) {
     });
 
     if (walletDetails === null) {
-        throw 404;
+        throw new NotFoundError("User not found");
     }
     let result = {
         balance: walletDetails.balance,
@@ -130,14 +127,18 @@ async function getWallet({ uid }) {
 }
 
 async function submitLicense({ uid, frontSide, backSide }) {
-    console.log("UID: ", uid);
-    const license = await License.create({
-        UserId: uid,
-        front: frontSide,
-        back: backSide
-    });
+    try {
+        const license = await License.create({
+            UserId: uid,
+            front: frontSide,
+            back: backSide
+        });
+        return license;
+    } catch (err) {
+        throw new NotFoundError("User not found");
+    }
 
-    return license;
+
 }
 
 async function getLicense({ uid }) {
@@ -151,19 +152,23 @@ async function getLicense({ uid }) {
         },
         order: [['expiryDate', 'DESC']]
     });
+
     return license;
 }
 
 async function addBank({ uid, fullName, bankName, accNumber, swiftCode }) {
-    const bank = await BankAccount.create({
-        UserId: uid,
-        fullName: fullName,
-        bankName: bankName,
-        accNumber: accNumber,
-        swiftCode: swiftCode
-    });
-
-    return bank;
+    try {
+        const bank = await BankAccount.create({
+            UserId: uid,
+            fullName: fullName,
+            bankName: bankName,
+            accNumber: accNumber,
+            swiftCode: swiftCode
+        });
+        return bank;
+    } catch (err) {
+        throw new NotFoundError("User not found");
+    }
 }
 
 async function getBanks({ uid }) {
@@ -177,37 +182,52 @@ async function getBanks({ uid }) {
 }
 
 async function addNewCard({ uid, cardNumber, cardExpiry, cardholderName }) {
-    console.log("hello");
-    const card = await Card.create({
-        UserId: uid,
-        cardholderName: cardholderName,
-        cardNumber: cardNumber,
-        cardExpiry: cardExpiry
-    });
-
-    return card;
+    try {
+        const card = await Card.create({
+            UserId: uid,
+            cardholderName: cardholderName,
+            cardNumber: cardNumber,
+            cardExpiry: cardExpiry
+        });
+        return card;
+    } catch (err) {
+        throw new NotFoundError("User not found");
+    }
 }
 
-async function updateName({uid, firstName, lastName}) {
-    const user = await User.findByPk(uid);
-    user.firstName = firstName;
-    user.lastName = lastName;
-    await user.save();
-    return user;
+async function updateName({ uid, firstName, lastName }) {
+    try {
+        const user = await User.findByPk(uid);
+        user.firstName = firstName;
+        user.lastName = lastName;
+        await user.save();
+        return user;
+    } catch (err) {
+        throw new NotFoundError("User not found");
+    }
+
 }
 
-async function updateEmail({uid, email}) {
-    const user = await User.findByPk(uid);
-    user.email = email;
-    await user.save();
-    return user;
+async function updateEmail({ uid, email }) {
+    try {
+        const user = await User.findByPk(uid);
+        user.email = email;
+        await user.save();
+        return user;    
+    } catch(err) {
+        throw new NotFoundError("User not found");
+    }
 }
 
-async function updatePhone({uid, phone}) {
-    const user = await User.findByPk(uid);
-    user.phone = phone;
-    await user.save();
-    return user;
+async function updatePhone({ uid, phone }) {
+    try {
+        const user = await User.findByPk(uid);
+        user.phone = phone;
+        await user.save();
+        return user;    
+    } catch(err) {
+        throw new NotFoundError("User not found");
+    }
 }
 
 

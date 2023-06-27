@@ -1,5 +1,6 @@
 const { Sequelize, Op, literal } = require('sequelize');
 const { Ride, Passenger, User, sequelize, License } = require('../models');
+const { NotFoundError, InternalServerError, BadRequestError, UnauthorizedError } = require("../errors/Errors")
 
 async function getNearbyRides({ startLng, startLat, endLng, endLat, date, gender, maxDistance }) {
     let values = [startLat, startLng, startLat, endLat, endLng, endLat, date, gender];
@@ -56,37 +57,45 @@ async function getRideDetails({ rideId }) {
             }],
         });
     if (ride === null) {
-        throw 404;
+        throw new NotFoundError("Ride not found");
     }
 
     return ride;
 }
 
 async function bookRide({ uid, rideId, paymentMethod }) {
-    const newPassenger = await Passenger.create({
-        UserId: uid,
-        RideId: rideId,
-        paymentMethod: paymentMethod,
-        status: 'REQUESTED'
-    });
+    try {
+        const newPassenger = await Passenger.create({
+            UserId: uid,
+            RideId: rideId,
+            paymentMethod: paymentMethod,
+            status: 'REQUESTED'
+        });
+    } catch(err) {
+        throw new NotFoundError("Ride not found");
+    }
 
     return newPassenger;
 }
 
 async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, mainTextTo, pricePerSeat, driver, datetime, car }) {
-    // mainTextFrom/mainTextTo probably needs to be fetched from google api instead to prevent malicious use
-    const newRide = await Ride.create({
-        fromLatitude: fromLatitude,
-        fromLongitude: fromLongitude,
-        toLatitude: toLatitude,
-        toLongitude: toLongitude,
-        mainTextFrom: mainTextFrom,
-        mainTextTo: mainTextTo,
-        pricePerSeat: pricePerSeat,
-        DriverId: driver,
-        datetime: datetime,
-        CarId: car
-    });
+    try {
+        const newRide = await Ride.create({
+            fromLatitude: fromLatitude,
+            fromLongitude: fromLongitude,
+            toLatitude: toLatitude,
+            toLongitude: toLongitude,
+            mainTextFrom: mainTextFrom,
+            mainTextTo: mainTextTo,
+            pricePerSeat: pricePerSeat,
+            DriverId: driver,
+            datetime: datetime,
+            CarId: car
+        });
+    } catch(err) {
+        throw new BadRequestError();
+    }
+
 
     return newRide;
 }
@@ -148,12 +157,6 @@ async function getDriverRides({ uid, limit }) {
     }
 
     const driverRides = await Ride.findAll({
-        // include: [
-        //     {
-        //         model: User,
-        //         attributes: [],
-        //     }
-        // ],
         where: { driverId: uid },
         ...(limit && { limit: limit }),
     });
@@ -186,7 +189,7 @@ async function getTripDetails({ uid, tripId }) {
     });
 
     if (tripDetails === null) {
-        throw 404;
+        throw new NotFoundError("Ride not found");
     }
 
     if (tripDetails.dataValues.isDriver === 1) {
@@ -213,7 +216,7 @@ async function getTripDetails({ uid, tripId }) {
 async function cancelRide({ tripId }) {
     const ride = await Ride.findByPk(tripId);
     if (ride === null) {
-        throw 404;
+        throw new NotFoundError("Ride not found");
     }
     if (ride.status === "SCHEDULED") {
         const currDate = new Date().getTime();
@@ -233,14 +236,14 @@ async function cancelRide({ tripId }) {
 async function startRide({ tripId }) {
     const ride = await Ride.findByPk(tripId);
     if (ride === null) {
-        throw 404;
+        throw new NotFoundError("Ride not found");
     }
     if (ride.status === "SCHEDULED") {
         const currDate = new Date().getTime();
         const tripDate = new Date(ride.datetime).getTime();
         const timeToTrip = tripDate - currDate;
         if (timeToTrip > 1000 * 60 * 60 * 1) {
-            throw 401;
+            throw new UnauthorizedError();
         }
         ride.status = "ONGOING";
         ride.save();
@@ -258,7 +261,7 @@ async function checkIn({ tripId, passenger }) {
         }
     });
     if (passengerDetails === null) {
-        throw 404;
+        throw new NotFoundError("Ride not found");
     }
     passengerDetails.status = "ENROUTE";
     passengerDetails.save();
@@ -267,7 +270,7 @@ async function checkIn({ tripId, passenger }) {
 
 async function checkOut({ tripId, passenger, amountPaid, rating }) {
     amountPaid = parseFloat(amountPaid);
-    if(!rating) {
+    if (!rating) {
         rating = 5;
     }
 
@@ -282,7 +285,7 @@ async function checkOut({ tripId, passenger, amountPaid, rating }) {
             }]
         });
     if (passengerDetails === null) {
-        throw 404;
+        throw new NotFoundError("Ride/Passenger not found");
     }
     console.log(passengerDetails);
     let balance = passengerDetails.User.balance;
@@ -306,7 +309,7 @@ async function checkOut({ tripId, passenger, amountPaid, rating }) {
 
         return true;
     } else {
-        throw 500;
+        throw new InternalServerError();
     }
 }
 
@@ -318,14 +321,14 @@ async function noShow({ tripId, passenger }) {
         }
     });
     if (passengerDetails === null) {
-        throw 404;
+        throw new NotFoundError("Ride/Passenger not found");
     }
     passengerDetails.status = "NOSHOW";
     passengerDetails.save();
     return true;
 }
 
-async function getPassengerDetails({tripId, passenger}) {
+async function getPassengerDetails({ tripId, passenger }) {
     const passengerDetails = await Passenger.findOne({
         where: {
             UserId: passenger,
@@ -344,8 +347,8 @@ async function getPassengerDetails({tripId, passenger}) {
         attributes: ['paymentMethod']
     });
 
-    if(passengerDetails === null) {
-        throw 404;
+    if (passengerDetails === null) {
+        throw new NotFoundError("Ride/Passenger not found");
     }
 
     let amountDue = 0;
