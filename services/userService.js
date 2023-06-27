@@ -1,8 +1,8 @@
 const { Op } = require("sequelize");
 const { User, License, sequelize, Card, BankAccount } = require("../models");
 const bcrypt = require("bcrypt");
-const { getCardDetails } = require("../helper");
-const { UnauthorizedError, NotFoundError, ConflictError, InternalServerError } = require("../errors/Errors")
+const { getCardDetails, checkCardNumber } = require("../helper");
+const { UnauthorizedError, NotFoundError, ConflictError, InternalServerError, NotAcceptableError } = require("../errors/Errors")
 
 
 async function accountAvailable(phone, email) {
@@ -20,11 +20,14 @@ async function createUser({ fname, lname, phone, email, password, gender }) {
     lname = lname.charAt(0).toUpperCase() + lname.slice(1);
     email = email.toLowerCase();
 
-    const emailAvailable = accountAvailable(undefined, email);
-    const phoneAvailable = accountAvailable(phone, undefined);
+    const emailAvailable = await accountAvailable(undefined, email);
     if (!emailAvailable) {
         throw new ConflictError("Email is already in use");
-    } else if (!phoneAvailable) {
+    }
+
+    const phoneAvailable = await accountAvailable(phone, undefined);
+    console.log(phoneAvailable);
+    if (!phoneAvailable) {
         throw new ConflictError("Phone number is already in use")
     }
 
@@ -53,14 +56,14 @@ async function loginUser({ phone, email, password }) {
     }
 
     if (userAccount === null) {
-        throw new UnauthorizedError();
+        throw new UnauthorizedError("Invalid phone and/or password. Please try again.");
     }
 
     const result = await bcrypt.compare(password, userAccount.password);
     if (result) {
         return userAccount;
     } else {
-        throw new UnauthorizedError();
+        throw new UnauthorizedError("Invalid phone and/or password. Please try again.");
     }
 }
 
@@ -182,6 +185,13 @@ async function getBanks({ uid }) {
 }
 
 async function addNewCard({ uid, cardNumber, cardExpiry, cardholderName }) {
+    if(cardNumber.length !== 16 || !checkCardNumber(cardNumber)) {
+        throw new NotAcceptableError("Invalid card number");
+    }
+    const expiryRegex = /^(0[1-9]|1[0-2])\/?([0-9]{2})$/;
+    if(!expiryRegex.test(cardExpiry)) {
+        throw new NotAcceptableError("Invalid expiry date. Please enter in the form MM/YY");
+    }
     try {
         const card = await Card.create({
             UserId: uid,
@@ -209,23 +219,31 @@ async function updateName({ uid, firstName, lastName }) {
 }
 
 async function updateEmail({ uid, email }) {
+    const emailAvailable = await accountAvailable(undefined, email);
+    if (!emailAvailable) {
+        throw new ConflictError("Email already in use");
+    }
     try {
         const user = await User.findByPk(uid);
         user.email = email;
         await user.save();
-        return user;    
-    } catch(err) {
+        return user;
+    } catch (err) {
         throw new NotFoundError("User not found");
     }
 }
 
 async function updatePhone({ uid, phone }) {
+    const phoneAvailable = await accountAvailable(phone, undefined);
+    if (!phoneAvailable) {
+        throw new ConflictError("Phone number already in use");
+    }
     try {
         const user = await User.findByPk(uid);
         user.phone = phone;
         await user.save();
-        return user;    
-    } catch(err) {
+        return user;
+    } catch (err) {
         throw new NotFoundError("User not found");
     }
 }
