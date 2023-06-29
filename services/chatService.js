@@ -120,12 +120,11 @@ async function sendMessage({ uid, receiver, message }) {
             ReceiverId: receiver,
             message: message
         });
+        return newMessage;
     } catch(err) {
         throw new NotFoundError();
     }
 
-
-    return newMessage;
 }
 
 module.exports = {
