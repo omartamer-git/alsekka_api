@@ -7,7 +7,7 @@ const bcrypt = require("bcrypt");
 const config = require("./config");
 const pool = require("./mysql-pool");
 const helper = require("./helper");
-const { BadRequestError, NotAcceptableError } = require("./errors/Errors")
+const { BadRequestError, NotAcceptableError, UnauthorizedError } = require("./errors/Errors")
 const app = express();
 
 /*
@@ -91,6 +91,35 @@ app.get("/login", async (req, res, next) => {
         }
     ).catch(next);
 });
+
+app.get("/verify", async(req, res, next) => {
+    const { uid } = req.query;
+    if(!uid) {
+        return next(new BadRequestError());
+    }
+
+    userService.getOtp(req.query).then(response => {
+        return res.json({success: 1});
+    }).catch(next);
+});
+
+app.patch("/verify", async(req, res, next) => {
+    const { uid, otp } = req.body;
+
+    if(!uid || !otp) {
+        return next(new BadRequestError());
+    }
+
+    userService.verifyOtp(req.body).then(response => {
+        if(response === true) {
+            userService.verifyUser(uid).then(() => {
+                res.json({message: "Account successfully verified"});
+            })
+        } else {
+            next(new UnauthorizedError("Invalid verification code. Please try again."))
+        }
+    }).catch(next);
+})
 
 app.get("/nearbyrides", async (req, res, next) => {
     const maxDistance = 20000;

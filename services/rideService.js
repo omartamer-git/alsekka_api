@@ -92,12 +92,11 @@ async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, 
             datetime: datetime,
             CarId: car
         });
+
+        return newRide;
     } catch(err) {
         throw new BadRequestError();
     }
-
-
-    return newRide;
 }
 
 async function getUpcomingRides({ uid, limit }) {

@@ -1,9 +1,10 @@
 const { Op } = require("sequelize");
 const { User, License, sequelize, Card, BankAccount } = require("../models");
 const bcrypt = require("bcrypt");
-const { getCardDetails, checkCardNumber } = require("../helper");
-const { UnauthorizedError, NotFoundError, ConflictError, InternalServerError, NotAcceptableError } = require("../errors/Errors")
-
+const { getCardDetails, checkCardNumber, generateOtp, addMinutes } = require("../helper");
+const { UnauthorizedError, NotFoundError, ConflictError, InternalServerError, NotAcceptableError } = require("../errors/Errors");
+const { default: axios } = require("axios");
+const config = require("../config");
 
 async function accountAvailable(phone, email) {
     let userAccount;
@@ -67,6 +68,77 @@ async function loginUser({ phone, email, password }) {
     }
 }
 
+let otpCodes = {};
+setInterval(() => {
+    for(const [uid, codeObj] of Object.entries(otpCodes)) {
+        if(codeObj.expiry > new Date()) {
+            console.log("OTP DELETED");
+            console.log(codeObj);
+            delete otpCodes[uid];
+        }
+    }
+}, 1000 * 60 * config.otp.expiryMinutes);
+
+async function getOtp({ uid }) {
+    const user = await User.findByPk(uid, { attributes: ['phone'] });
+    let otp = 0;
+    if (uid in otpCodes) {
+        if (otpCodes[uid].expiry > new Date()) {
+            otp = generateOtp().toString();
+        } else {
+            otp = otpCodes[uid]
+        }
+    } else {
+        otp = generateOtp();
+        console.log("OTP GENERATED: " + otp);
+        otpCodes[uid.toString()] = {
+            otp: otp,
+            expiry: addMinutes(new Date(), config.otp.expiryMinutes)
+        }
+
+        body = {
+            environment: config.otp.environment,
+            username: config.otp.username,
+            password: config.otp.password,
+            sender: config.otp.sender,
+            template: config.otp.template,
+            mobile: "2" + user.phone,
+            otp: otp
+        };
+        console.log(body);
+        const response = await axios.post("https://smsmisr.com/api/OTP/", body, {
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        const data = response.data;
+        if (data.Code != "4901") {
+            throw new InternalServerError();
+        }    
+    }
+}
+
+async function verifyOtp({ uid, otp }) {
+    const actualOtp = otpCodes[uid];
+    if (!actualOtp) {
+        throw new UnauthorizedError("This verification code is no longer valid, please try again");
+    }
+
+    if (actualOtp.otp == otp) {
+        delete otpCodes[uid];
+        return true;
+    } else {
+        return false;
+    }
+}
+
+async function verifyUser(uid) {
+    User.findByPk(uid).then(user => {
+        user.verified = true;
+        user.save();
+    });
+}
+
 async function userInfo({ uid }) {
     const user = await User.findByPk(uid,
         {
@@ -79,6 +151,7 @@ async function userInfo({ uid }) {
                 'rating',
                 'profilePicture',
                 'gender',
+                'verified',
                 [
                     sequelize.literal('(COUNT(licenses.id) >= 1)'),
                     'driver'
@@ -185,11 +258,11 @@ async function getBanks({ uid }) {
 }
 
 async function addNewCard({ uid, cardNumber, cardExpiry, cardholderName }) {
-    if(cardNumber.length !== 16 || !checkCardNumber(cardNumber)) {
+    if (cardNumber.length !== 16 || !checkCardNumber(cardNumber)) {
         throw new NotAcceptableError("Invalid card number");
     }
     const expiryRegex = /^(0[1-9]|1[0-2])\/?([0-9]{2})$/;
-    if(!expiryRegex.test(cardExpiry)) {
+    if (!expiryRegex.test(cardExpiry)) {
         throw new NotAcceptableError("Invalid expiry date. Please enter in the form MM/YY");
     }
     try {
@@ -254,6 +327,9 @@ module.exports = {
     accountAvailable,
     createUser,
     loginUser,
+    getOtp,
+    verifyOtp,
+    verifyUser,
     userInfo,
     getWallet,
     submitLicense,

@@ -50,6 +50,11 @@ module.exports = function(sequelize, DataTypes) {
       type: DataTypes.TEXT,
       allowNull: false,
       defaultValue: "https:\/\/i.pinimg.com\/564x\/1f\/0b\/ed\/1f0bedce4d40a21bd6106bd66915c2b9.jpg"
+    },
+    verified: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: 0,
     }
   }, {
     sequelize,
