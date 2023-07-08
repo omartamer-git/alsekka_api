@@ -9,19 +9,19 @@ module.exports = function(sequelize, DataTypes) {
     },
     fromLatitude: {
       type: DataTypes.DECIMAL(8,6),
-      allowNull: false
+      allowNull: false,
     },
     fromLongitude: {
       type: DataTypes.DECIMAL(9,6),
-      allowNull: false
+      allowNull: false,
     },
     toLatitude: {
       type: DataTypes.DECIMAL(8,6),
-      allowNull: false
+      allowNull: false,
     },
     toLongitude: {
       type: DataTypes.DECIMAL(9,6),
-      allowNull: false
+      allowNull: false,
     },
     mainTextFrom: {
       type: DataTypes.STRING(100),

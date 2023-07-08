@@ -1,5 +1,5 @@
 const Sequelize = require('sequelize');
-module.exports = function(sequelize, DataTypes) {
+module.exports = function (sequelize, DataTypes) {
   return sequelize.define('BankAccount', {
     id: {
       autoIncrement: true,
@@ -8,12 +8,18 @@ module.exports = function(sequelize, DataTypes) {
       primaryKey: true
     },
     fullName: {
-      type: DataTypes.STRING(80),
-      allowNull: false
+      type: DataTypes.STRING(60),
+      allowNull: false,
+      validate: {
+        isAlpha: true
+      }
     },
     bankName: {
-      type: DataTypes.STRING(50),
-      allowNull: false
+      type: DataTypes.STRING(20),
+      allowNull: false,
+      validate: {
+        isAlpha: true
+      }
     },
     accNumber: {
       type: DataTypes.STRING(34),
