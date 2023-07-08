@@ -10,12 +10,6 @@ const helper = require("./helper");
 const { BadRequestError, NotAcceptableError, UnauthorizedError } = require("./errors/Errors")
 const app = express();
 
-/*
-Handle SQL errors
-Add user authentication 
-Check all logical error possibilities for each endpoint
-*/
-
 app.use(express.json());
 app.use(
     express.urlencoded({
@@ -31,6 +25,9 @@ const carService = require("./services/carService");
 const appService = require("./services/appService");
 const communityService = require("./services/communityService");
 const chatService = require("./services/chatService");
+const jwt = require('jsonwebtoken');
+const authenticateToken = require("./middleware/authenticateToken");
+const { JWT_SECRET, JWT_EXPIRATION } = require("./config/auth.config");
 
 log4js.configure({
     appenders: {
@@ -65,6 +62,14 @@ app.get("/accountavailable", async (req, res, next) => {
     ).catch(next);
 });
 
+app.get("/userinfo", authenticateToken, async (req, res, next) => {
+    const uid = req.user.userId;
+
+    userService.userInfo({ uid }).then((response) => {
+        res.json(response);
+    }).catch(next);
+});
+
 app.get("/createaccount", async (req, res, next) => {
     let { fname, lname, phone, email, password, gender } = req.query;
 
@@ -74,7 +79,7 @@ app.get("/createaccount", async (req, res, next) => {
 
     userService.createUser(req.query).then(
         newUser => {
-            res.json({ success: 1, id: newUser.id })
+            res.json(newUser)
         }
     ).catch(next);
 });
@@ -87,41 +92,97 @@ app.get("/login", async (req, res, next) => {
 
     userService.loginUser(req.query).then(
         userAccount => {
-            return res.status(201).json({ success: 1, id: userAccount.id });
+            return res.json(userAccount);
         }
     ).catch(next);
 });
 
-app.get("/verify", async(req, res, next) => {
-    const { uid } = req.query;
-    if(!uid) {
+app.post("/refreshToken", async (req, res, next) => {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
         return next(new BadRequestError());
     }
 
-    userService.getOtp(req.query).then(response => {
-        return res.json({success: 1});
+    const accessToken = userService.refreshToken(req.body).then(
+        refreshToken => {
+            return res.json(refreshToken);
+        }
+    ).catch(next);
+});
+
+app.get("/verify", async (req, res, next) => {
+    const phone = req.query.phone;
+    if (!phone) {
+        return next(new BadRequestError());
+    }
+
+    userService.getOtp(phone).then(response => {
+        return res.json({ success: 1 });
     }).catch(next);
 });
 
-app.patch("/verify", async(req, res, next) => {
-    const { uid, otp } = req.body;
+app.patch("/verify", async (req, res, next) => {
+    const { otp, phone } = req.body;
 
-    if(!uid || !otp) {
+    if (!phone || !otp) {
         return next(new BadRequestError());
     }
 
     userService.verifyOtp(req.body).then(response => {
-        if(response === true) {
-            userService.verifyUser(uid).then(() => {
-                res.json({message: "Account successfully verified"});
-            })
+        if (response === true) {
+            userService.verifyUser(phone).then(() => {
+                res.json({ message: "Account successfully verified" });
+            });
         } else {
-            next(new UnauthorizedError("Invalid verification code. Please try again."))
+            next(new UnauthorizedError("Invalid verification code. Please try again."));
         }
     }).catch(next);
-})
+});
 
-app.get("/nearbyrides", async (req, res, next) => {
+app.patch("/verifysecurity", async (req, res, next) => {
+    const { otp, phone } = req.body;
+    console.log(phone + " HELLO??");
+    if (!phone || !otp) {
+        return next(new BadRequestError());
+    }
+
+    userService.verifyOtp(req.body).then(response => {
+        if (response === true) {
+            userService.verifyUser(phone).then(() => {
+                const securityToken = jwt.sign({ phone: phone }, JWT_SECRET, { expiresIn: JWT_EXPIRATION });
+                res.json({ token: securityToken });
+            });
+        } else {
+            next(new UnauthorizedError("Invalid verification code. Please try again."));
+        }
+    }).catch(next);
+});
+
+app.patch("/changepassword", async (req, res, next) => {
+    const { token, newPassword } = req.body;
+
+    console.log(req.body);
+
+    if (!token || !newPassword) {
+        return next(new BadRequestError());
+    }
+
+    jwt.verify(token, JWT_SECRET, (err, data) => {
+        console.log('here 1');
+        if (err) {
+            next(new UnauthorizedError());
+        }
+        console.log('here 2');
+        console.log(data);
+
+        userService.updatePassword(data.phone, newPassword).then(() => {
+            console.log("pw updated");
+            res.status(200).send();
+        }).catch(next);
+    });
+});
+
+app.get("/nearbyrides", authenticateToken, async (req, res, next) => {
     const maxDistance = 20000;
     let { startLng, startLat, endLng, endLat, date, gender } = req.query;
     if (!gender) {
@@ -131,40 +192,40 @@ app.get("/nearbyrides", async (req, res, next) => {
         return next(new BadRequestError());
     }
 
-
     rideService.getNearbyRides(req.query).then(
         result => res.status(200).json(result)
-    ).catch(next)
+    ).catch(next);
 });
 
-app.get("/ridedetails", async (req, res, next) => {
+app.get("/ridedetails", authenticateToken, async (req, res, next) => {
     const { rideId } = req.query;
     if (!rideId) {
         return next(new BadRequestError());
     }
 
-
     rideService.getRideDetails(req.query).then(
-        (ride) => {
+        ride => {
             res.status(200).json(ride);
         }
     ).catch(next);
 });
 
-app.get("/bookride", async (req, res, next) => {
-    const { uid, rideId, paymentMethod } = req.query;
+app.get("/bookride", authenticateToken, async (req, res, next) => {
+    const { rideId, paymentMethod } = req.query;
+    const uid = req.user.userId;
+
     if (!uid || !rideId || !paymentMethod) {
         return next(new BadRequestError());
     }
 
-    rideService.bookRide(req.query).then(
+    rideService.bookRide({ uid, rideId, paymentMethod }).then(
         newPassenger => {
             return res.json({ id: newPassenger.id })
         }
     ).catch(next);
 });
 
-app.post("/postride", async (req, res, next) => {
+app.post("/postride", authenticateToken, async (req, res, next) => {
     // consider not getting all the data from the query and instead only taking the latitude figures? Could cost an extra API call
     // check that driver doesn't already have a ride scheduled within 1-2 (?) hours/duration of this ride
     // mainTextFrom/mainTextTo probably needs to be fetched from google api instead to prevent malicious use
@@ -173,33 +234,27 @@ app.post("/postride", async (req, res, next) => {
         toLongitude, mainTextFrom,
         mainTextTo, pricePerSeat,
         driver, datetime, car } = req.body;
+    const uid = req.user.userId;
+
     if (!fromLatitude || !fromLongitude || !toLatitude || !toLongitude ||
         !mainTextFrom || !mainTextTo || !pricePerSeat || !driver || !car ||
-        !datetime
+        !datetime || !uid
     ) {
         return next(new BadRequestError());
     }
 
-    rideService.postRide(req.body).then(ride => {
+    rideService.postRide({
+        fromLatitude, fromLongitude, toLatitude,
+        toLongitude, mainTextFrom,
+        mainTextTo, pricePerSeat,
+        driver, datetime, car, uid
+    }).then(ride => {
         res.json(ride);
     }).catch(next);
 });
 
-app.get("/userinfo", async (req, res, next) => {
-    console.log("/userinfo");
-    const { uid } = req.query;
-    if (!uid) {
-        return next(new BadRequestError());
-    }
-    console.log("uid: " + uid);
-
-    userService.userInfo(req.query).then(user => {
-        res.json(user);
-    }).catch(next);
-});
-
-app.get("/upcomingrides", async (req, res, next) => {
-    const uid = req.query.uid;
+app.get("/upcomingrides", authenticateToken, async (req, res, next) => {
+    const uid = req.user.userId;
     let limit = req.query.limit;
 
     if (limit) {
@@ -210,13 +265,13 @@ app.get("/upcomingrides", async (req, res, next) => {
         return next(new BadRequestError());
     }
 
-    rideService.getUpcomingRides(req.query)
-    .then(result => res.json(result))
-    .catch(next);
+    rideService.getUpcomingRides({ uid, ...req.query })
+        .then(result => res.json(result))
+        .catch(next);
 });
 
-app.get("/pastrides", async (req, res, next) => {
-    const uid = req.query.uid;
+app.get("/pastrides", authenticateToken, async (req, res, next) => {
+    const uid = req.user.userId;
     let limit = req.query.limit;
     let after = req.query.after;
 
@@ -224,49 +279,55 @@ app.get("/pastrides", async (req, res, next) => {
         req.query.limit = parseInt(limit);
     }
 
-    rideService.getPastRides(req.query)
-    .then(result => res.json(result))
-    .catch(next);
+    rideService.getPastRides({ uid, ...req.query })
+        .then(result => res.json(result))
+        .catch(next);
 });
 
-app.get("/driverrides", async (req, res, next) => {
-    const uid = req.query.uid;
+app.get("/driverrides", authenticateToken, async (req, res, next) => {
+    const uid = req.user.userId;
     let limit = req.query.limit;
     if (limit) {
         req.query.limit = parseInt(limit);
     }
 
-    rideService.getDriverRides(req.query)
-    .then(driverRides => res.json(driverRides))
-    .catch(next)
+    rideService.getDriverRides({ uid, ...req.query })
+        .then(driverRides => res.json(driverRides))
+        .catch(next);
 });
 
-app.get("/tripdetails", async (req, res, next) => {
-    const { uid, tripId } = req.query;
-    rideService.getTripDetails(req.query).then(tripResult => {
-        res.json(tripResult);
-    }).catch(next)
+app.get("/tripdetails", authenticateToken, async (req, res, next) => {
+    const { tripId } = req.query;
+    const uid = req.user.userId;
+
+    rideService.getTripDetails({ uid, tripId })
+        .then(tripResult => {
+            res.json(tripResult);
+        })
+        .catch(next);
 });
 
-app.get("/cars", async (req, res, next) => {
-    const { uid, approved } = req.query;
+app.get("/cars", authenticateToken, async (req, res, next) => {
+    const { approved } = req.query;
+    const uid = req.user.userId;
+
     if (!uid) {
         return next(new BadRequestError());
     }
 
-    carService.getCars(req.query).then(cars => {
+    carService.getCars({ uid, ...req.query }).then(cars => {
         return res.json(cars);
     }).catch(next);
 });
 
-app.get("/cancelride", async (req, res, next) => {
+app.get("/cancelride", authenticateToken, async (req, res, next) => {
     const { tripId } = req.query;
 
     if (!tripId) {
         return next(new BadRequestError());
     }
 
-    rideService.cancelRide(req.query).then(cancelStatus => {
+    rideService.cancelRide({ tripId, ...req.query }).then(cancelStatus => {
         if (!cancelStatus) {
             return next(new NotAcceptableError("Ride was never cancelled"))
         }
@@ -274,14 +335,14 @@ app.get("/cancelride", async (req, res, next) => {
     }).catch(next);
 });
 
-app.get("/startride", async (req, res, next) => {
+app.get("/startride", authenticateToken, async (req, res, next) => {
     const { tripId } = req.query;
 
     if (!tripId) {
         return next(new BadRequestError());
     }
 
-    rideService.startRide(req.query).then(cancelStatus => {
+    rideService.startRide({ tripId, ...req.query }).then(cancelStatus => {
         if (!cancelStatus) {
             return next(new NotAcceptableError("Could not start ride."))
         }
@@ -289,106 +350,118 @@ app.get("/startride", async (req, res, next) => {
     }).catch(next);
 });
 
-app.get("/checkin", async (req, res, next) => {
+app.get("/checkin", authenticateToken, async (req, res, next) => {
     const { tripId, passenger } = req.query;
-    if (!tripId || !passenger) {
+    const uid = req.user.userId;
+
+    if (!tripId || !passenger || !uid) {
         return next(new BadRequestError());
     }
 
-    rideService.checkIn(req.query).then(
+    rideService.checkIn({ tripId, passenger, uid, ...req.query }).then(
         response => {
             return res.json({ success: 1 });
         }
     ).catch(next);
 });
 
-app.get("/checkout", async (req, res, next) => {
+app.get("/checkout", authenticateToken, async (req, res, next) => {
     let { tripId, passenger, amountPaid, rating } = req.query;
+    const uid = req.user.userId;
 
-    if (!tripId || !passenger || !amountPaid) {
+    if (!tripId || !passenger || !amountPaid || !uid) {
         return next(new BadRequestError());
     }
 
-    rideService.checkOut(req.query).then(response => {
+    rideService.checkOut({ tripId, passenger, amountPaid, rating, uid, ...req.query }).then(response => {
         return res.json({ success: 1 });
     }).catch(next);
 });
 
-app.get("/noshow", async (req, res, next) => {
+app.get("/noshow", authenticateToken, async (req, res, next) => {
     const { tripId, passenger } = req.query;
-    if (!tripId || !passenger) {
+    const uid = req.user.userId;
+
+    if (!tripId || !passenger || !uid) {
         return next(new BadRequestError());
     }
 
-    rideService.noShow(req.query).then(
+    rideService.noShow({ tripId, passenger, uid, ...req.query }).then(
         response => {
             return res.json({ success: 1 });
         }
     ).catch(next);
 });
 
-app.get("/passengerdetails", async (req, res, next) => {
+app.get("/passengerdetails", authenticateToken, async (req, res, next) => {
     const { tripId, passenger } = req.query;
-    if (!tripId || !passenger) {
+    const uid = req.user.userId;
+
+    if (!tripId || !passenger || !uid) {
         return next(new BadRequestError());
     }
 
-    rideService.getPassengerDetails(req.query).then(passengerDetails => {
+    rideService.getPassengerDetails({ tripId, passenger, uid, ...req.query }).then(passengerDetails => {
         return res.json(passengerDetails);
-    }).catch(next)
+    }).catch(next);
 });
 
-app.get("/wallet", async (req, res, next) => {
-    const { uid } = req.query;
-    if(!uid) {
+app.get("/wallet", authenticateToken, async (req, res, next) => {
+    const uid = req.user.userId;
+
+    if (!uid) {
         return next(new BadRequestError());
     }
-    userService.getWallet(req.query).then(walletDetails => {
+
+    userService.getWallet({ uid, ...req.query }).then(walletDetails => {
         return res.json(walletDetails);
-    }).catch(next)
+    }).catch(next);
 });
 
-app.post("/newcar", async (req, res, next) => {
-    const { uid, brand, year, model, color, licensePlateLetters, licensePlateNumbers, license_front, license_back } = req.body;
+app.post("/newcar", authenticateToken, async (req, res, next) => {
+    const { brand, year, model, color, licensePlateLetters, licensePlateNumbers, license_front, license_back } = req.body;
+    const uid = req.user.userId;
 
     if (!uid || !brand || !year || !model || !color || !licensePlateLetters ||
         !licensePlateNumbers || !license_front || !license_back) {
         return next(new BadRequestError());
     }
 
-    carService.newCar(req.body).then(newCar => {
+    carService.newCar({ uid, brand, year, model, color, licensePlateLetters, licensePlateNumbers, license_front, license_back }).then(newCar => {
         res.json({ success: 1 });
     }).catch(next);
 });
 
-app.post("/submitlicense", async (req, res, next) => {
-    const { uid, frontSide, backSide } = req.body;
+app.post("/submitlicense", authenticateToken, async (req, res, next) => {
+    const { frontSide, backSide } = req.body;
+    const uid = req.user.userId;
 
-    if(!uid || !frontSide || !backSide) {
+    if (!uid || !frontSide || !backSide) {
         return next(new BadRequestError());
     }
 
-    userService.submitLicense(req.body).then(license => {
-        return res.json({ success: 1 });
-    }).catch(next);
-});
-
-app.get("/license", async (req, res, next) => {
-    const { uid } = req.query;
-    if (!uid) {
-        return next(new BadRequestError());
-    }
-
-    userService.getLicense(req.query).then(license => {
+    userService.submitLicense({ uid, frontSide, backSide }).then(license => {
         return res.json(license);
     }).catch(next);
 });
 
-app.get("/announcements", async (req, res, next) => {
+app.get("/license", authenticateToken, async (req, res, next) => {
+    const uid = req.user.userId;
+
+    if (!uid) {
+        return next(new BadRequestError());
+    }
+
+    userService.getLicense({ uid, ...req.query }).then(license => {
+        return res.json(license);
+    }).catch(next);
+});
+
+app.get("/announcements", authenticateToken, async (req, res, next) => {
     const announcementId = req.query?.id;
     const active = req.query?.active;
 
-    if(!announcementId && !active) {
+    if (!announcementId && !active) {
         return next(new BadRequestError());
     }
 
@@ -403,68 +476,80 @@ app.get("/announcements", async (req, res, next) => {
     }
 });
 
-app.post("/createcommunity", async (req, res, next) => {
-    const { name, picture, description, private, uid } = req.body;
-    if(!name || !uid) {
+app.post("/createcommunity", authenticateToken, async (req, res, next) => {
+    const { name, picture, description, private } = req.body;
+    const uid = req.user.userId;
+
+    if (!name || !uid) {
         return next(new BadRequestError());
     }
 
-    communityService.createCommunity(req.body).then(community => {
+    communityService.createCommunity({ name, picture, description, private, uid }).then(community => {
         return res.json({ success: 1 });
     }).catch(next);
-
 });
 
-app.get("/communities", async (req, res, next) => {
-    // find some way to order recommended communities (maybe fastest growing communities)
+app.get("/communities", authenticateToken, async (req, res, next) => {
     let { page } = req.query;
-    if (!page) { req.query.page = 1; }
+    if (!page) {
+        req.query.page = 1;
+    }
 
-    communityService.getCommunities(req.query).then(communities => {
+    const uid = req.user.userId;
+
+    communityService.getCommunities({ uid, ...req.query }).then(communities => {
         res.json(communities);
     }).catch(next);
-
 });
 
-app.get("/mycommunities", async (req, res, next) => {
-    const { uid } = req.query;
+app.get("/mycommunities", authenticateToken, async (req, res, next) => {
+    const uid = req.user.userId;
+
     if (!uid) {
         return next(new BadRequestError());
     }
 
-    communityService.getUserCommunities(req.query).then(communities => {
+    communityService.getUserCommunities({ uid, ...req.query }).then(communities => {
         return res.json(communities.Communities);
     }).catch(next);
 });
 
-app.get("/communitydetails", async (req, res, next) => {
-    const { communityId, uid } = req.query;
+app.get("/communitydetails", authenticateToken, async (req, res, next) => {
+    const { communityId } = req.query;
+    const uid = req.user.userId;
+
     if (!communityId || !uid) {
         return next(new BadRequestError());
     }
 
-    communityService.getCommunityDetails(req.query).then(community => {
+    communityService.getCommunityDetails({ communityId, uid, ...req.query }).then(community => {
         return res.json(community);
     }).catch(next);
 });
 
-app.get("/myfeed", async (req, res, next) => {
-    let { uid, page } = req.query;
+app.get("/myfeed", authenticateToken, async (req, res, next) => {
+    let { page } = req.query;
     if (!page) { req.query.page = 1; }
+
+    const uid = req.user.userId;
+
     if (!uid) {
         return next(new BadRequestError());
     }
-    communityService.getUserFeed(req.query).then(feed => {
+
+    communityService.getUserFeed({ uid, ...req.query }).then(feed => {
         return res.json(feed);
     }).catch(err => {
         console.error(err);
         return next(err);
-    })
+    });
 });
 
-app.get("/loadchat", async (req, res, next) => {
+app.get("/loadchat", authenticateToken, async (req, res, next) => {
     let { receiver } = req.query;
-    chatService.loadChat(req.query).then(user => {
+    const uid = req.user.userId;
+
+    chatService.loadChat({ receiver, uid, ...req.query }).then(user => {
         return res.json(user);
     }).catch(err => {
         if (err === 404) {
@@ -476,159 +561,195 @@ app.get("/loadchat", async (req, res, next) => {
     });
 });
 
-app.get("/chats", async (req, res, next) => {
-    let { uid } = req.query;
+app.get("/chats", authenticateToken, async (req, res, next) => {
+    const uid = req.user.userId;
+
     if (!uid) {
         return next(new BadRequestError());
     }
 
-    chatService.getChats(req.query).then(chats => {
+    chatService.getChats({ uid, ...req.query }).then(chats => {
         return res.json(chats);
     }).catch(next);
 });
 
-app.get("/chathistory", async (req, res, next) => {
-    let { uid, receiver, page } = req.query; // last = last received message id
+app.get("/chathistory", authenticateToken, async (req, res, next) => {
+    let { receiver, page } = req.query; // last = last received message id
 
-    if (!page) { req.query.page = 1 }
+    if (!page) {
+        req.query.page = 1;
+    }
+
+    const uid = req.user.userId;
+
     if (!uid || !receiver) {
         return next(new BadRequestError());
     }
 
-    chatService.getChatHistory(req.query).then(chatHistory => {
+    chatService.getChatHistory({ uid, receiver, ...req.query }).then(chatHistory => {
         return res.json(chatHistory);
-    }
-    ).catch(next);
+    }).catch(next);
 });
 
-app.get("/newmessages", async (req, res, next) => {
+app.get("/newmessages", authenticateToken, async (req, res, next) => {
     console.log("new messages polled");
-    let { uid, receiver } = req.query;
+    const { receiver } = req.query;
+    const uid = req.user.userId;
 
     if (!uid || !receiver) {
         return next(new BadRequestError());
     }
 
-    chatService.getNewMessages(req.query).then(newMessages => {
+    chatService.getNewMessages({ uid, receiver, ...req.query }).then(newMessages => {
         return res.json(newMessages);
-    }
-    ).catch(next);
+    }).catch(next);
 });
 
 
-app.get("/sendmessage", async (req, res, next) => {
-    let { uid, receiver, message } = req.query;
+app.get("/sendmessage", authenticateToken, async (req, res, next) => {
+    const { receiver, message } = req.query;
+    const uid = req.user.userId;
 
     if (!uid || !receiver || !message) {
         return next(new BadRequestError());
     }
-    chatService.sendMessage(req.query).then(sendMessageResult => {
+
+    chatService.sendMessage({ uid, receiver, message, ...req.query }).then(sendMessageResult => {
         return res.json({ id: sendMessageResult.id });
-    }
-    ).catch(next);
+    }).catch(next);
 });
 
 
-app.post("/bankaccount", async (req, res, next) => {
-    let { uid, fullName, bankName, accNumber, swiftCode } = req.body;
-    console.log(req.body);
+app.post("/bankaccount", authenticateToken, async (req, res, next) => {
+    const { fullName, bankName, accNumber, swiftCode } = req.body;
+    const uid = req.user.userId;
+
     if (!uid || !fullName || !bankName || !accNumber || !swiftCode) {
         return next(new BadRequestError());
     }
 
-    userService.addBank(req.body).then(addBankResult => {
-        console.log({ id: addBankResult.id });
-        return res.json({ id: addBankResult.id });
-    }
-    ).catch(next);
+    userService.addBank({ uid, fullName, bankName, accNumber, swiftCode, ...req.body }).then(addBankResult => {
+        return res.json(addBankResult);
+    }).catch(next);
 });
 
-app.post("/card", async (req, res, next) => {
-    let { uid, cardNumber, cardExpiry, cardholderName } = req.body;
-    if (!uid || !cardNumber || !cardExpiry || !cardholderName) {
-        return next(new BadRequestError());
-    }
 
-    userService.addNewCard(req.body).then(addCardResult => {
-        return res.json({ id: addCardResult.id });
-    }
-    ).catch(next);
-});
-
-app.get("/banks", async (req, res, next) => {
-    let { uid } = req.query;
+app.get("/banks", authenticateToken, async (req, res, next) => {
+    const uid = req.user.userId;
 
     if (!uid) {
         return next(new BadRequestError());
     }
 
-    userService.getBanks(req.query).then(banks => {
+    userService.getBanks({ uid, ...req.query }).then(banks => {
         return res.json(banks);
-    }
-    ).catch(next);
+    }).catch(next);
 });
 
-app.patch("/name", async (req, res, next) => {
-    let { uid, firstName, lastName } = req.body;
-
-    if (!uid || !firstName || !lastName || firstName.length < 2 || firstName.length > 20 || lastName.length < 2 || lastName.length > 20) {
-        return next(new BadRequestError());
-    }
-
-    userService.updateName(req.body).then(updateNameResult => {
-        return res.json({ success: 1 });
-    }
-    ).catch(next);
-});
-
-
-app.patch("/phone", async (req, res, next) => {
-    let { uid, phone } = req.body;
+app.post("/mobilewallet", authenticateToken, async (req, res, next) => {
+    const { phone } = req.body;
+    const uid = req.user.userId;
 
     if (!uid || !phone) {
         return next(new BadRequestError());
     }
 
-    userService.updatePhone(req.body).then(updatePhoneResult => {
-        return res.json({ success: 1 });
+    userService.addMobileWallet({ uid, phone, ...req.body }).then(addWalletResult => {
+        return res.json(addWalletResult);
+    }).catch(next);
+});
+
+app.get("/mobilewallets", authenticateToken, async (req, res, next) => {
+    const uid = req.user.userId;
+
+    if (!uid) {
+        return next(new BadRequestError());
     }
-    ).catch(next);
+
+    userService.getMobileWallets({ uid, ...req.query }).then(wallets => {
+        return res.json(wallets);
+    }).catch(next);
+});
+
+app.post("/card", authenticateToken, async (req, res, next) => {
+    const { cardNumber, cardExpiry, cardholderName } = req.body;
+    const uid = req.user.userId;
+
+    if (!uid || !cardNumber || !cardExpiry || !cardholderName) {
+        return next(new BadRequestError());
+    }
+
+    userService.addNewCard({ uid, cardNumber, cardExpiry, cardholderName, ...req.body }).then(addCardResult => {
+        return res.json(addCardResult);
+    }).catch(next);
+});
+
+app.patch("/name", authenticateToken, async (req, res, next) => {
+    const { firstName, lastName } = req.body;
+    const uid = req.user.userId;
+
+    if (!uid || !firstName || !lastName || firstName.length < 2 || firstName.length > 20 || lastName.length < 2 || lastName.length > 20) {
+        return next(new BadRequestError());
+    }
+
+    userService.updateName({ uid, firstName, lastName, ...req.body }).then(updateNameResult => {
+        return res.json(updateNameResult);
+    }).catch(next);
 });
 
 
-app.patch("/email", async (req, res, next) => {
-    let { uid, email } = req.body;
+app.patch("/phone", authenticateToken, async (req, res, next) => {
+    const { phone } = req.body;
+    const uid = req.user.userId;
+
+    if (!uid || !phone) {
+        return next(new BadRequestError());
+    }
+
+    userService.updatePhone({ uid, phone, ...req.body }).then(updatePhoneResult => {
+        return res.json(updatePhoneResult);
+    }).catch(next);
+});
+
+
+app.patch("/email", authenticateToken, async (req, res, next) => {
+    const { email } = req.body;
+    const uid = req.user.userId;
 
     if (!uid || !email) {
         return next(new BadRequestError());
     }
 
-    userService.updateEmail(req.body).then(updateEmailResult => {
-        return res.json({ success: 1 });
-    }
-    ).catch(next);
+    userService.updateEmail({ uid, email, ...req.body }).then(updateEmailResult => {
+        return res.json(updateEmailResult);
+    }).catch(next);
 });
 
-app.get("/searchcommunities", async (req, res, next) => {
-    let { name, page } = req.query;
+app.get("/searchcommunities", authenticateToken, async (req, res, next) => {
+    const { name, page } = req.query;
+
     if (!name) {
         return next(new BadRequestError());
     }
     if (!page) {
         req.query.page = 1;
     }
-    communityService.searchCommunities(req.query).then(searchResult => {
+
+    communityService.searchCommunities({ name, ...req.query }).then(searchResult => {
         return res.json(searchResult);
     }).catch(next);
 });
 
-app.post("/joincommunity", async (req, res, next) => {
-    let { uid, communityId, answer } = req.body;
+app.post("/joincommunity", authenticateToken, async (req, res, next) => {
+    const { communityId, answer } = req.body;
+    const uid = req.user.userId;
+
     if (!uid || !communityId) {
         return next(new BadRequestError());
     }
-    communityService.joinCommunity(req.body).then(joinResult => {
-        return res.json({ success: 1 });
+
+    communityService.joinCommunity({ uid, communityId, answer, ...req.body }).then(joinResult => {
+        return res.json(joinResult);
     }).catch(next);
 });
 

@@ -1,10 +1,12 @@
 const { Op } = require("sequelize");
-const { User, License, sequelize, Card, BankAccount } = require("../models");
+const { User, License, sequelize, Card, BankAccount, MobileWallet } = require("../models");
 const bcrypt = require("bcrypt");
 const { getCardDetails, checkCardNumber, generateOtp, addMinutes } = require("../helper");
 const { UnauthorizedError, NotFoundError, ConflictError, InternalServerError, NotAcceptableError } = require("../errors/Errors");
 const { default: axios } = require("axios");
 const config = require("../config");
+const jwt = require('jsonwebtoken');
+const { JWT_SECRET, JWT_EXPIRATION, REFRESH_TOKEN_EXPIRATION } = require("../config/auth.config");
 
 async function accountAvailable(phone, email) {
     let userAccount;
@@ -50,28 +52,77 @@ async function createUser({ fname, lname, phone, email, password, gender }) {
 
 async function loginUser({ phone, email, password }) {
     let userAccount;
-    if (phone) {
-        userAccount = await User.findOne({ where: { phone: phone } });
-    } else if (email) {
-        userAccount = await User.findOne({ where: { email: email } });
-    }
-
-    if (userAccount === null) {
+    userAccount = await User.scope('auth').findOne({ where: { phone: phone } });
+    if (!userAccount) {
         throw new UnauthorizedError("Invalid phone and/or password. Please try again.");
     }
 
     const result = await bcrypt.compare(password, userAccount.password);
     if (result) {
-        return userAccount;
+        const today = new Date();
+        const license = await License.findOne({
+            where: {
+                UserId: userAccount.id,
+                status: 'APPROVED',
+                expiryDate: { [Op.gt]: today }
+            }
+        });
+
+        userAccount.password = undefined;
+
+        const accessToken = jwt.sign({ userId: userAccount.id }, JWT_SECRET, { expiresIn: JWT_EXPIRATION });
+        const refreshToken = jwt.sign({ userId: userAccount.id }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRATION });
+
+        // userAccount.driver = !!license;
+        return {
+            ...userAccount.dataValues,
+            driver: !!license,
+            accessToken: accessToken,
+            refreshToken: refreshToken
+
+        };
     } else {
         throw new UnauthorizedError("Invalid phone and/or password. Please try again.");
     }
 }
 
+async function userInfo({uid}) {
+    let userAccount = await User.findByPk(uid);
+
+    const today = new Date();
+    const license = await License.findOne({
+        where: {
+            UserId: uid,
+            status: 'APPROVED',
+            expiryDate: { [Op.gt]: today }
+        }
+    });
+
+    return {
+        ...userAccount.dataValues,
+        driver: !!license,
+    }
+}
+
+async function refreshToken({ refreshToken }) {
+    try {
+        // Verify the refresh token
+        const decoded = await jwt.verify(refreshToken, JWT_SECRET);
+
+        // Generate new access token
+        const accessToken = jwt.sign({ userId: decoded.userId }, JWT_SECRET, { expiresIn: JWT_EXPIRATION });
+
+        // Return the new access token
+        return { accessToken };
+    } catch (err) {
+        throw new UnauthorizedError('Invalid token');
+    }
+}
+
 let otpCodes = {};
 setInterval(() => {
-    for(const [uid, codeObj] of Object.entries(otpCodes)) {
-        if(codeObj.expiry > new Date()) {
+    for (const [uid, codeObj] of Object.entries(otpCodes)) {
+        if (codeObj.expiry > new Date()) {
             console.log("OTP DELETED");
             console.log(codeObj);
             delete otpCodes[uid];
@@ -79,9 +130,10 @@ setInterval(() => {
     }
 }, 1000 * 60 * config.otp.expiryMinutes);
 
-async function getOtp({ uid }) {
-    const user = await User.findByPk(uid, { attributes: ['phone'] });
+async function getOtp( phone ) {
+    const user = await User.findOne({where: {phone: phone}, attributes: ['id', 'phone'] });
     let otp = 0;
+    const uid = user.id;
     if (uid in otpCodes) {
         if (otpCodes[uid].expiry > new Date()) {
             otp = generateOtp().toString();
@@ -90,7 +142,6 @@ async function getOtp({ uid }) {
         }
     } else {
         otp = generateOtp();
-        console.log("OTP GENERATED: " + otp);
         otpCodes[uid.toString()] = {
             otp: otp,
             expiry: addMinutes(new Date(), config.otp.expiryMinutes)
@@ -114,11 +165,14 @@ async function getOtp({ uid }) {
         const data = response.data;
         if (data.Code != "4901") {
             throw new InternalServerError();
-        }    
+        }
     }
 }
 
-async function verifyOtp({ uid, otp }) {
+async function verifyOtp({ phone, otp }) {
+    const user = await User.findOne({where: {phone: phone}, attributes: ['id', 'phone'] });
+    const uid = user.id;
+ 
     const actualOtp = otpCodes[uid];
     if (!actualOtp) {
         throw new UnauthorizedError("This verification code is no longer valid, please try again");
@@ -132,75 +186,51 @@ async function verifyOtp({ uid, otp }) {
     }
 }
 
-async function verifyUser(uid) {
-    User.findByPk(uid).then(user => {
+async function verifyUser(phone) {
+    User.findOne({where: {phone: phone}}).then(user => {
         user.verified = true;
         user.save();
     });
 }
 
-async function userInfo({ uid }) {
-    const user = await User.findByPk(uid,
-        {
-            attributes: [
-                'firstName',
-                'lastName',
-                'phone',
-                'email',
-                'balance',
-                'rating',
-                'profilePicture',
-                'gender',
-                'verified',
-                [
-                    sequelize.literal('(COUNT(licenses.id) >= 1)'),
-                    'driver'
-                ]
-            ],
-            include: [
-                {
-                    model: License,
-                    attributes: [],
-                    where: {
-                        status: 'APPROVED',
-                        expiryDate: { [Op.gt]: sequelize.literal('CURDATE()') }
-                    },
-                    required: true
-                }
-            ]
-        });
+// async function userInfo({ uid }) {
+//     const user = await User.findByPk(uid,
+//         {
+//             attributes: [
+//                 'firstName',
+//                 'lastName',
+//                 'phone',
+//                 'email',
+//                 'gender',
+//                 'balance',
+//                 'rating',
+//                 'numRatings',
+//                 'profilePicture',
+//                 'verified',
+//                 [
+//                     sequelize.literal('(COUNT(licenses.id) >= 1)'),
+//                     'driver'
+//                 ]
+//             ],
+//             include: [
+//                 {
+//                     model: License,
+//                     attributes: [],
+//                     where: {
+//                         status: 'APPROVED',
+//                         expiryDate: { [Op.gt]: sequelize.literal('CURDATE()') }
+//                     },
+//                     required: true
+//                 }
+//             ]
+//         });
 
-    if (user === null) {
-        throw new NotFoundError("User not found");
-    }
+//     if (user === null) {
+//         throw new NotFoundError("User not found");
+//     }
 
-    return user;
-}
-
-async function getWallet({ uid }) {
-    const walletDetails = await User.findByPk(uid, {
-        attributes: ['balance'],
-        include: [
-            {
-                model: Card,
-                attributes: ['cardNumber'],
-            }
-        ]
-    });
-
-    if (walletDetails === null) {
-        throw new NotFoundError("User not found");
-    }
-    let result = {
-        balance: walletDetails.balance,
-        cards: []
-    };
-    for (const card of walletDetails.Cards) {
-        result.cards.push(getCardDetails(card));
-    }
-
-    return result;
-}
+//     return user;
+// }
 
 async function submitLicense({ uid, frontSide, backSide }) {
     try {
@@ -232,6 +262,26 @@ async function getLicense({ uid }) {
     return license;
 }
 
+async function getWallet({ uid }) {
+    const walletDetails = await Card.findAll({
+        where: {
+            UserId: uid
+        }
+    });
+
+    let cards = [];
+    for (let card of walletDetails) {
+        cards.push(getCardDetails(card));
+    }
+
+    if (walletDetails === null) {
+        throw new NotFoundError("User not found");
+    }
+
+    return cards;
+}
+
+
 async function addBank({ uid, fullName, bankName, accNumber, swiftCode }) {
     try {
         const bank = await BankAccount.create({
@@ -256,6 +306,30 @@ async function getBanks({ uid }) {
 
     return bank;
 }
+
+
+async function addMobileWallet({ uid, phone }) {
+    try {
+        const wallet = await MobileWallet.create({
+            UserId: uid,
+            phone: phone
+        });
+        return wallet;
+    } catch (err) {
+        throw new NotFoundError("User not found");
+    }
+}
+
+async function getMobileWallets({ uid }) {
+    const wallet = await MobileWallet.findAll({
+        where: {
+            UserId: uid
+        }
+    });
+    return wallet;
+}
+
+
 
 async function addNewCard({ uid, cardNumber, cardExpiry, cardholderName }) {
     if (cardNumber.length !== 16 || !checkCardNumber(cardNumber)) {
@@ -321,6 +395,29 @@ async function updatePhone({ uid, phone }) {
     }
 }
 
+async function updatePassword(phone, newPassword) {
+    try {
+        console.log(phone);
+        const user = await User.scope('auth').findOne({where: {
+            phone: phone
+        }});
+
+        try {
+            const hash = await bcrypt.hash(newPassword, 10);
+            user.password = hash;
+            user.save();
+            return true;
+        } catch (e) {
+            console.log(e);
+            console.log(user);
+            throw new InternalServerError();
+        }
+    } catch (err) {
+        console.log(err);
+        throw new NotFoundError("User not found");
+    }
+}
+
 
 
 module.exports = {
@@ -330,14 +427,18 @@ module.exports = {
     getOtp,
     verifyOtp,
     verifyUser,
-    userInfo,
     getWallet,
     submitLicense,
     getLicense,
     addBank,
     getBanks,
+    addMobileWallet,
+    getMobileWallets,
     updateName,
     updateEmail,
     updatePhone,
-    addNewCard
+    addNewCard,
+    refreshToken,
+    userInfo,
+    updatePassword
 }

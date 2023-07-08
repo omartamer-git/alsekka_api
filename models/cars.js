@@ -21,7 +21,10 @@ module.exports = function (sequelize, DataTypes) {
     },
     color: {
       type: DataTypes.STRING(20),
-      allowNull: false
+      allowNull: false,
+      validate: {
+        isAlpha: true
+      }
     },
     licensePlateLetters: {
       type: DataTypes.STRING(4),
@@ -56,6 +59,11 @@ module.exports = function (sequelize, DataTypes) {
           { name: "id" },
         ]
       }
-    ]
+    ],
+    defaultScope: {
+      attributes: {
+        exclude: ['license_front', 'license_back']
+      }
+    }
   });
 };

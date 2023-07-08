@@ -5,23 +5,35 @@ module.exports = function(sequelize, DataTypes) {
       autoIncrement: true,
       type: DataTypes.INTEGER,
       allowNull: false,
-      primaryKey: true
+      primaryKey: true,
     },
     firstName: {
       type: DataTypes.STRING(20),
-      allowNull: false
+      allowNull: false,
+      validate: {
+        isAlpha: true
+      }
     },
     lastName: {
       type: DataTypes.STRING(40),
-      allowNull: false
+      allowNull: false,
+      validate: {
+        isAlpha: true
+      }
     },
     phone: {
       type: DataTypes.STRING(16),
-      allowNull: false
+      allowNull: false,
+      validate: {
+        isNumeric: true
+      }
     },
     email: {
       type: DataTypes.STRING(320),
-      allowNull: false
+      allowNull: false,
+      validate: {
+        isEmail: true
+      }
     },
     password: {
       type: DataTypes.CHAR(64),
@@ -59,6 +71,14 @@ module.exports = function(sequelize, DataTypes) {
   }, {
     sequelize,
     timestamps: true,
+    defaultScope: {
+      attributes: { exclude: ['password', 'createdAt', 'updatedAt'] },
+    },
+    scopes: {
+      auth: {
+        attributes: { exclude: [] }
+      }
+    },
     indexes: [
       {
         name: "PRIMARY",

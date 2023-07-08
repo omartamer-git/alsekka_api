@@ -1,5 +1,5 @@
 const Sequelize = require('sequelize');
-module.exports = function(sequelize, DataTypes) {
+module.exports = function (sequelize, DataTypes) {
   return sequelize.define('License', {
     id: {
       autoIncrement: true,
@@ -25,11 +25,17 @@ module.exports = function(sequelize, DataTypes) {
     },
     licensenumber: {
       type: DataTypes.INTEGER,
-      allowNull: true
+      allowNull: true,
+      validate: {
+        isNumeric: true
+      }
     },
     nationalid: {
       type: DataTypes.CHAR(15),
-      allowNull: true
+      allowNull: true,
+      validate: {
+        isNumeric: true
+      }
     },
     status: {
       type: DataTypes.ENUM('PENDING', 'REJECTED', 'APPROVED'),

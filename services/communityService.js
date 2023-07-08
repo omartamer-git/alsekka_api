@@ -17,7 +17,7 @@ async function createCommunity({ name, picture, description, private, uid }) {
         picture: picture,
         description: description,
         private: private,
-        userId: uid
+        UserId: uid
     });
 
     return community;

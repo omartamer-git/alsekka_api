@@ -9,7 +9,10 @@ module.exports = function(sequelize, DataTypes) {
     },
     cardNumber: {
       type: DataTypes.STRING(19),
-      allowNull: false
+      allowNull: false,
+      validate: {
+        isCreditCard: true
+      }
     },
     cardholderName: {
       type: DataTypes.STRING(50),
@@ -17,7 +20,14 @@ module.exports = function(sequelize, DataTypes) {
     },
     cardExpiry: {
       type: DataTypes.CHAR(5),
-      allowNull: false
+      allowNull: false,
+      validate: {
+        isCardExpiry: function(value) {
+          if (!/^([01]\d)\/(\d{2})$/.test(value)) {
+            throw new Error('Invalid card expiry format. Please use MM/YY format.');
+          }
+        },
+      }
     }
   }, {
     sequelize,

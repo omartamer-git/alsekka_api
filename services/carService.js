@@ -8,7 +8,6 @@ async function getCars({uid, approved}) {
             UserId: uid,
             ...(approved && { approved: 'APPROVED' }),
         },
-        attributes: ['id', 'brand', 'year', 'model', 'color', 'licensePlateLetters', 'licensePlateNumbers', 'approved']
     });
 
     return carsQuery;

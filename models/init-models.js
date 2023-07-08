@@ -1,30 +1,32 @@
-var DataTypes = require("sequelize").DataTypes;
-var _announcements = require("./announcements");
-var _bankaccounts = require("./bankaccounts");
-var _cards = require("./cards");
-var _cars = require("./cars");
-var _chatmessages = require("./chatmessages");
-var _communities = require("./communities");
-var _communitymembers = require("./communitymembers");
-var _licenses = require("./licenses");
-var _passengers = require("./passengers");
-var _ridecommunities = require("./ridecommunities");
-var _rides = require("./rides");
-var _users = require("./users");
+let DataTypes = require("sequelize").DataTypes;
+let _announcements = require("./announcements");
+let _bankaccounts = require("./bankaccounts");
+let _mobilewallets = require("./mobilewallets");
+let _cards = require("./cards");
+let _cars = require("./cars");
+let _chatmessages = require("./chatmessages");
+let _communities = require("./communities");
+let _communitymembers = require("./communitymembers");
+let _licenses = require("./licenses");
+let _passengers = require("./passengers");
+let _ridecommunities = require("./ridecommunities");
+let _rides = require("./rides");
+let _users = require("./users");
 
 function initModels(sequelize) {
-  var Announcement = _announcements(sequelize, DataTypes);
-  var BankAccount = _bankaccounts(sequelize, DataTypes);
-  var Card = _cards(sequelize, DataTypes);
-  var Car = _cars(sequelize, DataTypes);
-  var ChatMessage = _chatmessages(sequelize, DataTypes);
-  var Community = _communities(sequelize, DataTypes);
-  var CommunityMember = _communitymembers(sequelize, DataTypes);
-  var License = _licenses(sequelize, DataTypes);
-  var Passenger = _passengers(sequelize, DataTypes);
-  var RideCommunity = _ridecommunities(sequelize, DataTypes);
-  var Ride = _rides(sequelize, DataTypes);
-  var User = _users(sequelize, DataTypes);
+  let Announcement = _announcements(sequelize, DataTypes);
+  let BankAccount = _bankaccounts(sequelize, DataTypes);
+  let Card = _cards(sequelize, DataTypes);
+  let Car = _cars(sequelize, DataTypes);
+  let ChatMessage = _chatmessages(sequelize, DataTypes);
+  let Community = _communities(sequelize, DataTypes);
+  let CommunityMember = _communitymembers(sequelize, DataTypes);
+  let License = _licenses(sequelize, DataTypes);
+  let Passenger = _passengers(sequelize, DataTypes);
+  let RideCommunity = _ridecommunities(sequelize, DataTypes);
+  let Ride = _rides(sequelize, DataTypes);
+  let User = _users(sequelize, DataTypes);
+  let MobileWallet = _mobilewallets(sequelize, DataTypes);
 
 
   User.belongsToMany(Community, { as: 'Communities', through: CommunityMember });
@@ -48,7 +50,6 @@ function initModels(sequelize) {
   Passenger.belongsTo(User);
   User.hasMany(Passenger);
 
-
   Card.belongsTo(User);
   User.hasMany(Card);
 
@@ -66,12 +67,16 @@ function initModels(sequelize) {
   BankAccount.belongsTo(User);
   User.hasMany(BankAccount);
 
+  MobileWallet.belongsTo(User);
+  User.hasMany(MobileWallet);
+
   Ride.belongsTo(User, { as: 'Driver', foreignKey: 'DriverId' });
   User.hasMany(Ride, { as: 'Drives', foreignKey: 'DriverId' });
 
   return {
     Announcement,
     BankAccount,
+    MobileWallet,
     Card,
     Car,
     ChatMessage,
@@ -82,8 +87,8 @@ function initModels(sequelize) {
     RideCommunity,
     Ride,
     User,
+    CommunityMember,
     sequelize,
-    CommunityMember
   };
 }
 module.exports = initModels;
