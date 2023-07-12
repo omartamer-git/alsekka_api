@@ -34,8 +34,8 @@ function initModels(sequelize) {
   User.belongsToMany(Community, { as: 'Communities', through: CommunityMember });
   Community.belongsToMany(User, { as: 'Member', through: CommunityMember });
 
-  Ride.belongsToMany(Community, { through: RideCommunity });
-  Community.belongsToMany(Ride, { through: RideCommunity });
+  // Ride.belongsToMany(Community, { through: RideCommunity });
+  // Community.belongsToMany(Ride, { through: RideCommunity });
 
   Ride.belongsTo(Car);
   Car.hasMany(Ride);
@@ -74,6 +74,9 @@ function initModels(sequelize) {
 
   Ride.belongsTo(User, { as: 'Driver', foreignKey: 'DriverId' });
   User.hasMany(Ride, { as: 'Drives', foreignKey: 'DriverId' });
+
+  Ride.belongsTo(Community);
+  Community.hasMany(Ride);
 
   User.hasMany(Referral, { foreignKey: 'ReferrerID', as: 'Referrals' });
   Referral.belongsTo(User, { foreignKey: 'ReferrerID', as: 'Referrer' });
