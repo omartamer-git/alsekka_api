@@ -1,7 +1,7 @@
 const { Op } = require("sequelize");
 const { User, License, sequelize, Card, BankAccount, MobileWallet, Referral } = require("../models");
 const bcrypt = require("bcrypt");
-const { getCardDetails, checkCardNumber, generateOtp, addMinutes } = require("../helper");
+const { getCardDetails, checkCardNumber, generateOtp, addMinutes, uploadImage } = require("../helper");
 const { UnauthorizedError, NotFoundError, ConflictError, InternalServerError, NotAcceptableError, BadRequestError } = require("../errors/Errors");
 const { default: axios } = require("axios");
 const config = require("../config");
@@ -191,6 +191,14 @@ async function verifyUser(phone) {
         user.verified = true;
         user.save();
     });
+}
+
+async function uploadProfilePicture(uid, file) {
+    const imageUrl = await uploadImage(uid, file);
+    const user = await User.findByPk(uid);
+    user.profilePicture = imageUrl;
+    user.save();
+    return user;
 }
 
 async function addReferral(uid, {referralCode}) {
@@ -417,5 +425,6 @@ module.exports = {
     refreshToken,
     userInfo,
     updatePassword,
-    addReferral
+    addReferral,
+    uploadProfilePicture
 }

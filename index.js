@@ -110,22 +110,22 @@ app.get("/login", async (req, res, next) => {
 });
 
 
-app.post('/uploads', async (req, res, next) => {
+app.post('/uploadprofilepicture', authenticateToken, async (req, res, next) => {
     try {
-      const myFile = req.file
-      const imageUrl = await helper.uploadImage(myFile)
-      res
-        .status(200)
-        .json({
-          message: "Upload was successful",
-          data: imageUrl
-        })
-    } catch (error) {
-      next(error)
-    }
-  })
+        if (!req.file) {
+            return next(new BadRequestError());
+        }
 
-  
+        userService.uploadProfilePicture(req.user.userId, req.file).then(response => {
+            res.json(response);
+        }).catch(next);
+    } catch (error) {
+        console.error(error);
+        next(error)
+    }
+})
+
+
 
 
 app.post("/refreshToken", async (req, res, next) => {
@@ -834,6 +834,7 @@ app.get("/getLocationFromPlaceId", authenticateToken, async (req, res, next) => 
 });
 
 app.use((err, req, res, next) => {
+    console.error(err);
     res.status(err.status || 500).json({
         error: {
             message: err.message,

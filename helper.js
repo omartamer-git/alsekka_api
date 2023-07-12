@@ -1,15 +1,18 @@
+const { format } = require('url');
 
 
-function uploadImage(file) {
+function uploadImage(uid, file) {
     const util = require('util');
     const gc = require('./config/googlecloud.config');
     const bucket = gc.bucket('alsekka_profile_pics') // bucket name
-
+    console.log(file);
     return (
         new Promise((resolve, reject) => {
-            const { originalname, buffer } = file
+            const { buffer } = file
+            const extHelper = file.originalname.split('.');
+            const originalname = uid + "_" + "profile_picture." + extHelper[extHelper.length - 1];
 
-            const blob = bucket.file(originalname.replace(/ /g, "_"))
+            const blob = bucket.file(originalname)
             const blobStream = blob.createWriteStream({
                 resumable: false
             })
