@@ -7,9 +7,20 @@ const bcrypt = require("bcrypt");
 const config = require("./config");
 const pool = require("./mysql-pool");
 const helper = require("./helper");
+const multer = require('multer')
+
 const { BadRequestError, NotAcceptableError, UnauthorizedError } = require("./errors/Errors")
 const app = express();
 
+const multerMid = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: 5 * 1024 * 1024,
+    },
+})
+
+app.disable('x-powered-by')
+app.use(multerMid.single('file'))
 app.use(express.json());
 app.use(
     express.urlencoded({
@@ -28,6 +39,7 @@ const chatService = require("./services/chatService");
 const jwt = require('jsonwebtoken');
 const authenticateToken = require("./middleware/authenticateToken");
 const { JWT_SECRET, JWT_EXPIRATION } = require("./config/auth.config");
+const { getPredictions, geocode, getLocationFromPlaceId } = require("./services/googleMapsService");
 
 log4js.configure({
     appenders: {
@@ -96,6 +108,25 @@ app.get("/login", async (req, res, next) => {
         }
     ).catch(next);
 });
+
+
+app.post('/uploads', async (req, res, next) => {
+    try {
+      const myFile = req.file
+      const imageUrl = await helper.uploadImage(myFile)
+      res
+        .status(200)
+        .json({
+          message: "Upload was successful",
+          data: imageUrl
+        })
+    } catch (error) {
+      next(error)
+    }
+  })
+
+  
+
 
 app.post("/refreshToken", async (req, res, next) => {
     const { refreshToken } = req.body;
@@ -180,6 +211,19 @@ app.patch("/changepassword", async (req, res, next) => {
             res.status(200).send();
         }).catch(next);
     });
+});
+
+app.post("/referral", authenticateToken, async (req, res, next) => {
+    const { referralCode } = req.body;
+    const uid = req.user.userId;
+
+    if (!referralCode) {
+        next(new BadRequestError());
+    }
+
+    userService.addReferral(uid, req.body).then(() => {
+        res.status(200).send();
+    }).catch(next);
 });
 
 app.get("/nearbyrides", authenticateToken, async (req, res, next) => {
@@ -750,6 +794,42 @@ app.post("/joincommunity", authenticateToken, async (req, res, next) => {
 
     communityService.joinCommunity({ uid, communityId, answer, ...req.body }).then(joinResult => {
         return res.json(joinResult);
+    }).catch(next);
+});
+
+app.get("/getPredictions", authenticateToken, async (req, res, next) => {
+    const { text } = req.query;
+
+    if (!text) {
+        return next(new BadRequestError());
+    }
+
+    getPredictions(text).then(result => {
+        return res.json(result);
+    }).catch(next);
+});
+
+app.get("/geocode", authenticateToken, async (req, res, next) => {
+    const { latitude, longitude } = req.query;
+
+    if (!latitude || !longitude) {
+        return next(new BadRequestError());
+    }
+
+    geocode(latitude, longitude).then(result => {
+        return res.json(result);
+    }).catch(next);
+});
+
+app.get("/getLocationFromPlaceId", authenticateToken, async (req, res, next) => {
+    const { place_id } = req.query;
+
+    if (!place_id) {
+        return next(new BadRequestError());
+    }
+
+    getLocationFromPlaceId(place_id).then(result => {
+        return res.json(result);
     }).catch(next);
 });
 

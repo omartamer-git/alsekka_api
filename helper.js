@@ -1,3 +1,31 @@
+
+
+function uploadImage(file) {
+    const util = require('util');
+    const gc = require('./config/googlecloud.config');
+    const bucket = gc.bucket('alsekka_profile_pics') // bucket name
+
+    return (
+        new Promise((resolve, reject) => {
+            const { originalname, buffer } = file
+
+            const blob = bucket.file(originalname.replace(/ /g, "_"))
+            const blobStream = blob.createWriteStream({
+                resumable: false
+            })
+            blobStream.on('finish', () => {
+                const publicUrl = format(
+                    `https://storage.googleapis.com/${bucket.name}/${blob.name}`
+                )
+                resolve(publicUrl)
+            }).on('error', (e) => {
+                console.error(e);
+                reject(`Unable to upload image, something went wrong`)
+            }).end(buffer)
+        })
+    );
+}
+
 function isValidEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -63,7 +91,7 @@ function getCardDetails(card) {
 }
 
 function addMinutes(date, minutes) {
-    return new Date(date.getTime() + minutes*60000);
+    return new Date(date.getTime() + minutes * 60000);
 }
 
 
@@ -72,5 +100,6 @@ module.exports = {
     getCardDetails,
     checkCardNumber,
     generateOtp,
-    addMinutes
+    addMinutes,
+    uploadImage
 };

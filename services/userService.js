@@ -1,8 +1,8 @@
 const { Op } = require("sequelize");
-const { User, License, sequelize, Card, BankAccount, MobileWallet } = require("../models");
+const { User, License, sequelize, Card, BankAccount, MobileWallet, Referral } = require("../models");
 const bcrypt = require("bcrypt");
 const { getCardDetails, checkCardNumber, generateOtp, addMinutes } = require("../helper");
-const { UnauthorizedError, NotFoundError, ConflictError, InternalServerError, NotAcceptableError } = require("../errors/Errors");
+const { UnauthorizedError, NotFoundError, ConflictError, InternalServerError, NotAcceptableError, BadRequestError } = require("../errors/Errors");
 const { default: axios } = require("axios");
 const config = require("../config");
 const jwt = require('jsonwebtoken');
@@ -193,44 +193,20 @@ async function verifyUser(phone) {
     });
 }
 
-// async function userInfo({ uid }) {
-//     const user = await User.findByPk(uid,
-//         {
-//             attributes: [
-//                 'firstName',
-//                 'lastName',
-//                 'phone',
-//                 'email',
-//                 'gender',
-//                 'balance',
-//                 'rating',
-//                 'numRatings',
-//                 'profilePicture',
-//                 'verified',
-//                 [
-//                     sequelize.literal('(COUNT(licenses.id) >= 1)'),
-//                     'driver'
-//                 ]
-//             ],
-//             include: [
-//                 {
-//                     model: License,
-//                     attributes: [],
-//                     where: {
-//                         status: 'APPROVED',
-//                         expiryDate: { [Op.gt]: sequelize.literal('CURDATE()') }
-//                     },
-//                     required: true
-//                 }
-//             ]
-//         });
+async function addReferral(uid, {referralCode}) {
+    try {
+        const reffererId = parseInt(referralCode.replace('ALSK-', '')) - 1406;
 
-//     if (user === null) {
-//         throw new NotFoundError("User not found");
-//     }
+        const reference = await Referral.create({
+            ReferrerID: reffererId,
+            RefereeID: uid
+        });
 
-//     return user;
-// }
+        return reference;
+    } catch(err) {
+        throw BadRequestError("Referral account is newer than your account");
+    }
+}
 
 async function submitLicense({ uid, frontSide, backSide }) {
     try {
@@ -440,5 +416,6 @@ module.exports = {
     addNewCard,
     refreshToken,
     userInfo,
-    updatePassword
+    updatePassword,
+    addReferral
 }

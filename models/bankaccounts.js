@@ -15,7 +15,7 @@ module.exports = function (sequelize, DataTypes) {
       }
     },
     bankName: {
-      type: DataTypes.STRING(20),
+      type: DataTypes.STRING(50),
       allowNull: false,
       validate: {
         isAlpha: true
