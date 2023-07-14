@@ -236,7 +236,7 @@ app.get("/nearbyrides", authenticateToken, async (req, res, next) => {
         return next(new BadRequestError());
     }
 
-    rideService.getNearbyRides(req.query).then(
+    rideService.getNearbyRides(req.user.userId, req.query).then(
         result => res.status(200).json(result)
     ).catch(next);
 });
@@ -273,11 +273,11 @@ app.post("/postride", authenticateToken, async (req, res, next) => {
     // consider not getting all the data from the query and instead only taking the latitude figures? Could cost an extra API call
     // check that driver doesn't already have a ride scheduled within 1-2 (?) hours/duration of this ride
     // mainTextFrom/mainTextTo probably needs to be fetched from google api instead to prevent malicious use
-
+    console.log(req.body);
     const { fromLatitude, fromLongitude, toLatitude,
         toLongitude, mainTextFrom,
         mainTextTo, pricePerSeat,
-        driver, datetime, car } = req.body;
+        driver, datetime, car, community } = req.body;
     const uid = req.user.userId;
 
     if (!fromLatitude || !fromLongitude || !toLatitude || !toLongitude ||
@@ -291,7 +291,7 @@ app.post("/postride", authenticateToken, async (req, res, next) => {
         fromLatitude, fromLongitude, toLatitude,
         toLongitude, mainTextFrom,
         mainTextTo, pricePerSeat,
-        driver, datetime, car, uid
+        driver, datetime, car, uid, community
     }).then(ride => {
         res.json(ride);
     }).catch(next);

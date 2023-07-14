@@ -2,12 +2,12 @@ const { Sequelize, Op, literal } = require('sequelize');
 const { Ride, Passenger, User, sequelize, License } = require('../models');
 const { NotFoundError, InternalServerError, BadRequestError, UnauthorizedError } = require("../errors/Errors")
 
-async function getNearbyRides({ startLng, startLat, endLng, endLat, date, gender, maxDistance }) {
-    let values = [startLat, startLng, startLat, endLat, endLng, endLat, date, gender];
+async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, gender, maxDistance }) {
+    let values = [startLat, startLng, startLat, endLat, endLng, endLat, uid, date, gender];
     let rideQuery = `SELECT *, 
   ( 6371 * acos( cos( radians(?) ) * cos( radians( fromLatitude ) ) * cos( radians( fromLongitude ) - radians(?) ) + sin( radians(?) ) * sin( radians( fromLatitude ) ) ) ) AS distanceStart,
   ( 6371 * acos( cos( radians(?) ) * cos( radians( toLatitude ) ) * cos( radians( toLongitude ) - radians(?) ) + sin( radians(?) ) * sin( radians( toLatitude ) ) ) ) AS distanceEnd 
-  FROM rides HAVING distanceStart <= 50 AND distanceEnd <= 50 AND datetime >= ? AND gender=? ORDER BY datetime, distanceStart, distanceEnd`;
+  FROM rides WHERE (CommunityID IN (SELECT CommunityId FROM CommunityMembers WHERE UserId=? AND joinStatus='APPROVED') OR CommunityID=null) AND datetime >= ? AND gender=? HAVING distanceStart <= 50 AND distanceEnd <= 50 ORDER BY datetime, distanceStart, distanceEnd`;
 
     const rideResult = await sequelize.query(rideQuery, {
         replacements: values,
@@ -78,7 +78,7 @@ async function bookRide({ uid, rideId, paymentMethod }) {
     return newPassenger;
 }
 
-async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, mainTextTo, pricePerSeat, driver, datetime, car }) {
+async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, mainTextTo, pricePerSeat, driver, datetime, car, community }) {
     try {
         const newRide = await Ride.create({
             fromLatitude: fromLatitude,
@@ -90,7 +90,8 @@ async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, 
             pricePerSeat: pricePerSeat,
             DriverId: driver,
             datetime: datetime,
-            CarId: car
+            CarId: car,
+            CommunityId: community
         });
 
         return newRide;
