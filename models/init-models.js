@@ -9,7 +9,6 @@ let _communities = require("./communities");
 let _communitymembers = require("./communitymembers");
 let _licenses = require("./licenses");
 let _passengers = require("./passengers");
-let _ridecommunities = require("./ridecommunities");
 let _rides = require("./rides");
 let _users = require("./users");
 let _referrals = require("./referrals");
@@ -24,7 +23,6 @@ function initModels(sequelize) {
   let CommunityMember = _communitymembers(sequelize, DataTypes);
   let License = _licenses(sequelize, DataTypes);
   let Passenger = _passengers(sequelize, DataTypes);
-  let RideCommunity = _ridecommunities(sequelize, DataTypes);
   let Ride = _rides(sequelize, DataTypes);
   let User = _users(sequelize, DataTypes);
   let MobileWallet = _mobilewallets(sequelize, DataTypes);
@@ -34,14 +32,11 @@ function initModels(sequelize) {
   User.belongsToMany(Community, { as: 'Communities', through: CommunityMember });
   Community.belongsToMany(User, { as: 'Member', through: CommunityMember });
 
-  // Ride.belongsToMany(Community, { through: RideCommunity });
-  // Community.belongsToMany(Ride, { through: RideCommunity });
-
   Ride.belongsTo(Car);
   Car.hasMany(Ride);
 
-  Community.belongsTo(User);
-  User.hasMany(Community);
+  Community.belongsTo(User, {as: 'Owner'});
+  User.hasMany(Community, { as: 'Administrated' });
 
   Ride.belongsToMany(User, { as: 'Passengers', through: Passenger });
   User.belongsToMany(Ride, { as: 'Rides', through: Passenger });
@@ -94,7 +89,6 @@ function initModels(sequelize) {
     Community,
     License,
     Passenger,
-    RideCommunity,
     Ride,
     User,
     CommunityMember,

@@ -106,6 +106,7 @@ async function userInfo({uid}) {
 
 async function refreshToken({ refreshToken }) {
     try {
+        console.log("TRynA ACC");
         // Verify the refresh token
         const decoded = await jwt.verify(refreshToken, JWT_SECRET);
 
@@ -113,8 +114,11 @@ async function refreshToken({ refreshToken }) {
         const accessToken = jwt.sign({ userId: decoded.userId }, JWT_SECRET, { expiresIn: JWT_EXPIRATION });
 
         // Return the new access token
+        console.log("NEW ACC TOKEN SENT");
         return { accessToken };
     } catch (err) {
+        console.log("ACC ERR");
+        console.error(err);
         throw new UnauthorizedError('Invalid token');
     }
 }

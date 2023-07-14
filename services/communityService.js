@@ -8,7 +8,7 @@ async function createCommunity({ name, picture, description, private, uid }) {
             name: name
         }
     });
-    if(duplicateCommunity !== null) {
+    if (duplicateCommunity !== null) {
         throw new ConflictError("Community with this name already exists.");
         return;
     }
@@ -38,6 +38,7 @@ async function getUserCommunities({ uid }) {
         include: [
             {
                 model: Community,
+                as: 'Communities',
                 attributes: ['id', 'picture', 'name']
             }
         ]
@@ -63,7 +64,7 @@ async function getCommunityDetails({ communityId, uid }) {
         ]
     });
 
-    if(communityDetails === null) {
+    if (communityDetails === null) {
         throw new NotFoundError("Community not found");
     }
 
@@ -71,49 +72,52 @@ async function getCommunityDetails({ communityId, uid }) {
 }
 
 async function getUserFeed({ uid, communityId, page }) {
-    const feed = await Ride.findAll({
-        where: {
-            datetime: {
-                [Op.gt]: new Date(),
-            },
-        },
-        attributes: [
-            ['id', 'ride_id'],
-            'mainTextFrom',
-            'mainTextTo',
-            'pricePerSeat',
-            'datetime',
-            [sequelize.literal('(SELECT COUNT(*) FROM passengers WHERE RideId = Ride.id)'), 'seatsOccupied']
-        ],
-        include: [
-            {
-                model: Community,
-                through: {
-                    model: RideCommunity,
-                    where: communityId ? { CommunityId: communityId } : undefined
+    const feed = await
+        Ride.findAll({
+            where: {
+                datetime: {
+                    [Op.gt]: new Date(),
                 },
+            },
+            attributes: [
+                ['id', 'ride_id'],
+                'mainTextFrom',
+                'mainTextTo',
+                'pricePerSeat',
+                'datetime',
+                [sequelize.literal('(SELECT COUNT(*) FROM passengers WHERE RideId = Ride.id)'), 'seatsOccupied']
+            ],
+            include: [{
+                model: Community,
+                required: true,
                 attributes: [['name', 'community_name']],
-                include: [
-                    {
-                        model: User,
-                        where: {
-                            id: uid,
-                        },
-                    },
-                ],
+                include: [{
+                    model: User,
+                    required: true,
+                    as: 'Member',
+                    attributes: [],
+                    where: {
+                        id: uid
+                    }
+                }]
             },
             {
                 model: User,
-                attributes: ['firstName', 'lastName'],
                 as: 'Driver',
-            },
-        ],
-        order: [['datetime', 'DESC']],
-        limit: 3,
-        offset: (page - 1) * 3
-    })
+                required: true,
+                attributes: ['firstName', 'lastName'],
+            }
+            ],
+            order: [['datetime', 'DESC']],
+            limit: 3,
+            offset: (page - 1) * 3
+        });
+
+
     return feed;
 }
+
+
 
 async function searchCommunities({ name, page }) {
     const communities = await Community.findAll({
@@ -131,7 +135,7 @@ async function searchCommunities({ name, page }) {
 
 async function joinCommunity({ uid, communityId, answer }) {
     const community = await Community.findByPk(communityId);
-    if(community === null) {
+    if (community === null) {
         throw new NotFoundError();
     }
     if (community.private) {
