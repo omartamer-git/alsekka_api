@@ -15,6 +15,14 @@ module.exports = function(sequelize, DataTypes) {
       type: DataTypes.TEXT,
       allowNull: false
     },
+    from: {
+      type: DataTypes.DATE,
+      allowNull: false
+    },
+    to: {
+      type: DataTypes.DATE,
+      allowNull: false
+    },
     active: {
       type: DataTypes.TINYINT,
       allowNull: false,

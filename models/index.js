@@ -17,7 +17,7 @@ const sequelize = new Sequelize(dbConfig.DB, dbConfig.USER, dbConfig.PASSWORD, {
 
 const models = initModels(sequelize);
 
-// sequelize.sync({ force: true }).then(() => {
+// sequelize.sync({ alter: true }).then(() => {
 //     console.log("Database is synchronized");
 // });
 

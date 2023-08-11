@@ -15,6 +15,11 @@ module.exports = function(sequelize, DataTypes) {
       type: DataTypes.ENUM('REQUESTED', 'CONFIRMED', 'REJECTED', 'ENROUTE', 'ARRIVED', 'CANCELLED', 'NOSHOW'),
       allowNull: false,
       defaultValue: 'CONFIRMED'
+    },
+    seats: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 1
     }
   }, {
     sequelize,

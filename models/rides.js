@@ -48,6 +48,11 @@ module.exports = function(sequelize, DataTypes) {
       type: DataTypes.ENUM('MALE', 'FEMALE', 'ANY'),
       allowNull: false,
       defaultValue: 'ANY'
+    },
+    seatsAvailable: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 3
     }
   }, {
     sequelize,

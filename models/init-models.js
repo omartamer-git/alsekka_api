@@ -12,6 +12,7 @@ let _passengers = require("./passengers");
 let _rides = require("./rides");
 let _users = require("./users");
 let _referrals = require("./referrals");
+let _staff = require("./staff");
 
 function initModels(sequelize) {
   let Announcement = _announcements(sequelize, DataTypes);
@@ -27,22 +28,30 @@ function initModels(sequelize) {
   let User = _users(sequelize, DataTypes);
   let MobileWallet = _mobilewallets(sequelize, DataTypes);
   let Referral = _referrals(sequelize, DataTypes);
+  let Staff = _staff(sequelize, DataTypes);
 
 
   User.belongsToMany(Community, { as: 'Communities', through: CommunityMember });
   Community.belongsToMany(User, { as: 'Member', through: CommunityMember });
 
+  CommunityMember.belongsTo(User);
+  User.hasMany(CommunityMember);
+
+
   Ride.belongsTo(Car);
   Car.hasMany(Ride);
 
-  Community.belongsTo(User, {as: 'Owner'});
-  User.hasMany(Community, { as: 'Administrated' });
+  Community.belongsTo(User, {as: 'Owner', foreignKey: "OwnerId"});
+  User.hasMany(Community, { as: 'Administrated', foreignKey: "OwnerId" });
 
   Ride.belongsToMany(User, { as: 'Passengers', through: Passenger });
   User.belongsToMany(Ride, { as: 'Rides', through: Passenger });
 
   Passenger.belongsTo(Ride);
   Ride.hasMany(Passenger);
+
+  Card.hasMany(Passenger);
+  Passenger.belongsTo(Card);
 
   Passenger.belongsTo(User);
   User.hasMany(Passenger);
@@ -93,6 +102,7 @@ function initModels(sequelize) {
     User,
     CommunityMember,
     Referral,
+    Staff,
     sequelize,
   };
 }

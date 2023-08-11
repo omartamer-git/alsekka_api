@@ -6,7 +6,7 @@ async function getCars({uid, approved}) {
     const carsQuery = await Car.findAll({
         where: {
             UserId: uid,
-            ...(approved && { approved: 'APPROVED' }),
+            ...(approved && { status: 'APPROVED' }),
         },
     });
 
