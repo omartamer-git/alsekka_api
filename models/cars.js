@@ -26,6 +26,14 @@ module.exports = function (sequelize, DataTypes) {
         isAlpha: true
       }
     },
+    issuedate: {
+      type: DataTypes.DATEONLY,
+      allowNull: true
+    },
+    expirydate: {
+      type: DataTypes.DATEONLY,
+      allowNull: true
+    },
     licensePlateLetters: {
       type: DataTypes.STRING(4),
       allowNull: false
@@ -42,7 +50,7 @@ module.exports = function (sequelize, DataTypes) {
       type: DataTypes.TEXT,
       allowNull: false
     },
-    approved: {
+    status: {
       type: DataTypes.ENUM('PENDING', 'APPROVED', 'REJECTED'),
       allowNull: false,
       defaultValue: "PENDING"
@@ -63,6 +71,13 @@ module.exports = function (sequelize, DataTypes) {
     defaultScope: {
       attributes: {
         exclude: ['license_front', 'license_back']
+      }
+    },
+    scopes: {
+      staff: {
+        attributes: {
+          exclude: []
+        }
       }
     }
   });

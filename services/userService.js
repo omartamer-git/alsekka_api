@@ -29,7 +29,6 @@ async function createUser({ fname, lname, phone, email, password, gender }) {
     }
 
     const phoneAvailable = await accountAvailable(phone, undefined);
-    console.log(phoneAvailable);
     if (!phoneAvailable) {
         throw new ConflictError("Phone number is already in use")
     }
@@ -106,7 +105,6 @@ async function userInfo({uid}) {
 
 async function refreshToken({ refreshToken }) {
     try {
-        console.log("TRynA ACC");
         // Verify the refresh token
         const decoded = await jwt.verify(refreshToken, JWT_SECRET);
 
@@ -114,10 +112,8 @@ async function refreshToken({ refreshToken }) {
         const accessToken = jwt.sign({ userId: decoded.userId }, JWT_SECRET, { expiresIn: JWT_EXPIRATION });
 
         // Return the new access token
-        console.log("NEW ACC TOKEN SENT");
         return { accessToken };
     } catch (err) {
-        console.log("ACC ERR");
         console.error(err);
         throw new UnauthorizedError('Invalid token');
     }
@@ -127,8 +123,6 @@ let otpCodes = {};
 setInterval(() => {
     for (const [uid, codeObj] of Object.entries(otpCodes)) {
         if (codeObj.expiry > new Date()) {
-            console.log("OTP DELETED");
-            console.log(codeObj);
             delete otpCodes[uid];
         }
     }
@@ -160,7 +154,6 @@ async function getOtp( phone ) {
             mobile: "2" + user.phone,
             otp: otp
         };
-        console.log(body);
         const response = await axios.post("https://smsmisr.com/api/OTP/", body, {
             headers: {
                 'Content-Type': 'application/json'
@@ -198,7 +191,7 @@ async function verifyUser(phone) {
 }
 
 async function uploadProfilePicture(uid, file) {
-    const imageUrl = await uploadImage(uid, file);
+    const imageUrl = await uploadImage(file);
     const user = await User.findByPk(uid);
     user.profilePicture = imageUrl;
     user.save();
@@ -385,7 +378,6 @@ async function updatePhone({ uid, phone }) {
 
 async function updatePassword(phone, newPassword) {
     try {
-        console.log(phone);
         const user = await User.scope('auth').findOne({where: {
             phone: phone
         }});
@@ -396,12 +388,9 @@ async function updatePassword(phone, newPassword) {
             user.save();
             return true;
         } catch (e) {
-            console.log(e);
-            console.log(user);
             throw new InternalServerError();
         }
     } catch (err) {
-        console.log(err);
         throw new NotFoundError("User not found");
     }
 }

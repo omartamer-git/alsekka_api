@@ -1,24 +1,63 @@
 const { Op } = require("sequelize");
 const { Community, User, Ride, sequelize, RideCommunity, CommunityMember } = require("../models");
-const { BadRequestError, NotAcceptableError, NotFoundError, ConflictError } = require("../errors/Errors")
+const { BadRequestError, NotAcceptableError, NotFoundError, ConflictError, UnauthorizedError } = require("../errors/Errors");
+const { uploadImage } = require("../helper");
 
-async function createCommunity({ name, picture, description, private, uid }) {
-    const duplicateCommunity = Community.findOne({
+async function createCommunity({ name, description, private, joinQuestion }, picture, uid) {
+    const duplicateCommunity = await Community.findOne({
         where: {
             name: name
         }
     });
+
     if (duplicateCommunity !== null) {
         throw new ConflictError("Community with this name already exists.");
         return;
     }
-    const community = Community.create({
+
+    const imageUrl = await uploadImage(picture);
+    const t = await sequelize.transaction();
+
+    const community = await Community.create({
         name: name,
-        picture: picture,
+        picture: imageUrl,
         description: description,
         private: private,
-        UserId: uid
-    });
+        joinQuestion: joinQuestion || null,
+        OwnerId: uid
+    }, { transaction: t });
+
+    const member = await CommunityMember.create({
+        joinAnswer: 'Founder',
+        joinStatus: 'APPROVED',
+        UserId: uid,
+        CommunityId: community.id
+    }, { transaction: t });
+
+    await t.commit();
+
+    return community;
+}
+
+async function updateCommunity({ communityId, description, private, joinQuestion }, picture, uid) {
+    const community = await Community.findByPk(communityId);
+
+    if (community.OwnerId !== uid) {
+        throw new UnauthorizedError();
+    }
+
+    let imageUrl = community.picture;
+
+    if (picture) {
+        imageUrl = await uploadImage(picture);
+    }
+
+    community.description = description;
+    community.private = private;
+    community.joinQuestion = private === 1 ? joinQuestion : null;
+    community.picture = imageUrl;
+
+    community.save();
 
     return community;
 }
@@ -85,7 +124,7 @@ async function getUserFeed({ uid, communityId, page }) {
                 'mainTextTo',
                 'pricePerSeat',
                 'datetime',
-                [sequelize.literal('(SELECT COUNT(*) FROM passengers WHERE RideId = Ride.id)'), 'seatsOccupied']
+                [sequelize.literal('(SELECT SUM(seats) FROM passengers WHERE RideId = Ride.id AND status != "CANCELLED")'), 'seatsOccupied']
             ],
             include: [{
                 model: Community,
@@ -117,6 +156,78 @@ async function getUserFeed({ uid, communityId, page }) {
     return feed;
 }
 
+async function leaveCommunity({ communityId }, uid) {
+    const member = await CommunityMember.findOne({
+        where: {
+            CommunityId: communityId,
+            UserId: uid,
+            joinStatus: 'APPROVED'
+        }
+    });
+
+    if (!member) {
+        throw new UnauthorizedError();
+    }
+
+    member.destroy();
+}
+
+async function getCommunityMembers({ communityId }, uid) {
+    try {
+        const community = await Community.findByPk(communityId);
+
+        if (community.OwnerId !== uid) {
+            throw new UnauthorizedError();
+        }
+        console.log(community);
+        const members = await CommunityMember.findAll({
+            attributes: ['id', 'joinAnswer'],
+            where: {
+                CommunityId: communityId,
+                joinStatus: 'PENDING'
+            },
+            include: {
+                model: User,
+                attributes: ['firstName', 'lastName', 'profilePicture']
+            },
+            order: [['createdAt', 'DESC']]
+        });
+
+        return members;
+    } catch (e) {
+        console.error(e.stack);
+    }
+}
+
+async function acceptCommunityMember({ memberId }, uid) {
+    const member = await CommunityMember.findByPk(memberId);
+
+    const community = await Community.findByPk(member.CommunityId, {
+        attributes: ['OwnerId']
+    });
+
+    if (community.OwnerId !== uid) {
+        throw new UnauthorizedError();
+    }
+
+    member.joinStatus = 'APPROVED';
+    member.save();
+}
+
+async function rejectCommunityMember({ memberId }, uid) {
+    const member = await CommunityMember.findByPk(memberId);
+
+    const community = await Community.findByPk(member.CommunityId, {
+        attributes: ['OwnerId']
+    });
+
+    if (community.OwnerId !== uid) {
+        throw new UnauthorizedError();
+    }
+
+    member.joinStatus = 'REJECTED';
+    member.save();
+}
 
 
 async function searchCommunities({ name, page }) {
@@ -166,5 +277,10 @@ module.exports = {
     getUserFeed,
     searchCommunities,
     getCommunityDetails,
-    joinCommunity
+    joinCommunity,
+    updateCommunity,
+    leaveCommunity,
+    getCommunityMembers,
+    acceptCommunityMember,
+    rejectCommunityMember
 };

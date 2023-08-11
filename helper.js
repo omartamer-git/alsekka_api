@@ -1,16 +1,15 @@
 const { format } = require('url');
 
 
-function uploadImage(uid, file) {
+function uploadImage(file) {
     const util = require('util');
     const gc = require('./config/googlecloud.config');
     const bucket = gc.bucket('alsekka_profile_pics') // bucket name
-    console.log(file);
     return (
         new Promise((resolve, reject) => {
             const { buffer } = file
             const extHelper = file.originalname.split('.');
-            const originalname = uid + "_" + "profile_picture." + extHelper[extHelper.length - 1];
+            const originalname = crypto.randomUUID() + '.' + extHelper[extHelper.length - 1];
 
             const blob = bucket.file(originalname)
             const blobStream = blob.createWriteStream({
@@ -74,7 +73,6 @@ function generateOtp() {
 
 
 function getCardDetails(card) {
-    console.log(card);
     const typeIdentifier = card.cardNumber.charAt(0);
     let type = null;
     if (typeIdentifier == '2' || typeIdentifier == '5') {
@@ -87,6 +85,7 @@ function getCardDetails(card) {
 
     const finalNumbers = card.cardNumber.substring(12);
     const returnResult = {
+        id: card.id,
         type: type,
         number: finalNumbers
     };

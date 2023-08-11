@@ -14,7 +14,6 @@ async function getPredictions(text) {
     };
     const result = await axios.get(url, { params });
     const data = result.data;
-    console.log(data);
     for (let i = 0; i < data.predictions.length; i++) {
         pred.push([data.predictions[i].description, data.predictions[i].place_id]);
     }

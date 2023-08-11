@@ -1,5 +1,5 @@
 const express = require("express");
-// ADD CORS
+// const cors = require('cors');
 
 const mysql = require("mysql2");
 const bcrypt = require("bcrypt");
@@ -7,7 +7,22 @@ const bcrypt = require("bcrypt");
 const config = require("./config");
 const pool = require("./mysql-pool");
 const helper = require("./helper");
-const multer = require('multer')
+const multer = require('multer');
+const log4js = require("log4js");
+const userService = require("./services/userService");
+const rideService = require("./services/rideService");
+const carService = require("./services/carService");
+const appService = require("./services/appService");
+const communityService = require("./services/communityService");
+const chatService = require("./services/chatService");
+const cookieParser = require("cookie-parser");
+const jwt = require('jsonwebtoken');
+const { authenticateToken, sessionChecker } = require("./middleware/authenticateToken");
+const { JWT_SECRET, JWT_EXPIRATION } = require("./config/auth.config");
+const { getPredictions, geocode, getLocationFromPlaceId } = require("./services/googleMapsService");
+const { staffLogin, findUser, updateUser, customerLicenses, updateLicense, getPendingLicenses, updateCar, getPendingCars, getMembers, createStaffMember, getStaffMember, editStaffMember, getAllAnnouncements, updateAnnouncement, createAnnouncement, getFullRide, cancelRide } = require("./services/staffService");
+const session = require("express-session");
+
 
 const { BadRequestError, NotAcceptableError, UnauthorizedError } = require("./errors/Errors")
 const app = express();
@@ -22,6 +37,14 @@ const multerMid = multer({
 app.disable('x-powered-by')
 app.use(multerMid.single('file'))
 app.use(express.json());
+
+// app.use(cors());
+app.use(cookieParser());
+app.use(session({
+    secret: 'seschret_password_goes_brazy',
+    resave: false,
+    saveUninitialized: true,
+}));
 app.use(
     express.urlencoded({
         extended: true,
@@ -29,17 +52,7 @@ app.use(
 );
 
 
-const log4js = require("log4js");
-const userService = require("./services/userService");
-const rideService = require("./services/rideService");
-const carService = require("./services/carService");
-const appService = require("./services/appService");
-const communityService = require("./services/communityService");
-const chatService = require("./services/chatService");
-const jwt = require('jsonwebtoken');
-const authenticateToken = require("./middleware/authenticateToken");
-const { JWT_SECRET, JWT_EXPIRATION } = require("./config/auth.config");
-const { getPredictions, geocode, getLocationFromPlaceId } = require("./services/googleMapsService");
+
 
 log4js.configure({
     appenders: {
@@ -172,7 +185,6 @@ app.patch("/verify", async (req, res, next) => {
 
 app.patch("/verifysecurity", async (req, res, next) => {
     const { otp, phone } = req.body;
-    console.log(phone + " HELLO??");
     if (!phone || !otp) {
         return next(new BadRequestError());
     }
@@ -192,22 +204,17 @@ app.patch("/verifysecurity", async (req, res, next) => {
 app.patch("/changepassword", async (req, res, next) => {
     const { token, newPassword } = req.body;
 
-    console.log(req.body);
 
     if (!token || !newPassword) {
         return next(new BadRequestError());
     }
 
     jwt.verify(token, JWT_SECRET, (err, data) => {
-        console.log('here 1');
         if (err) {
             next(new UnauthorizedError());
         }
-        console.log('here 2');
-        console.log(data);
 
         userService.updatePassword(data.phone, newPassword).then(() => {
-            console.log("pw updated");
             res.status(200).send();
         }).catch(next);
     });
@@ -255,14 +262,18 @@ app.get("/ridedetails", authenticateToken, async (req, res, next) => {
 });
 
 app.get("/bookride", authenticateToken, async (req, res, next) => {
-    const { rideId, paymentMethod } = req.query;
+    const { rideId, paymentMethod, seats, cardId } = req.query;
     const uid = req.user.userId;
 
     if (!uid || !rideId || !paymentMethod) {
         return next(new BadRequestError());
     }
 
-    rideService.bookRide({ uid, rideId, paymentMethod }).then(
+    if(paymentMethod.type === 'CARD' && !cardId) {
+        return next(new BadRequestError());
+    }
+
+    rideService.bookRide({ uid, rideId, paymentMethod, seats, cardId }).then(
         newPassenger => {
             return res.json({ id: newPassenger.id })
         }
@@ -273,16 +284,15 @@ app.post("/postride", authenticateToken, async (req, res, next) => {
     // consider not getting all the data from the query and instead only taking the latitude figures? Could cost an extra API call
     // check that driver doesn't already have a ride scheduled within 1-2 (?) hours/duration of this ride
     // mainTextFrom/mainTextTo probably needs to be fetched from google api instead to prevent malicious use
-    console.log(req.body);
     const { fromLatitude, fromLongitude, toLatitude,
         toLongitude, mainTextFrom,
         mainTextTo, pricePerSeat,
-        driver, datetime, car, community } = req.body;
+        driver, datetime, car, community, gender, seatsAvailable } = req.body;
     const uid = req.user.userId;
 
     if (!fromLatitude || !fromLongitude || !toLatitude || !toLongitude ||
         !mainTextFrom || !mainTextTo || !pricePerSeat || !driver || !car ||
-        !datetime || !uid
+        !datetime || !uid || !gender || !seatsAvailable
     ) {
         return next(new BadRequestError());
     }
@@ -291,7 +301,7 @@ app.post("/postride", authenticateToken, async (req, res, next) => {
         fromLatitude, fromLongitude, toLatitude,
         toLongitude, mainTextFrom,
         mainTextTo, pricePerSeat,
-        driver, datetime, car, uid, community
+        driver, datetime, car, uid, community, gender, seatsAvailable
     }).then(ride => {
         res.json(ride);
     }).catch(next);
@@ -379,6 +389,18 @@ app.get("/cancelride", authenticateToken, async (req, res, next) => {
     }).catch(next);
 });
 
+app.get("/cancelpassenger", authenticateToken, async (req, res, next) => {
+    const {tripId} = req.query;
+
+    if(!tripId) {
+        return next(new BadRequestError());
+    }
+
+    rideService.cancelPassenger(req.query, req.user.userId).then(status => {
+        res.json({success: 1});
+    }).catch(next);
+});
+
 app.get("/startride", authenticateToken, async (req, res, next) => {
     const { tripId } = req.query;
 
@@ -409,8 +431,8 @@ app.get("/checkin", authenticateToken, async (req, res, next) => {
     ).catch(next);
 });
 
-app.get("/checkout", authenticateToken, async (req, res, next) => {
-    let { tripId, passenger, amountPaid, rating } = req.query;
+app.post("/checkout", authenticateToken, async (req, res, next) => {
+    let { tripId, passenger, amountPaid, rating } = req.body;
     const uid = req.user.userId;
 
     if (!tripId || !passenger || !amountPaid || !uid) {
@@ -521,14 +543,31 @@ app.get("/announcements", authenticateToken, async (req, res, next) => {
 });
 
 app.post("/createcommunity", authenticateToken, async (req, res, next) => {
-    const { name, picture, description, private } = req.body;
+    const { name, description, private, joinQuestion } = req.body;
+    const file = req.file;
     const uid = req.user.userId;
 
-    if (!name || !uid) {
+    if(!file || !name || !description || !private || (private===1 && !joinQuestion)) { 
         return next(new BadRequestError());
     }
+    
 
-    communityService.createCommunity({ name, picture, description, private, uid }).then(community => {
+    communityService.createCommunity({ name, description, private, joinQuestion }, file, uid).then(community => {
+        return res.json({ success: 1 });
+    }).catch(next);
+});
+
+
+app.patch("/updatecommunity", authenticateToken, async (req, res, next) => {
+    const { communityId, description, private, joinQuestion } = req.body;
+    const file = req.file;
+    const uid = req.user.userId;
+
+    if(!communityId || !description || !private || (private===1 && !joinQuestion)) { 
+        return next(new BadRequestError());
+    }
+    
+    communityService.updateCommunity(req.body, file, uid).then(community => {
         return res.json({ success: 1 });
     }).catch(next);
 });
@@ -543,6 +582,20 @@ app.get("/communities", authenticateToken, async (req, res, next) => {
 
     communityService.getCommunities({ uid, ...req.query }).then(communities => {
         res.json(communities);
+    }).catch(next);
+});
+
+app.patch("/leavecommunity", authenticateToken, async (req, res, next) => {
+    const {communityId} = req.body;
+
+    if(!communityId) {
+        return next(new BadRequestError());
+    }
+
+    const uid = req.user.userId;
+
+    communityService.leaveCommunity(req.body, uid).then(() => {
+        res.json({success: 1});
     }).catch(next);
 });
 
@@ -569,6 +622,34 @@ app.get("/communitydetails", authenticateToken, async (req, res, next) => {
     communityService.getCommunityDetails({ communityId, uid, ...req.query }).then(community => {
         return res.json(community);
     }).catch(next);
+});
+
+app.get("/communitymembers", authenticateToken, async(req, res, next) => {
+    const {communityId} = req.query;
+
+    if(!communityId) {
+        return next(new BadRequestError());
+    }
+
+    communityService.getCommunityMembers(req.query, req.user.userId).then(members => res.json(members)).catch(next);
+});
+
+app.patch("/acceptmember", authenticateToken, async(req, res, next) => {
+    const {memberId} = req.body;
+    if(!memberId) {
+        return next(new BadRequestError());
+    }
+
+    communityService.acceptCommunityMember(req.body, req.user.userId).then(() => res.json({success: 1})).catch(next);
+});
+
+app.patch("/rejectmember", authenticateToken, async(req, res, next) => {
+    const {memberId} = req.body;
+    if(!memberId) {
+        return next(new BadRequestError());
+    }
+
+    communityService.rejectCommunityMember(req.body, req.user.userId).then(() => res.json({success: 1})).catch(next);
 });
 
 app.get("/myfeed", authenticateToken, async (req, res, next) => {
@@ -636,7 +717,6 @@ app.get("/chathistory", authenticateToken, async (req, res, next) => {
 });
 
 app.get("/newmessages", authenticateToken, async (req, res, next) => {
-    console.log("new messages polled");
     const { receiver } = req.query;
     const uid = req.user.userId;
 
@@ -833,8 +913,196 @@ app.get("/getLocationFromPlaceId", authenticateToken, async (req, res, next) => 
     }).catch(next);
 });
 
+app.post("/staff/login", async (req, res, next) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+        return next(new BadRequestError());
+    }
+
+    staffLogin(req.body).then(response => {
+        req.session.profile = { loggedIn: true };
+        res.send("{}");
+    }).catch(next);
+});
+
+app.get("/staff/session", sessionChecker, async (req, res, next) => {
+    res.json({ success: 1 });
+});
+
+app.get("/staff/searchuser", sessionChecker, async (req, res, next) => {
+    const { phone } = req.query;
+
+    if (!phone) {
+        return next(new BadRequestError());
+    }
+
+    findUser(req.query).then(user => {
+        res.json(user);
+    }).catch(next);
+});
+
+app.get("/staff/userrides", sessionChecker, async (req, res, next) => {
+    let { uid, page } = req.query;
+
+    if (!uid) {
+        return next(new BadRequestError());
+    }
+
+    if (!page) {
+        page = 1;
+    }
+
+    const limit = 8;
+    const offset = (page - 1) * limit;
+    const after = null;
+    rideService.getPastRides({ uid, limit, after, offset }).then(rides => {
+        res.json(rides);
+    }).catch(next);
+});
+
+app.post("/staff/updateuser", sessionChecker, async (req, res, next) => {
+    if (!req.body.id) {
+        return next(new BadRequestError());
+    }
+
+    updateUser(req.body).then(newUser => res.json(newUser)).catch(next);
+});
+
+app.get("/staff/userlicenses", sessionChecker, async (req, res, next) => {
+    if (!req.query.uid) {
+        return next(new BadRequestError());
+    }
+
+    customerLicenses(req.query).then(licenses => {
+        res.json(licenses);
+    }).catch(next);
+});
+
+app.post("/staff/updatelicense", sessionChecker, async (req, res, next) => {
+    if (!req.body.id) {
+        return next(new BadRequestError());
+    }
+
+    updateLicense(req.body).then(license => {
+        res.json(license);
+    }).catch(next);
+});
+
+app.get("/staff/pendinglicenses", sessionChecker, async (req, res, next) => {
+    getPendingLicenses().then(licenses => {
+        res.json(licenses);
+    }).catch(next);
+});
+
+app.post("/staff/updatecar", sessionChecker, async (req, res, next) => {
+    if (!req.body.id) {
+        return next(new BadRequestError());
+    }
+
+    updateCar(req.body).then(car => {
+        res.json(car);
+    }).catch(next);
+});
+
+app.get("/staff/pendingcars", sessionChecker, async (req, res, next) => {
+    getPendingCars().then(cars => {
+        res.json(cars);
+    }).catch(next);
+});
+
+app.get("/staff/members", sessionChecker, async (req, res, next) => {
+    getMembers().then(members =>
+        res.json(members)
+    ).catch(next);
+});
+
+app.post("/staff/createuser", sessionChecker, async(req, res, next) => {
+    const {username, password, phone, role} = req.body;
+    if(!username || !password || !phone || !role) {
+        return next(new BadRequestError());
+    }
+
+    createStaffMember(req.body).then(() => {
+        res.json({success: true});
+    }).catch((err) => {
+        console.error(err);
+    });
+});
+
+app.get("/staff/memberdetails", sessionChecker, async(req, res, next) => {
+    const {id} = req.query;
+    if(!id) {
+        next(new BadRequestError());
+    }
+
+    getStaffMember(req.query).then(member => {
+        res.json(member);
+    }).catch(next);
+});
+
+app.post("/staff/editmember", sessionChecker, async(req, res, next) => {
+    if(!req.body.id) {
+        return next(new BadRequestError());
+    }
+
+    console.log(req.body);
+
+    editStaffMember(req.body).then(() => {
+        res.json({success: 1});
+    }).catch(next);
+});
+
+app.get("/staff/announcements", sessionChecker, async(req, res, next) => {
+    getAllAnnouncements().then(ann => {
+        res.json(ann);
+    }).catch(next);
+});
+
+app.post("/staff/updateannouncement", sessionChecker, async(req, res, next) => {
+    const {id} = req.body;
+    if(!id) {
+        return next(new BadRequestError());
+    }
+    console.log(req.body);
+    updateAnnouncement(req.body).then(() => {
+        res.json({success: 1});
+    }).catch(next);
+});
+
+app.post("/staff/createannouncement", sessionChecker, async(req, res, next) => {
+    const {title, text, from, to, active} = req.body;
+
+    if(!title || !text || !from || !to || !active) {
+        next(new BadRequestError());
+    }
+
+    createAnnouncement(req.body).then(() => {
+        res.json({success: 1});
+    }).catch(next);
+});
+
+app.get("/staff/ride", sessionChecker, async(req, res, next) => {
+    if(!req.query.id) {
+        return next(new BadRequestError());
+    }
+
+    getFullRide(req.query).then(ride => {
+        res.json(ride);
+    }).catch(next);
+});
+
+app.post("/staff/cancelride", sessionChecker, async(req, res, next) => {
+    const {id} = req.body;
+    if(!id) {
+        return next(new BadRequestError());
+    }
+
+    cancelRide(req.body).then(() => {
+        res.json({success: 1});
+    }).catch(next);
+})
+
 app.use((err, req, res, next) => {
-    console.error(err);
     res.status(err.status || 500).json({
         error: {
             message: err.message,

@@ -16,9 +16,19 @@ const authenticateToken = (req, res, next) => {
     }
 
     req.user = user;
-    // console.log(user);
     next();
   });
 };
 
-module.exports = authenticateToken;
+const sessionChecker = (req, res, next) => {
+  if (req.session.profile) {
+    next();
+  } else {
+    next(new UnauthorizedError());
+  }
+};
+
+module.exports = {
+  authenticateToken,
+  sessionChecker
+}
