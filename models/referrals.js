@@ -1,7 +1,7 @@
 const Sequelize = require('sequelize');
 
 module.exports = function (sequelize, DataTypes) {
-  return sequelize.define('Referral', {
+  return sequelize.define('referral', {
     id: {
       autoIncrement: true,
       type: DataTypes.INTEGER,
