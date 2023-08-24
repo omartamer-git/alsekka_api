@@ -22,9 +22,6 @@ module.exports = function (sequelize, DataTypes) {
     color: {
       type: DataTypes.STRING(20),
       allowNull: false,
-      validate: {
-        isAlpha: true
-      }
     },
     issuedate: {
       type: DataTypes.DATEONLY,

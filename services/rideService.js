@@ -1,13 +1,19 @@
 const { Sequelize, Op, literal } = require('sequelize');
-const { Ride, Passenger, User, sequelize, License, Car } = require('../models');
-const { NotFoundError, InternalServerError, BadRequestError, UnauthorizedError } = require("../errors/Errors")
+const { Ride, Passenger, User, sequelize, License, Car, Voucher } = require('../models');
+const { NotFoundError, InternalServerError, BadRequestError, UnauthorizedError, GoneError } = require("../errors/Errors")
 
 async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, gender, maxDistance }) {
+    let secondGender;
+    if (gender == "ANY") {
+        const user = await User.findByPk(uid);
+        secondGender = user.gender;
+    }
+
     let values = [startLat, startLng, startLat, endLat, endLng, endLat, uid, date, gender];
     let rideQuery = `SELECT *, 
   ( 6371 * acos( cos( radians(?) ) * cos( radians( fromLatitude ) ) * cos( radians( fromLongitude ) - radians(?) ) + sin( radians(?) ) * sin( radians( fromLatitude ) ) ) ) AS distanceStart,
   ( 6371 * acos( cos( radians(?) ) * cos( radians( toLatitude ) ) * cos( radians( toLongitude ) - radians(?) ) + sin( radians(?) ) * sin( radians( toLatitude ) ) ) ) AS distanceEnd 
-  FROM rides WHERE (CommunityID IN (SELECT CommunityId FROM CommunityMembers WHERE UserId=? AND joinStatus='APPROVED') OR CommunityID IS NULL) AND datetime >= ? AND gender=? HAVING distanceStart <= 50 AND distanceEnd <= 50 ORDER BY datetime, distanceStart, distanceEnd`;
+  FROM rides WHERE (CommunityID IN (SELECT CommunityId FROM CommunityMembers WHERE UserId=? AND joinStatus='APPROVED') OR CommunityID IS NULL) AND datetime >= ? AND (gender=? ${!secondGender ? "" : `OR gender='${secondGender}'`}) HAVING distanceStart <= 50 AND distanceEnd <= 50 ORDER BY datetime, distanceStart, distanceEnd`;
 
     const rideResult = await sequelize.query(rideQuery, {
         replacements: values,
@@ -19,7 +25,7 @@ async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, g
     let result = [];
     for (const ride of rideResult) {
         const countSeatsOccupied = await Passenger.sum('seats', {
-            where: { RideId: ride.id, status: {[Op.ne]: "CANCELLED"} }
+            where: { RideId: ride.id, status: { [Op.ne]: "CANCELLED" } }
         });
         result.push({
             "id": ride.id,
@@ -37,7 +43,6 @@ async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, g
 }
 
 async function getRideDetails({ rideId }) {
-
     const ride = await Ride.findByPk(rideId,
         {
             attributes: [
@@ -72,18 +77,101 @@ async function getRideDetails({ rideId }) {
     return ride;
 }
 
-async function bookRide({ uid, rideId, paymentMethod, cardId, seats }) {
+async function verifyVoucher({ code }, uid) {
+    const voucher = await Voucher.findOne({
+        where: {
+            code: code,
+            expiration: {
+                [Op.gte]: new Date()
+            }
+        }
+    });
+
+    if (voucher === null) {
+        throw new NotFoundError("Voucher code does not exist or may have expired");
+    }
+
+    if (voucher.maxUses > voucher.currentUses) {
+        if (voucher.singleUse == 1) {
+            const passengerQuery = await Passenger.findOne({
+                where: {
+                    UserId: uid,
+                    VoucherId: voucher.id
+                }
+            });
+
+            if (passengerQuery !== null) {
+                throw new GoneError("This voucher code can only be used once");
+            }
+        }
+
+
+        return {
+            id: voucher.id,
+            type: voucher.type,
+            value: voucher.value,
+            maxValue: voucher.maxValue
+        };
+    } else {
+        throw new GoneError("Voucher is no longer valid or has expired");
+    }
+}
+
+async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId }) {
     try {
+        const passengerCount = await Passenger.count({
+            where: {
+                RideId: rideId,
+                status: "CONFIRMED"
+            }
+        });
+
+        const ride = await Ride.findByPk(rideId);
+
+        if (passengerCount >= ride.seatsAvailable) {
+            throw new GoneError("Ride is full!");
+        }
+
+        if (ride.status != "SCHEDULED" || new Date(ride.datetime) < new Date()) {
+            throw new GoneError("Ride no longer available.");
+        }
+
+        if (voucherId) {
+            const voucher = await Voucher.findByPk(voucherId);
+            if (voucher === null) {
+                throw new NotFoundError();
+            }
+
+            if (new Date(voucher.expiration) >= new Date() && voucher.maxUses > voucher.currentUses) {
+                if (voucher.singleUse == 1) {
+                    const passengerQuery = await Passenger.findOne({
+                        where: {
+                            UserId: uid,
+                            VoucherId: voucher.id
+                        }
+                    });
+
+                    if (passengerQuery !== null) {
+                        throw new GoneError("This voucher code can only be used once");
+                    }
+                }
+            } else {
+                throw new GoneError("Voucher is no longer valid or has expired");
+            }
+        }
+
         const newPassenger = await Passenger.create({
             UserId: uid,
             RideId: rideId,
             paymentMethod: paymentMethod,
             status: 'REQUESTED',
             seats: seats || 1,
-            CardId: cardId || null
+            CardId: cardId || null,
+            VoucherId: voucherId || null
         });
         return newPassenger;
     } catch (err) {
+        console.error(err);
         throw new NotFoundError("Ride not found");
     }
 
@@ -252,14 +340,14 @@ async function cancelRide({ tripId }) {
     }
 }
 
-async function cancelPassenger({tripId}, userId) {
+async function cancelPassenger({ tripId }, userId) {
     const passenger = await Passenger.findOne({
         where: {
             RideId: tripId,
             UserId: userId
         }
     });
-    if(passenger == null) {
+    if (passenger == null) {
         throw new NotFoundError();
     }
 
@@ -440,5 +528,6 @@ module.exports = {
     checkIn,
     checkOut,
     noShow,
-    getPassengerDetails
+    getPassengerDetails,
+    verifyVoucher
 };

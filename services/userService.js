@@ -1,7 +1,7 @@
 const { Op } = require("sequelize");
-const { User, License, sequelize, Card, BankAccount, MobileWallet, Referral } = require("../models");
+const { User, License, sequelize, Card, BankAccount, MobileWallet, Referral, Withdrawal } = require("../models");
 const bcrypt = require("bcrypt");
-const { getCardDetails, checkCardNumber, generateOtp, addMinutes, uploadImage } = require("../helper");
+const { getCardDetails, checkCardNumber, generateOtp, addMinutes, uploadImage, uploadLicenseImage } = require("../helper");
 const { UnauthorizedError, NotFoundError, ConflictError, InternalServerError, NotAcceptableError, BadRequestError } = require("../errors/Errors");
 const { default: axios } = require("axios");
 const config = require("../config");
@@ -42,6 +42,7 @@ async function createUser({ fname, lname, phone, email, password, gender }) {
             email: email,
             password: hash,
             gender: gender,
+            profilePicture: gender === 'MALE' ? 'https://storage.googleapis.com/alsekka_profile_pics/default_male.png' : 'https://storage.googleapis.com/alsekka_profile_pics/default_female.png'
         });
         return newUser;
     } catch (e) {
@@ -215,13 +216,16 @@ async function addReferral(uid, {referralCode}) {
 
 async function submitLicense({ uid, frontSide, backSide }) {
     try {
+        const frontUrl = await uploadLicenseImage(frontSide);
+        const backUrl = await uploadLicenseImage(backSide);    
         const license = await License.create({
             UserId: uid,
-            front: frontSide,
-            back: backSide
+            front: frontUrl,
+            back: backUrl
         });
         return license;
     } catch (err) {
+        console.error(err);
         throw new NotFoundError("User not found");
     }
 
@@ -262,6 +266,32 @@ async function getWallet({ uid }) {
     return cards;
 }
 
+async function submitWithdrawalRequest({paymentMethodType, paymentMethodId}, uid) {
+    const user = await User.findByPk(uid);
+
+    console.log(paymentMethodType);
+    console.log(paymentMethodId);
+
+    const oldBalance = user.balance;
+    const newBalance = Math.min(0, oldBalance);
+
+    const t = await sequelize.transaction();
+
+    const withdrawal = await Withdrawal.create({
+        amount: oldBalance,
+        UserId: uid,
+        MobileWalletId: paymentMethodType === "WALLET" ? paymentMethodId : null,
+        BankAccountId: paymentMethodType === "BANK" ? paymentMethodId : null,
+    }, { transaction: t });
+
+    user.balance = newBalance;
+    await user.save({ transaction: t });
+
+    await t.commit();
+
+    return {balance: newBalance};
+}
+
 
 async function addBank({ uid, fullName, bankName, accNumber, swiftCode }) {
     try {
@@ -274,6 +304,7 @@ async function addBank({ uid, fullName, bankName, accNumber, swiftCode }) {
         });
         return bank;
     } catch (err) {
+        console.error(err);
         throw new NotFoundError("User not found");
     }
 }
@@ -419,5 +450,6 @@ module.exports = {
     userInfo,
     updatePassword,
     addReferral,
-    uploadProfilePicture
+    uploadProfilePicture,
+    submitWithdrawalRequest
 }

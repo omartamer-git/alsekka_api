@@ -163,11 +163,14 @@ async function getAllAnnouncements() {
     return announcements;
 }
 
-async function updateAnnouncement({id, title, text, from, to, active}) {
+async function updateAnnouncement({id, title_en, text_en, title_ar, text_ar, from, to, active}) {
     const announcement = await Announcement.findByPk(id);
 
-    announcement.title = title || announcement.title;
-    announcement.text = text || announcement.text;
+    announcement.title_en = title_en || announcement.title_en;
+    announcement.title_ar = title_ar || announcement.title_ar;
+    announcement.text_en = text_en || announcement.text_en;
+    announcement.text_ar = text_ar || announcement.text_ar;
+
     announcement.from = from || announcement.from;
     announcement.to = to || announcement.to;
     announcement.active = active || announcement.active;
@@ -176,8 +179,8 @@ async function updateAnnouncement({id, title, text, from, to, active}) {
     return true;
 }
 
-async function createAnnouncement({title, text, from, to, active}) {
-    await Announcement.create({title, text, from, to, active});
+async function createAnnouncement({title_en, title_ar, text_en, text_ar, from, to, active}) {
+    await Announcement.create({title_en, title_ar, text_en, text_ar, from, to, active});
     return true;
 }
 
