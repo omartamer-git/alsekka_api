@@ -1,10 +1,10 @@
 const { format } = require('url');
 
 
-function uploadImage(file) {
+function uploadImageToGoogleCloud(file, bucketName) {
     const util = require('util');
     const gc = require('./config/googlecloud.config');
-    const bucket = gc.bucket('alsekka_profile_pics') // bucket name
+    const bucket = gc.bucket(bucketName) // bucket name
     return (
         new Promise((resolve, reject) => {
             const { buffer } = file
@@ -26,6 +26,14 @@ function uploadImage(file) {
             }).end(buffer)
         })
     );
+}
+
+function uploadImage(file) {
+    return uploadImageToGoogleCloud(file, "alsekka_profile_pics");
+}
+
+function uploadLicenseImage(file) {
+    return uploadImageToGoogleCloud(file, "seaats_licenses");
 }
 
 function isValidEmail(email) {
@@ -103,5 +111,6 @@ module.exports = {
     checkCardNumber,
     generateOtp,
     addMinutes,
-    uploadImage
+    uploadImage,
+    uploadLicenseImage
 };

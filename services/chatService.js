@@ -1,4 +1,4 @@
-const { User, ChatMessage } = require("../models");
+const { User, ChatMessage, CustomerServiceConversation, CustomerServiceChat } = require("../models");
 const { Sequelize, Op, literal } = require('sequelize');
 const { NotFoundError } = require("../errors/Errors")
 
@@ -23,7 +23,7 @@ async function getChats({ uid }) {
         },
         attributes: [
             'senderId',
-            'receiverId', 
+            'receiverId',
         ],
         include: [
             {
@@ -78,19 +78,78 @@ async function getChatHistory({ uid, receiver, page }) {
                 }
             ]
         },
-        attributes: ['id', 'senderId', 'receiverId', 'message', 'createdAt'],
+        attributes: ['id', 'senderId', 'receiverId', 'message', 'messageread', 'createdAt'],
         limit: 10,
         offset: (page - 1) * 10,
         order: [['createdAt', 'DESC']]
     });
 
     for (const message of chatHistory) {
-        if(message.messageread !== 1) {
+        if (message.messageread !== 1) {
             message.messageread = 1;
             message.save();
         }
     }
     return chatHistory;
+}
+
+async function getCSChatHistory({ uid, page }) {
+    const convo = await CustomerServiceConversation.findOne({
+        where: {
+            UserId: uid,
+            active: 1
+        }
+    });
+
+    if (convo !== null) {
+        const chatHistory = await CustomerServiceChat.findAll({
+            where: {
+                CustomerServiceConversationId: convo.id,
+            },
+            attributes: ['id', 'message', 'messageread', 'sentByUser', 'createdAt'],
+            limit: 10,
+            offset: (page - 1) * 10,
+            order: [['createdAt', 'DESC']]
+        });
+
+        for (const message of chatHistory) {
+            if (MessageChannel.messageread !== 1) {
+                message.messageread = 1;
+                message.save();
+            }
+        }
+
+        return chatHistory;
+    }
+
+    return [];
+}
+
+async function getNewCSMessages({ uid }) {
+    let convo = await CustomerServiceConversation.findOne({
+        where: {
+            UserId: uid,
+            active: 1
+        }
+    });
+
+    const newMessages = await CustomerServiceChat.findAll({
+        where: {
+            sentByUser: false,
+            CustomerServiceConversationId: convo.id,
+            messageread: 0
+        },
+        attributes: ['id', 'message', 'messageread', 'createdAt'],
+        order: [['createdAt', 'DESC']]
+    });
+
+    for (const message of newMessages) {
+        if (message.messageread !== 1) {
+            message.messageread = 1;
+            message.save();
+        }
+    }
+    return newMessages;
 }
 
 async function getNewMessages({ uid, receiver }) {
@@ -100,17 +159,41 @@ async function getNewMessages({ uid, receiver }) {
             receiverId: uid,
             messageread: 0
         },
-        attributes: ['id', 'senderId', 'receiverId', 'message', 'createdAt'],
+        attributes: ['id', 'senderId', 'messageread', 'receiverId', 'message', 'createdAt'],
         order: [['createdAt', 'DESC']]
     });
 
     for (const message of newMessages) {
-        if(message.messageread !== 1) {
+        if (message.messageread !== 1) {
             message.messageread = 1;
-            message.save();    
+            message.save();
         }
     }
     return newMessages;
+}
+
+async function sendCSMessage({ uid, message }) {
+    let convo = await CustomerServiceConversation.findOne({
+        where: {
+            UserId: uid,
+            active: 1
+        }
+    });
+
+    if (convo === null) {
+        convo = await CustomerServiceConversation.create({
+            active: 1,
+            UserId: uid
+        });
+    }
+
+    const newMessage = await CustomerServiceChat.create({
+        message: message,
+        CustomerServiceConversationId: convo.id,
+        sentByUser: 1
+    });
+
+    return newMessage;
 }
 
 async function sendMessage({ uid, receiver, message }) {
@@ -121,7 +204,7 @@ async function sendMessage({ uid, receiver, message }) {
             message: message
         });
         return newMessage;
-    } catch(err) {
+    } catch (err) {
         throw new NotFoundError();
     }
 
@@ -132,5 +215,8 @@ module.exports = {
     sendMessage,
     getChats,
     getChatHistory,
-    getNewMessages
+    getNewMessages,
+    getCSChatHistory,
+    getNewCSMessages,
+    sendCSMessage
 };

@@ -1,5 +1,5 @@
 const Sequelize = require('sequelize');
-module.exports = function(sequelize, DataTypes) {
+module.exports = function (sequelize, DataTypes) {
   return sequelize.define('User', {
     id: {
       autoIncrement: true,
@@ -44,12 +44,12 @@ module.exports = function(sequelize, DataTypes) {
       allowNull: false,
     },
     balance: {
-      type: DataTypes.DECIMAL(10,2),
+      type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
       defaultValue: 0.00
     },
     rating: {
-      type: DataTypes.DECIMAL(4,3),
+      type: DataTypes.DECIMAL(4, 3),
       allowNull: false,
       defaultValue: 5.000
     },
@@ -61,7 +61,7 @@ module.exports = function(sequelize, DataTypes) {
     profilePicture: {
       type: DataTypes.TEXT,
       allowNull: false,
-      defaultValue: "https:\/\/i.pinimg.com\/564x\/1f\/0b\/ed\/1f0bedce4d40a21bd6106bd66915c2b9.jpg"
+      defaultValue: 'https://storage.googleapis.com/alsekka_profile_pics/default_male.png'
     },
     verified: {
       type: DataTypes.BOOLEAN,

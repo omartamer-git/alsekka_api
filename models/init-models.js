@@ -13,6 +13,10 @@ let _rides = require("./rides");
 let _users = require("./users");
 let _referrals = require("./referrals");
 let _staff = require("./staff");
+let _withdrawals = require("./withdrawals");
+let _vouchers = require("./vouchers");
+let _customerservicechats = require("./customerservicechats");
+let _customerserviceconversations = require("./customerserviceconversations");
 
 function initModels(sequelize) {
   let Announcement = _announcements(sequelize, DataTypes);
@@ -29,6 +33,10 @@ function initModels(sequelize) {
   let MobileWallet = _mobilewallets(sequelize, DataTypes);
   let Referral = _referrals(sequelize, DataTypes);
   let Staff = _staff(sequelize, DataTypes);
+  let Withdrawal = _withdrawals(sequelize, DataTypes);
+  let Voucher = _vouchers(sequelize, DataTypes);
+  let CustomerServiceChat = _customerservicechats(sequelize, DataTypes);
+  let CustomerServiceConversation = _customerserviceconversations(sequelize, DataTypes);
 
 
   User.belongsToMany(Community, { as: 'Communities', through: CommunityMember });
@@ -37,6 +45,14 @@ function initModels(sequelize) {
   CommunityMember.belongsTo(User);
   User.hasMany(CommunityMember);
 
+  User.hasMany(Withdrawal);
+  Withdrawal.belongsTo(User);
+
+  MobileWallet.hasMany(Withdrawal);
+  Withdrawal.belongsTo(MobileWallet);
+
+  BankAccount.hasMany(Withdrawal);
+  Withdrawal.belongsTo(BankAccount);
 
   Ride.belongsTo(Car);
   Car.hasMany(Ride);
@@ -49,6 +65,9 @@ function initModels(sequelize) {
 
   Passenger.belongsTo(Ride);
   Ride.hasMany(Passenger);
+
+  Passenger.belongsTo(Voucher);
+  Voucher.hasMany(Passenger);
 
   Card.hasMany(Passenger);
   Passenger.belongsTo(Card);
@@ -66,6 +85,15 @@ function initModels(sequelize) {
   User.hasMany(ChatMessage, { as: "Sent", foreignKey: "SenderId" });
   ChatMessage.belongsTo(User, { as: "Receiver", foreignKey: "ReceiverId" });
   User.hasMany(ChatMessage, { as: "Received", foreignKey: "ReceiverId" });
+
+  CustomerServiceChat.belongsTo(CustomerServiceConversation);
+  CustomerServiceConversation.hasMany(CustomerServiceChat);
+
+  CustomerServiceConversation.belongsTo(Staff);
+  Staff.hasMany(CustomerServiceConversation);
+
+  CustomerServiceConversation.belongsTo(User);
+  User.hasMany(CustomerServiceConversation);
 
   License.belongsTo(User);
   User.hasMany(License);
@@ -103,6 +131,10 @@ function initModels(sequelize) {
     CommunityMember,
     Referral,
     Staff,
+    Withdrawal,
+    Voucher,
+    CustomerServiceChat,
+    CustomerServiceConversation,
     sequelize,
   };
 }

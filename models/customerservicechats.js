@@ -1,28 +1,25 @@
 const Sequelize = require('sequelize');
-module.exports = function (sequelize, DataTypes) {
-  return sequelize.define('BankAccount', {
+module.exports = function(sequelize, DataTypes) {
+  return sequelize.define('CustomerServiceChat', {
     id: {
       autoIncrement: true,
       type: DataTypes.INTEGER,
       allowNull: false,
       primaryKey: true
     },
-    fullName: {
-      type: DataTypes.STRING(60),
-      allowNull: false,
-    },
-    bankName: {
-      type: DataTypes.STRING(50),
-      allowNull: false,
-    },
-    accNumber: {
-      type: DataTypes.STRING(34),
+    message: {
+      type: DataTypes.TEXT,
       allowNull: false
     },
-    swiftCode: {
-      type: DataTypes.STRING(11),
-      allowNull: false
+    sentByUser: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false
     },
+    messageread: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: 0
+    }
   }, {
     sequelize,
     timestamps: true,

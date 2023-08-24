@@ -35,7 +35,8 @@ const multerMid = multer({
 })
 
 app.disable('x-powered-by')
-app.use(multerMid.single('file'))
+// app.use(multerMid.single('file'))
+app.use(multerMid.any());
 app.use(express.json());
 
 // app.use(cors());
@@ -125,11 +126,11 @@ app.get("/login", async (req, res, next) => {
 
 app.post('/uploadprofilepicture', authenticateToken, async (req, res, next) => {
     try {
-        if (!req.file) {
+        if (!req.files) {
             return next(new BadRequestError());
         }
 
-        userService.uploadProfilePicture(req.user.userId, req.file).then(response => {
+        userService.uploadProfilePicture(req.user.userId, req.files[0]).then(response => {
             res.json(response);
         }).catch(next);
     } catch (error) {
@@ -262,18 +263,18 @@ app.get("/ridedetails", authenticateToken, async (req, res, next) => {
 });
 
 app.get("/bookride", authenticateToken, async (req, res, next) => {
-    const { rideId, paymentMethod, seats, cardId } = req.query;
+    const { rideId, paymentMethod, seats, cardId, voucherId } = req.query;
     const uid = req.user.userId;
 
     if (!uid || !rideId || !paymentMethod) {
         return next(new BadRequestError());
     }
 
-    if(paymentMethod.type === 'CARD' && !cardId) {
+    if (paymentMethod.type === 'CARD' && !cardId) {
         return next(new BadRequestError());
     }
 
-    rideService.bookRide({ uid, rideId, paymentMethod, seats, cardId }).then(
+    rideService.bookRide({ uid, rideId, paymentMethod, seats, cardId, voucherId }).then(
         newPassenger => {
             return res.json({ id: newPassenger.id })
         }
@@ -390,14 +391,14 @@ app.get("/cancelride", authenticateToken, async (req, res, next) => {
 });
 
 app.get("/cancelpassenger", authenticateToken, async (req, res, next) => {
-    const {tripId} = req.query;
+    const { tripId } = req.query;
 
-    if(!tripId) {
+    if (!tripId) {
         return next(new BadRequestError());
     }
 
     rideService.cancelPassenger(req.query, req.user.userId).then(status => {
-        res.json({success: 1});
+        res.json({ success: 1 });
     }).catch(next);
 });
 
@@ -499,14 +500,16 @@ app.post("/newcar", authenticateToken, async (req, res, next) => {
 });
 
 app.post("/submitlicense", authenticateToken, async (req, res, next) => {
-    const { frontSide, backSide } = req.body;
+    const front = req.files[0];
+    const back = req.files[1];
+    // console.log(req);
     const uid = req.user.userId;
 
-    if (!uid || !frontSide || !backSide) {
+    if (!front || !back) {
         return next(new BadRequestError());
     }
 
-    userService.submitLicense({ uid, frontSide, backSide }).then(license => {
+    userService.submitLicense({ uid, frontSide: front, backSide: back }).then(license => {
         return res.json(license);
     }).catch(next);
 });
@@ -544,13 +547,13 @@ app.get("/announcements", authenticateToken, async (req, res, next) => {
 
 app.post("/createcommunity", authenticateToken, async (req, res, next) => {
     const { name, description, private, joinQuestion } = req.body;
-    const file = req.file;
+    const file = req.files[0];
     const uid = req.user.userId;
 
-    if(!file || !name || !description || !private || (private===1 && !joinQuestion)) { 
+    if (!file || !name || !description || !private || (private === 1 && !joinQuestion)) {
         return next(new BadRequestError());
     }
-    
+
 
     communityService.createCommunity({ name, description, private, joinQuestion }, file, uid).then(community => {
         return res.json({ success: 1 });
@@ -560,13 +563,13 @@ app.post("/createcommunity", authenticateToken, async (req, res, next) => {
 
 app.patch("/updatecommunity", authenticateToken, async (req, res, next) => {
     const { communityId, description, private, joinQuestion } = req.body;
-    const file = req.file;
+    const file = req.files[0];
     const uid = req.user.userId;
 
-    if(!communityId || !description || !private || (private===1 && !joinQuestion)) { 
+    if (!communityId || !description || !private || (private === 1 && !joinQuestion)) {
         return next(new BadRequestError());
     }
-    
+
     communityService.updateCommunity(req.body, file, uid).then(community => {
         return res.json({ success: 1 });
     }).catch(next);
@@ -586,16 +589,16 @@ app.get("/communities", authenticateToken, async (req, res, next) => {
 });
 
 app.patch("/leavecommunity", authenticateToken, async (req, res, next) => {
-    const {communityId} = req.body;
+    const { communityId } = req.body;
 
-    if(!communityId) {
+    if (!communityId) {
         return next(new BadRequestError());
     }
 
     const uid = req.user.userId;
 
     communityService.leaveCommunity(req.body, uid).then(() => {
-        res.json({success: 1});
+        res.json({ success: 1 });
     }).catch(next);
 });
 
@@ -624,32 +627,32 @@ app.get("/communitydetails", authenticateToken, async (req, res, next) => {
     }).catch(next);
 });
 
-app.get("/communitymembers", authenticateToken, async(req, res, next) => {
-    const {communityId} = req.query;
+app.get("/communitymembers", authenticateToken, async (req, res, next) => {
+    const { communityId } = req.query;
 
-    if(!communityId) {
+    if (!communityId) {
         return next(new BadRequestError());
     }
 
     communityService.getCommunityMembers(req.query, req.user.userId).then(members => res.json(members)).catch(next);
 });
 
-app.patch("/acceptmember", authenticateToken, async(req, res, next) => {
-    const {memberId} = req.body;
-    if(!memberId) {
+app.patch("/acceptmember", authenticateToken, async (req, res, next) => {
+    const { memberId } = req.body;
+    if (!memberId) {
         return next(new BadRequestError());
     }
 
-    communityService.acceptCommunityMember(req.body, req.user.userId).then(() => res.json({success: 1})).catch(next);
+    communityService.acceptCommunityMember(req.body, req.user.userId).then(() => res.json({ success: 1 })).catch(next);
 });
 
-app.patch("/rejectmember", authenticateToken, async(req, res, next) => {
-    const {memberId} = req.body;
-    if(!memberId) {
+app.patch("/rejectmember", authenticateToken, async (req, res, next) => {
+    const { memberId } = req.body;
+    if (!memberId) {
         return next(new BadRequestError());
     }
 
-    communityService.rejectCommunityMember(req.body, req.user.userId).then(() => res.json({success: 1})).catch(next);
+    communityService.rejectCommunityMember(req.body, req.user.userId).then(() => res.json({ success: 1 })).catch(next);
 });
 
 app.get("/myfeed", authenticateToken, async (req, res, next) => {
@@ -743,6 +746,37 @@ app.get("/sendmessage", authenticateToken, async (req, res, next) => {
     }).catch(next);
 });
 
+app.get("/cschathistory", authenticateToken, async (req, res, next) => {
+    let { page } = req.query;
+
+    if(!page) {
+        page = 1;
+    }
+
+    const uid = req.user.userId;
+
+    chatService.getCSChatHistory({uid, page}).then(chatHistory => {
+        res.json(chatHistory);
+    }).catch(next);
+});
+
+app.get("/newcsmessages", authenticateToken, async(req, res, next) => {
+    const uid = req.user.userId;
+
+    chatService.getNewCSMessages({uid}).then(newMessages => {
+        res.json(newMessages);
+    }).catch(next);
+});
+
+app.get("/sendcsmessage", authenticateToken, async(req, res, next) => {
+    const {message} = req.query;
+    const uid = req.user.userId;
+
+    chatService.sendCSMessage({uid, message}).then(newMessage => {
+        res.json(newMessage);
+    }).catch(next);
+});
+
 
 app.post("/bankaccount", authenticateToken, async (req, res, next) => {
     const { fullName, bankName, accNumber, swiftCode } = req.body;
@@ -767,6 +801,20 @@ app.get("/banks", authenticateToken, async (req, res, next) => {
 
     userService.getBanks({ uid, ...req.query }).then(banks => {
         return res.json(banks);
+    }).catch(next);
+});
+
+app.post("/withdrawalrequest", authenticateToken, async (req, res, next) => {
+    const { paymentMethodType, paymentMethodId } = req.body;
+
+    if (!paymentMethodId || !paymentMethodType) {
+        return next(new BadRequestError());
+    }
+
+    const uid = req.user.userId;
+
+    userService.submitWithdrawalRequest(req.body, uid).then(withdrawal => {
+        res.json(withdrawal)
     }).catch(next);
 });
 
@@ -913,6 +961,20 @@ app.get("/getLocationFromPlaceId", authenticateToken, async (req, res, next) => 
     }).catch(next);
 });
 
+app.get("/verifyvoucher", authenticateToken, async (req, res, next) => {
+    const { code } = req.query;
+
+    if(!code) {
+        throw new BadRequestError("Voucher code is required");
+    }
+
+    const uid = req.user.userId;
+
+    rideService.verifyVoucher(req.query, uid).then(voucher => {
+        res.json(voucher);
+    }).catch(next);
+});
+
 app.post("/staff/login", async (req, res, next) => {
     const { username, password } = req.body;
     if (!username || !password) {
@@ -1016,22 +1078,22 @@ app.get("/staff/members", sessionChecker, async (req, res, next) => {
     ).catch(next);
 });
 
-app.post("/staff/createuser", sessionChecker, async(req, res, next) => {
-    const {username, password, phone, role} = req.body;
-    if(!username || !password || !phone || !role) {
+app.post("/staff/createuser", sessionChecker, async (req, res, next) => {
+    const { username, password, phone, role } = req.body;
+    if (!username || !password || !phone || !role) {
         return next(new BadRequestError());
     }
 
     createStaffMember(req.body).then(() => {
-        res.json({success: true});
+        res.json({ success: true });
     }).catch((err) => {
         console.error(err);
     });
 });
 
-app.get("/staff/memberdetails", sessionChecker, async(req, res, next) => {
-    const {id} = req.query;
-    if(!id) {
+app.get("/staff/memberdetails", sessionChecker, async (req, res, next) => {
+    const { id } = req.query;
+    if (!id) {
         next(new BadRequestError());
     }
 
@@ -1040,49 +1102,49 @@ app.get("/staff/memberdetails", sessionChecker, async(req, res, next) => {
     }).catch(next);
 });
 
-app.post("/staff/editmember", sessionChecker, async(req, res, next) => {
-    if(!req.body.id) {
+app.post("/staff/editmember", sessionChecker, async (req, res, next) => {
+    if (!req.body.id) {
         return next(new BadRequestError());
     }
 
     console.log(req.body);
 
     editStaffMember(req.body).then(() => {
-        res.json({success: 1});
+        res.json({ success: 1 });
     }).catch(next);
 });
 
-app.get("/staff/announcements", sessionChecker, async(req, res, next) => {
+app.get("/staff/announcements", sessionChecker, async (req, res, next) => {
     getAllAnnouncements().then(ann => {
         res.json(ann);
     }).catch(next);
 });
 
-app.post("/staff/updateannouncement", sessionChecker, async(req, res, next) => {
-    const {id} = req.body;
-    if(!id) {
+app.post("/staff/updateannouncement", sessionChecker, async (req, res, next) => {
+    const { id } = req.body;
+    if (!id) {
         return next(new BadRequestError());
     }
     console.log(req.body);
     updateAnnouncement(req.body).then(() => {
-        res.json({success: 1});
+        res.json({ success: 1 });
     }).catch(next);
 });
 
-app.post("/staff/createannouncement", sessionChecker, async(req, res, next) => {
-    const {title, text, from, to, active} = req.body;
+app.post("/staff/createannouncement", sessionChecker, async (req, res, next) => {
+    const { title_en, title_ar, text_en, text_ar, from, to, active } = req.body;
 
-    if(!title || !text || !from || !to || !active) {
+    if (!title_en || !title_ar || !text_en || !text_ar || !from || !to || !active) {
         next(new BadRequestError());
     }
 
     createAnnouncement(req.body).then(() => {
-        res.json({success: 1});
+        res.json({ success: 1 });
     }).catch(next);
 });
 
-app.get("/staff/ride", sessionChecker, async(req, res, next) => {
-    if(!req.query.id) {
+app.get("/staff/ride", sessionChecker, async (req, res, next) => {
+    if (!req.query.id) {
         return next(new BadRequestError());
     }
 
@@ -1091,16 +1153,17 @@ app.get("/staff/ride", sessionChecker, async(req, res, next) => {
     }).catch(next);
 });
 
-app.post("/staff/cancelride", sessionChecker, async(req, res, next) => {
-    const {id} = req.body;
-    if(!id) {
+app.post("/staff/cancelride", sessionChecker, async (req, res, next) => {
+    const { id } = req.body;
+    if (!id) {
         return next(new BadRequestError());
     }
 
     cancelRide(req.body).then(() => {
-        res.json({success: 1});
+        res.json({ success: 1 });
     }).catch(next);
-})
+});
+
 
 app.use((err, req, res, next) => {
     res.status(err.status || 500).json({

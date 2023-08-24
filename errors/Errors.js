@@ -47,6 +47,13 @@ class ConflictError extends Error {
     }
 }
 
+class GoneError extends Error {
+    constructor(message = 'Resource Gone') {
+        super(message);
+        this.status = 410;
+    }
+}
+
 module.exports = {
     BadRequestError,
     UnauthorizedError,
@@ -54,5 +61,6 @@ module.exports = {
     NotFoundError,
     InternalServerError,
     NotAcceptableError,
-    ConflictError
+    ConflictError,
+    GoneError
 }

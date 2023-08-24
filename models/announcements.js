@@ -1,5 +1,5 @@
 const Sequelize = require('sequelize');
-module.exports = function(sequelize, DataTypes) {
+module.exports = function (sequelize, DataTypes) {
   return sequelize.define('Announcement', {
     id: {
       autoIncrement: true,
@@ -7,11 +7,19 @@ module.exports = function(sequelize, DataTypes) {
       allowNull: false,
       primaryKey: true
     },
-    title: {
+    title_en: {
       type: DataTypes.STRING(50),
       allowNull: false
     },
-    text: {
+    text_en: {
+      type: DataTypes.TEXT,
+      allowNull: false
+    },
+    title_ar: {
+      type: DataTypes.STRING(50),
+      allowNull: false
+    },
+    text_ar: {
       type: DataTypes.TEXT,
       allowNull: false
     },
