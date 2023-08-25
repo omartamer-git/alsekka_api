@@ -1,4 +1,4 @@
-const { Announcement } = require("../models")
+const { Announcement, DriverEnrollment } = require("../models")
 const { NotFoundError } = require("../errors/Errors")
 
 async function getAnnouncement(announcementId) {
@@ -19,7 +19,13 @@ async function getAnnouncements(active) {
     return announcements;
 }
 
+async function addEnrolledDriver({fullName, phoneNumber, carDescription}) {
+    const enrolled = await DriverEnrollment.create({fullName, phoneNumber, carDescription});
+    return true;
+}
+
 module.exports = {
     getAnnouncement,
-    getAnnouncements
+    getAnnouncements,
+    addEnrolledDriver
 }
