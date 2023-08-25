@@ -17,6 +17,7 @@ let _withdrawals = require("./withdrawals");
 let _vouchers = require("./vouchers");
 let _customerservicechats = require("./customerservicechats");
 let _customerserviceconversations = require("./customerserviceconversations");
+let _driverenrollments = require("./driverenrollments");
 
 function initModels(sequelize) {
   let Announcement = _announcements(sequelize, DataTypes);
@@ -37,7 +38,7 @@ function initModels(sequelize) {
   let Voucher = _vouchers(sequelize, DataTypes);
   let CustomerServiceChat = _customerservicechats(sequelize, DataTypes);
   let CustomerServiceConversation = _customerserviceconversations(sequelize, DataTypes);
-
+  let DriverEnrollment = _driverenrollments(sequelize, DataTypes);
 
   User.belongsToMany(Community, { as: 'Communities', through: CommunityMember });
   Community.belongsToMany(User, { as: 'Member', through: CommunityMember });
@@ -135,6 +136,7 @@ function initModels(sequelize) {
     Voucher,
     CustomerServiceChat,
     CustomerServiceConversation,
+    DriverEnrollment,
     sequelize,
   };
 }

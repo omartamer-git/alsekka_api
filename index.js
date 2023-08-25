@@ -74,6 +74,31 @@ log4js.configure({
 const logger = log4js.getLogger();
 
 
+app.post("/driverenrollment", async (req, res, next) => {
+    const { fullName, phoneNumber, carDescription, token } = req.body;
+
+    if (!fullName || !phoneNumber || !carDescription || !token) {
+        return next(new BadRequestError());
+    }
+
+    let url = 'https://www.google.com/recaptcha/api/siteverify';
+    const body = {
+        secret: '6Ldcm9QnAAAAAAAmQlXVhwQ_R_l3KdY5nCrYDmX5',
+        response: token,
+    }
+    const {data} = await axios.post(url, body,
+        headers: {
+        'Content-Type': 'application/json'
+    });
+    if(data.success != true) {
+        return next(new NotAcceptableError());
+    }
+
+    appService.addEnrolledDriver(req.body).then(() => {
+        return res.json({ success: 1 });
+    }).catch(next);
+});
+
 app.get("/accountavailable", async (req, res, next) => {
     const { phone, email } = req.query;
     if (!phone && !email) {
@@ -749,30 +774,30 @@ app.get("/sendmessage", authenticateToken, async (req, res, next) => {
 app.get("/cschathistory", authenticateToken, async (req, res, next) => {
     let { page } = req.query;
 
-    if(!page) {
+    if (!page) {
         page = 1;
     }
 
     const uid = req.user.userId;
 
-    chatService.getCSChatHistory({uid, page}).then(chatHistory => {
+    chatService.getCSChatHistory({ uid, page }).then(chatHistory => {
         res.json(chatHistory);
     }).catch(next);
 });
 
-app.get("/newcsmessages", authenticateToken, async(req, res, next) => {
+app.get("/newcsmessages", authenticateToken, async (req, res, next) => {
     const uid = req.user.userId;
 
-    chatService.getNewCSMessages({uid}).then(newMessages => {
+    chatService.getNewCSMessages({ uid }).then(newMessages => {
         res.json(newMessages);
     }).catch(next);
 });
 
-app.get("/sendcsmessage", authenticateToken, async(req, res, next) => {
-    const {message} = req.query;
+app.get("/sendcsmessage", authenticateToken, async (req, res, next) => {
+    const { message } = req.query;
     const uid = req.user.userId;
 
-    chatService.sendCSMessage({uid, message}).then(newMessage => {
+    chatService.sendCSMessage({ uid, message }).then(newMessage => {
         res.json(newMessage);
     }).catch(next);
 });
@@ -964,7 +989,7 @@ app.get("/getLocationFromPlaceId", authenticateToken, async (req, res, next) => 
 app.get("/verifyvoucher", authenticateToken, async (req, res, next) => {
     const { code } = req.query;
 
-    if(!code) {
+    if (!code) {
         throw new BadRequestError("Voucher code is required");
     }
 
