@@ -24,7 +24,8 @@ const { staffLogin, findUser, updateUser, customerLicenses, updateLicense, getPe
 const session = require("express-session");
 
 
-const { BadRequestError, NotAcceptableError, UnauthorizedError } = require("./errors/Errors")
+const { BadRequestError, NotAcceptableError, UnauthorizedError } = require("./errors/Errors");
+const { default: axios } = require("axios");
 const app = express();
 
 const multerMid = multer({
