@@ -86,11 +86,14 @@ app.post("/driverenrollment", async (req, res, next) => {
         secret: '6Ldcm9QnAAAAAAAmQlXVhwQ_R_l3KdY5nCrYDmX5',
         response: token,
     }
-    const {data} = await axios.post(url, body,
-        headers: {
-        'Content-Type': 'application/json'
-    });
-    if(data.success != true) {
+    const { data } = await axios.post(url, body,
+        {
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }
+    );
+    if (data.success != true) {
         return next(new NotAcceptableError());
     }
 
