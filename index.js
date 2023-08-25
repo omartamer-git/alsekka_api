@@ -84,13 +84,17 @@ app.post("/driverenrollment", async (req, res, next) => {
 
     let url = 'https://www.google.com/recaptcha/api/siteverify';
     const body = {
-        secret: '6Ldcm9QnAAAAAAAmQlXVhwQ_R_l3KdY5nCrYDmX5',
+        secret: '',
         response: token,
     }
-    const { data } = await axios.post(url, body,
+    const params = new URLSearchParams();
+    params.append('secret', '6Ldcm9QnAAAAAAAmQlXVhwQ_R_l3KdY5nCrYDmX5');
+    params.append('response', token);
+
+    const { data } = await axios.post(url, params,
         {
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/x-www-form-urlencoded'
             }
         }
     );
