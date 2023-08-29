@@ -10,16 +10,10 @@ module.exports = function (sequelize, DataTypes) {
     firstName: {
       type: DataTypes.STRING(20),
       allowNull: false,
-      validate: {
-        isAlpha: true
-      }
     },
     lastName: {
       type: DataTypes.STRING(40),
       allowNull: false,
-      validate: {
-        isAlpha: true
-      }
     },
     phone: {
       type: DataTypes.STRING(16),

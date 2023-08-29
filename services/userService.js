@@ -201,7 +201,7 @@ async function uploadProfilePicture(uid, file) {
 
 async function addReferral(uid, {referralCode}) {
     try {
-        const reffererId = parseInt(referralCode.replace('ALSK-', '')) - 1406;
+        const reffererId = parseInt(referralCode);
 
         const reference = await Referral.create({
             ReferrerID: reffererId,

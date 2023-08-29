@@ -1,11 +1,9 @@
 const express = require("express");
 // const cors = require('cors');
 
-const mysql = require("mysql2");
 const bcrypt = require("bcrypt");
 
 const config = require("./config");
-const pool = require("./mysql-pool");
 const helper = require("./helper");
 const multer = require('multer');
 const log4js = require("log4js");
