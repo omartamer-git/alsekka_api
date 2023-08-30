@@ -210,7 +210,7 @@ async function addReferral(uid, {referralCode}) {
 
         return reference;
     } catch(err) {
-        throw BadRequestError("Referral account is newer than your account");
+        throw new BadRequestError("Referral account is newer than your account");
     }
 }
 

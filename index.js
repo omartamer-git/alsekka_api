@@ -260,8 +260,8 @@ app.post("/referral", authenticateToken, async (req, res, next) => {
         next(new BadRequestError());
     }
 
-    userService.addReferral(uid, req.body).then(() => {
-        res.status(200).send();
+    userService.addReferral(uid, req.body).then((ref) => {
+        res.json(ref);
     }).catch(next);
 });
 
