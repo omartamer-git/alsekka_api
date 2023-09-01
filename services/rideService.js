@@ -234,13 +234,13 @@ async function getPastRides({ uid, limit, after, offset }, upcoming = false) {
         whereClauseRide.status = { [Op.or]: ['SCHEDULED', 'ONGOING'] };
         whereClauseRide.datetime = {
             [Op.and]: [
-                { [Op.lte]: new Date() },
+                { [Op.gte]: new Date() },
                 { [Op.lt]: after }
             ]
         };
     } else if (upcoming) {
         whereClauseRide.status = { [Op.or]: ['SCHEDULED', 'ONGOING'] };
-        whereClauseRide.datetime = { [Op.lte]: new Date() };
+        whereClauseRide.datetime = { [Op.gte]: new Date() };
     } else if (after) {
         whereClauseRide.datetime = { [Op.lt]: after };
     }
