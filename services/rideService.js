@@ -230,12 +230,21 @@ async function getPastRides({ uid, limit, after, offset }, upcoming = false) {
             { id: { [Op.in]: rideIdsWherePassenger } }
         ]
     };
-    if (upcoming) {
+    if (upcoming && after) {
         whereClauseRide.status = { [Op.or]: ['SCHEDULED', 'ONGOING'] };
-    }
-    if (after) {
+        whereClauseRide.datetime = {
+            [Op.and]: [
+                { [Op.lte]: new Date() },
+                { [Op.lt]: after }
+            ]
+        };
+    } else if (upcoming) {
+        whereClauseRide.status = { [Op.or]: ['SCHEDULED', 'ONGOING'] };
+        whereClauseRide.datetime = { [Op.lte]: new Date() };
+    } else if (after) {
         whereClauseRide.datetime = { [Op.lt]: after };
     }
+
 
 
     const upcomingRides = await Ride.findAll({
