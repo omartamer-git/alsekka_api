@@ -259,18 +259,16 @@ async function getPastRides({ uid, limit, after, offset }, upcoming = false) {
 }
 
 async function getDriverRides({ uid, limit }) {
-    const userLicense = License.findOne({
-        where: {
-            status: 'APPROVED',
-            UserId: uid
-        }
-    });
-    if (userLicense === null) {
-        return [{ driver: '0' }];
-    }
-
     const driverRides = await Ride.findAll({
-        where: { DriverId: uid },
+        where: {
+            DriverId: uid,
+            [Op.or]: {
+                datetime: {
+                    [Op.gte]: new Date()
+                },
+                status: 'ONGOING'
+            }
+        },
         ...(limit && { limit: limit }),
     });
 
