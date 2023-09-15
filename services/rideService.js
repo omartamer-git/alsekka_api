@@ -1,5 +1,5 @@
 const { Sequelize, Op, literal } = require('sequelize');
-const { Ride, Passenger, User, sequelize, License, Car, Voucher } = require('../models');
+const { Ride, Passenger, User, sequelize, License, Car, Voucher, Invoice } = require('../models');
 const { NotFoundError, InternalServerError, BadRequestError, UnauthorizedError, GoneError } = require("../errors/Errors");
 const { DRIVER_FEE, PASSENGER_FEE } = require('../config/seaats.config');
 
@@ -137,8 +137,9 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId }
             throw new GoneError("Ride no longer available.");
         }
 
+        let voucher;
         if (voucherId) {
-            const voucher = await Voucher.findByPk(voucherId);
+            voucher = await Voucher.findByPk(voucherId);
             if (voucher === null) {
                 throw new NotFoundError();
             }
@@ -161,6 +162,9 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId }
             }
         }
 
+        const t = await sequelize.transaction();
+
+
         const newPassenger = await Passenger.create({
             UserId: uid,
             RideId: rideId,
@@ -170,7 +174,33 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId }
             CardId: cardId || null,
             VoucherId: voucherId || null,
             passengerFee: PASSENGER_FEE
-        });
+        }, {transaction: t});
+
+        const user = await User.findByPk(uid);
+
+        const totalAmount = seats * ride.pricePerSeat;
+        const balanceDue = -1 * user.balance;
+        let discountAmount = 0;
+        if(voucher) {
+            const discount = voucher.type === 'PERCENTAGE' ? ((voucher.value/100) * totalAmount) : voucher.value
+            discountAmount = Math.min(voucher.maxValue, discount);
+        }
+        const grandTotal = totalAmount + balanceDue - discountAmount;
+        const dueDate = ride.datetime;
+
+        
+        await Invoice.create({
+            totalAmount,
+            balanceDue,
+            discountAmount,
+            grandTotal,
+            dueDate,
+            paymentMethod,
+            PassengerId: newPassenger.id,
+        }, {transaction: t});
+
+        await t.commit();
+
         return newPassenger;
     } catch (err) {
         console.error(err);

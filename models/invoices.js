@@ -29,10 +29,12 @@ module.exports = function (sequelize, DataTypes) {
         },
         paymentStatus: {
             type: DataTypes.ENUM('UNPAID', 'PAID'),
-            allowNull: false
+            allowNull: false,
+            defaultValue: 'UNPAID'
         },
         paymentDate: {
-            type: DataTypes.DATE
+            type: DataTypes.DATE,
+            allowNull: true
         },
         paymentMethod: {
             type: DataTypes.ENUM('CASH', 'CARD')
