@@ -119,11 +119,8 @@ function initModels(sequelize) {
   Referral.belongsTo(User, { foreignKey: 'RefereeID', as: 'Referee' });
   User.hasOne(Referral, { foreignKey: 'RefereeID', as: 'Referee' });
 
-  User.hasMany(Invoice);
-  Invoice.belongsTo(User);
-
-  Ride.hasMany(Invoice);
-  Invoice.belongsTo(Ride);
+  Passenger.hasOne(Invoice);
+  Invoice.belongsTo(Passenger);
 
   return {
     Announcement,
@@ -146,6 +143,7 @@ function initModels(sequelize) {
     CustomerServiceChat,
     CustomerServiceConversation,
     DriverEnrollment,
+    Invoice
     sequelize,
   };
 }
