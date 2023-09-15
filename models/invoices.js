@@ -11,6 +11,11 @@ module.exports = function (sequelize, DataTypes) {
             type: DataTypes.INTEGER,
             allowNull: false,
         },
+        balanceDue: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
         discountAmount: {
             type: DataTypes.INTEGER,
             allowNull: false
