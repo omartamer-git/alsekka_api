@@ -119,11 +119,11 @@ function initModels(sequelize) {
   Referral.belongsTo(User, { foreignKey: 'RefereeID', as: 'Referee' });
   User.hasOne(Referral, { foreignKey: 'RefereeID', as: 'Referee' });
 
-  Invoice.hasOne(Passenger);
-  Passenger.belongsTo(Invoice);
+  User.hasMany(Invoice);
+  Invoice.belongsTo(User);
 
-  Invoice.hasOne(Ride);
-  Ride.belongsTo(Invoice);
+  Ride.hasMany(Invoice);
+  Invoice.belongsTo(Ride);
 
   return {
     Announcement,
