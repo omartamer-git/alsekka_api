@@ -1,6 +1,7 @@
 const { Sequelize, Op, literal } = require('sequelize');
 const { Ride, Passenger, User, sequelize, License, Car, Voucher } = require('../models');
-const { NotFoundError, InternalServerError, BadRequestError, UnauthorizedError, GoneError } = require("../errors/Errors")
+const { NotFoundError, InternalServerError, BadRequestError, UnauthorizedError, GoneError } = require("../errors/Errors");
+const { DRIVER_FEE, PASSENGER_FEE } = require('../config/seaats.config');
 
 async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, gender, maxDistance }) {
     let secondGender;
@@ -167,7 +168,8 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId }
             status: 'REQUESTED',
             seats: seats || 1,
             CardId: cardId || null,
-            VoucherId: voucherId || null
+            VoucherId: voucherId || null,
+            passengerFee: PASSENGER_FEE
         });
         return newPassenger;
     } catch (err) {
@@ -192,7 +194,8 @@ async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, 
             CarId: car,
             CommunityId: community,
             gender: gender,
-            seatsAvailable: seatsAvailable
+            seatsAvailable: seatsAvailable,
+            driverFee: DRIVER_FEE
         });
 
         return newRide;

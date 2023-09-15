@@ -18,6 +18,7 @@ let _vouchers = require("./vouchers");
 let _customerservicechats = require("./customerservicechats");
 let _customerserviceconversations = require("./customerserviceconversations");
 let _driverenrollments = require("./driverenrollments");
+let _invoices = require("./invoices");
 
 function initModels(sequelize) {
   let Announcement = _announcements(sequelize, DataTypes);
@@ -39,6 +40,7 @@ function initModels(sequelize) {
   let CustomerServiceChat = _customerservicechats(sequelize, DataTypes);
   let CustomerServiceConversation = _customerserviceconversations(sequelize, DataTypes);
   let DriverEnrollment = _driverenrollments(sequelize, DataTypes);
+  let Invoice = _invoices(sequelize, DataTypes);
 
   User.belongsToMany(Community, { as: 'Communities', through: CommunityMember });
   Community.belongsToMany(User, { as: 'Member', through: CommunityMember });
@@ -115,7 +117,13 @@ function initModels(sequelize) {
   Referral.belongsTo(User, { foreignKey: 'ReferrerID', as: 'Referrer' });
 
   Referral.belongsTo(User, { foreignKey: 'RefereeID', as: 'Referee' });
-  User.hasOne(Referral, { foreignKey: 'RefereeID', as: 'Referee' })
+  User.hasOne(Referral, { foreignKey: 'RefereeID', as: 'Referee' });
+
+  Invoice.hasOne(Passenger);
+  Passenger.belongsTo(Invoice);
+
+  Invoice.hasOne(Ride);
+  Ride.belongsTo(Invoice);
 
   return {
     Announcement,
