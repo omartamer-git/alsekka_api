@@ -143,7 +143,7 @@ function initModels(sequelize) {
     CustomerServiceChat,
     CustomerServiceConversation,
     DriverEnrollment,
-    Invoice
+    Invoice,
     sequelize,
   };
 }
