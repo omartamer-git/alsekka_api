@@ -301,7 +301,7 @@ app.get("/bookride", authenticateToken, async (req, res, next) => {
         return next(new BadRequestError());
     }
 
-    if (paymentMethod.type === 'CARD' && !cardId) {
+    if (paymentMethod === 'CARD' && !cardId) {
         return next(new BadRequestError());
     }
 

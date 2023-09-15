@@ -11,6 +11,14 @@ module.exports = function (sequelize, DataTypes) {
             type: DataTypes.INTEGER,
             allowNull: false,
         },
+        driverFeeTotal: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+        },
+        passengerFeeTotal: {
+            type: DataTypes.INTEGER,
+            allowNull: false
+        },
         balanceDue: {
             type: DataTypes.INTEGER,
             allowNull: false,
