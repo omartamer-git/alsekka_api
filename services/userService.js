@@ -7,6 +7,7 @@ const { default: axios } = require("axios");
 const config = require("../config");
 const jwt = require('jsonwebtoken');
 const { JWT_SECRET, JWT_EXPIRATION, REFRESH_TOKEN_EXPIRATION } = require("../config/auth.config");
+const { DRIVER_FEE, PASSENGER_FEE, CARDS_ENABLED } = require("../config/seaats.config");
 
 async function accountAvailable(phone, email) {
     let userAccount;
@@ -78,8 +79,10 @@ async function loginUser({ phone, email, password }) {
             ...userAccount.dataValues,
             driver: !!license,
             accessToken: accessToken,
-            refreshToken: refreshToken
-
+            refreshToken: refreshToken,
+            driverFee: DRIVER_FEE,
+            passengerFee: PASSENGER_FEE,
+            cardsEnabled: CARDS_ENABLED
         };
     } else {
         throw new UnauthorizedError("Invalid phone and/or password. Please try again.");
@@ -101,6 +104,9 @@ async function userInfo({uid}) {
     return {
         ...userAccount.dataValues,
         driver: !!license,
+        driverFee: DRIVER_FEE,
+        passengerFee: PASSENGER_FEE,
+        cardsEnabled: CARDS_ENABLED
     }
 }
 
