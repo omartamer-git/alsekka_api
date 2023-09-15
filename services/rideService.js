@@ -179,13 +179,15 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId }
         const user = await User.findByPk(uid);
 
         const totalAmount = seats * ride.pricePerSeat;
+        const driverFeeTotal = ride.driverFee * totalAmount;
+        const passengerFeeTotal = PASSENGER_FEE *  totalAmount;
         const balanceDue = -1 * user.balance;
         let discountAmount = 0;
         if(voucher) {
             const discount = voucher.type === 'PERCENTAGE' ? ((voucher.value/100) * totalAmount) : voucher.value
             discountAmount = Math.min(voucher.maxValue, discount);
         }
-        const grandTotal = totalAmount + balanceDue - discountAmount;
+        const grandTotal = totalAmount + driverFeeTotal + passengerFeeTotal + balanceDue - discountAmount;
         const dueDate = ride.datetime;
 
         
@@ -194,6 +196,8 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId }
             balanceDue,
             discountAmount,
             grandTotal,
+            driverFeeTotal,
+            passengerFeeTotal,
             dueDate,
             paymentMethod,
             PassengerId: newPassenger.id,
