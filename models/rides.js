@@ -1,5 +1,5 @@
 const Sequelize = require('sequelize');
-module.exports = function(sequelize, DataTypes) {
+module.exports = function (sequelize, DataTypes) {
   return sequelize.define('Ride', {
     id: {
       autoIncrement: true,
@@ -8,19 +8,19 @@ module.exports = function(sequelize, DataTypes) {
       primaryKey: true
     },
     fromLatitude: {
-      type: DataTypes.DECIMAL(8,6),
+      type: DataTypes.DECIMAL(8, 6),
       allowNull: false,
     },
     fromLongitude: {
-      type: DataTypes.DECIMAL(9,6),
+      type: DataTypes.DECIMAL(9, 6),
       allowNull: false,
     },
     toLatitude: {
-      type: DataTypes.DECIMAL(8,6),
+      type: DataTypes.DECIMAL(8, 6),
       allowNull: false,
     },
     toLongitude: {
-      type: DataTypes.DECIMAL(9,6),
+      type: DataTypes.DECIMAL(9, 6),
       allowNull: false,
     },
     mainTextFrom: {
@@ -34,6 +34,14 @@ module.exports = function(sequelize, DataTypes) {
     pricePerSeat: {
       type: DataTypes.INTEGER,
       allowNull: false
+    },
+    pickupEnabled: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
+    pickupPrice: {
+      type: DataTypes.INTEGER,
+      defaultValue: null
     },
     datetime: {
       type: DataTypes.DATE,
@@ -55,7 +63,7 @@ module.exports = function(sequelize, DataTypes) {
       defaultValue: 3
     },
     driverFee: {
-      type: DataTypes.DECIMAL(2,2),
+      type: DataTypes.DECIMAL(2, 2),
       allowNull: false,
       defaultValue: 0
     }
