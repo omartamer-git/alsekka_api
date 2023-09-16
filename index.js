@@ -318,7 +318,7 @@ app.post("/postride", authenticateToken, async (req, res, next) => {
     // mainTextFrom/mainTextTo probably needs to be fetched from google api instead to prevent malicious use
     const { fromLatitude, fromLongitude, toLatitude,
         toLongitude, mainTextFrom,
-        mainTextTo, pricePerSeat,
+        mainTextTo, pricePerSeat, pickupEnabled, pickupPrice,
         driver, datetime, car, community, gender, seatsAvailable } = req.body;
     const uid = req.user.userId;
 
@@ -331,7 +331,7 @@ app.post("/postride", authenticateToken, async (req, res, next) => {
 
     rideService.postRide({
         fromLatitude, fromLongitude, toLatitude,
-        toLongitude, mainTextFrom,
+        toLongitude, mainTextFrom, pickupPrice, pickupEnabled,
         mainTextTo, pricePerSeat,
         driver, datetime, car, uid, community, gender, seatsAvailable
     }).then(ride => {
