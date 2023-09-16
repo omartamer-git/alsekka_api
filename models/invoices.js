@@ -36,7 +36,7 @@ module.exports = function (sequelize, DataTypes) {
             type: DataTypes.DATE
         },
         paymentStatus: {
-            type: DataTypes.ENUM('UNPAID', 'PAID'),
+            type: DataTypes.ENUM('UNPAID', 'REVERSED', 'PAID'),
             allowNull: false,
             defaultValue: 'UNPAID'
         },

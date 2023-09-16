@@ -174,34 +174,40 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId }
             CardId: cardId || null,
             VoucherId: voucherId || null,
             passengerFee: PASSENGER_FEE
-        }, {transaction: t});
+        }, { transaction: t });
 
         const user = await User.findByPk(uid);
 
         const totalAmount = seats * ride.pricePerSeat;
         const driverFeeTotal = ride.driverFee * totalAmount;
-        const passengerFeeTotal = PASSENGER_FEE *  totalAmount;
+        const passengerFeeTotal = PASSENGER_FEE * totalAmount;
         const balanceDue = -1 * user.balance;
         let discountAmount = 0;
-        if(voucher) {
-            const discount = voucher.type === 'PERCENTAGE' ? ((voucher.value/100) * totalAmount) : voucher.value
+        if (voucher) {
+            const discount = voucher.type === 'PERCENTAGE' ? ((voucher.value / 100) * totalAmount) : voucher.value
             discountAmount = Math.min(voucher.maxValue, discount);
         }
         const grandTotal = totalAmount + driverFeeTotal + passengerFeeTotal + balanceDue - discountAmount;
         const dueDate = ride.datetime;
 
-        
-        await Invoice.create({
-            totalAmount,
-            balanceDue,
-            discountAmount,
-            grandTotal,
-            driverFeeTotal,
-            passengerFeeTotal,
-            dueDate,
-            paymentMethod,
-            PassengerId: newPassenger.id,
-        }, {transaction: t});
+        if (paymentMethod === 'CARD') {
+            // card handling logic here
+            // Take grandTotal from card
+        } else {
+            await Invoice.create({
+                totalAmount,
+                balanceDue,
+                discountAmount,
+                grandTotal,
+                driverFeeTotal,
+                passengerFeeTotal,
+                dueDate,
+                paymentMethod,
+                PassengerId: newPassenger.id,
+            }, { transaction: t });
+        }
+
+
 
         await t.commit();
 
@@ -389,7 +395,12 @@ async function cancelPassenger({ tripId }, userId) {
         where: {
             RideId: tripId,
             UserId: userId
-        }
+        },
+        include: [
+            {
+                model: User
+            }
+        ]
     });
     if (passenger == null) {
         throw new NotFoundError();
@@ -398,15 +409,46 @@ async function cancelPassenger({ tripId }, userId) {
     const ride = await passenger.getRide();
 
     if (ride.status === "SCHEDULED") {
+        const invoice = await Invoice.findOne({
+            where: {
+                PassengerId: passenger.id
+            }
+        });
+
         const currDate = new Date().getTime();
         const tripDate = new Date(ride.datetime).getTime();
         const timeToTrip = tripDate - currDate;
+        const t = await sequelize.transaction();
         if (timeToTrip < 1000 * 60 * 60 * 12) {
-            throw new BadRequestError();
+            // late cancel
+            if (invoice.paymentMethod === 'CARD') {
+                const driver = await ride.getDriver();
+                driver.balance = driver.balance + invoice.totalAmount - invoice.driverFeeTotal;
+                await driver.save({ transaction: t });
+            } else {
+                // handle late cancel cash
+                const driver = await ride.getDriver();
+                driver.balance = driver.balance + invoice.totalAmount - invoide.driverFeeTotal;
+                await driver.save({ transaction: t });
+
+                passenger.User.balance = passenger.User.balance - invoice.grandTotal;
+                await passenger.User.save({ transaction: t });
+            }
+        } else {
+            if (invoice.paymentMethod === 'CARD') {
+                passenger.User.balance = passenger.User.balance + (invoice.grandTotal - invoice.balanceDue);
+            } else {
+                passenger.User.balance = passenger.User.balance - invoice.balanceDue;
+            }
+            invoice.paymentStatus = 'REVERSED';
+            await invoice.save({ transaction: t });
+            await passenger.User.save({ transaction: t });
         }
 
         passenger.status = "CANCELLED";
-        passenger.save();
+        await passenger.save({ transaction: t });
+        await t.commit();
+
         return true;
     } else {
         throw new BadRequestError();
@@ -471,39 +513,35 @@ async function checkOut({ tripId, passenger, amountPaid, rating }) {
     }
     let balance = passengerDetails.User.balance;
     const pricePerSeat = ride.pricePerSeat;
+    const numSeats = passengerDetails.seats;
 
-    let amountDue = 0;
-    if (balance < pricePerSeat) {
-        amountDue = pricePerSeat - balance;
-    } else if (amountPaid >= amountDue) {
-        // new balance = current balance - amount due + amount paid
-        const newBalance = balance - amountDue + amountPaid;
-        const newRating = ((passengerDetails.User.rating * passengerDetails.User.numRatings) + parseFloat(rating)) / (passengerDetails.User.numRatings + 1)
+    const invoice = await Invoice.findOne({
+        where: {
+            PassengerId: passengerDetails.id
+        }
+    });
 
-        passengerDetails.User.balance = newBalance;
-        passengerDetails.User.rating = newRating;
-        passengerDetails.User.numRatings = passengerDetails.User.numRatings + 1;
-        passengerDetails.User.save();
-
-        passengerDetails.status = "ARRIVED";
-        passengerDetails.save();
-    } else {
+    if (!invoice) {
         throw new InternalServerError();
     }
 
+    const t = await sequelize.transaction();
     const driver = await ride.getDriver();
 
-    if (passengerDetails.paymentMethod === 'CASH') {
-        // Don't add to driver's balance, subtract (10% from pricePerSeat) from his balance
-        driver.balance = driver.balance - 0.1 * pricePerSeat;
-        driver.save();
+    if (invoice.paymentMethod === 'CARD') {
+        driver.balance = driver.balance + invoice.totalAmount - invoice.driverFeeTotal;
     } else {
-        // Add 90% of pricePerSeat to driver's balance
-        driver.balance = driveer.balance + 0.9 * pricePerSeat;
-        driver.save();
+        driver.balance = driver.balance - invoice.driverFeeTotal - invoice.passengerFeeTotal;
     }
 
-    return true;
+    await driver.save({ transaction: t });
+
+
+    passengerDetails.User.rating = newRating;
+    passengerDetails.User.numRatings = passengerDetails.User.numRatings + 1;
+    await passengerDetails.User.save({ transaction: t });
+
+    await t.commit();
 }
 
 async function noShow({ tripId, passenger }) {
