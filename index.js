@@ -319,12 +319,12 @@ app.post("/postride", authenticateToken, async (req, res, next) => {
     const { fromLatitude, fromLongitude, toLatitude,
         toLongitude, mainTextFrom,
         mainTextTo, pricePerSeat, pickupEnabled, pickupPrice,
-        driver, datetime, car, community, gender, seatsAvailable } = req.body;
-    const uid = req.user.userId;
+        datetime, car, community, gender, seatsAvailable } = req.body;
+    const driver = req.user.userId;
 
     if (!fromLatitude || !fromLongitude || !toLatitude || !toLongitude ||
         !mainTextFrom || !mainTextTo || !pricePerSeat || !driver || !car ||
-        !datetime || !uid || !gender || !seatsAvailable
+        !datetime || !gender || !seatsAvailable
     ) {
         return next(new BadRequestError());
     }
@@ -333,7 +333,7 @@ app.post("/postride", authenticateToken, async (req, res, next) => {
         fromLatitude, fromLongitude, toLatitude,
         toLongitude, mainTextFrom, pickupPrice, pickupEnabled,
         mainTextTo, pricePerSeat,
-        driver, datetime, car, uid, community, gender, seatsAvailable
+        driver, datetime, car, community, gender, seatsAvailable
     }).then(ride => {
         res.json(ride);
     }).catch(next);
