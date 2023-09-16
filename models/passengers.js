@@ -21,11 +21,19 @@ module.exports = function(sequelize, DataTypes) {
       allowNull: false,
       defaultValue: 1
     },
+    pickupLocationLat: {
+      type: DataTypes.DECIMAL(8, 6),
+      defaultValue: null
+    },
+    pickupLocationLng: {
+      type: DataTypes.DECIMAL(9, 6),
+      defaultValue: null
+    },
     passengerFee: {
       type: DataTypes.DECIMAL(2,2),
       allowNull: false,
       defaultValue: 0
-    }
+    },
   }, {
     sequelize,
     timestamps: true,
