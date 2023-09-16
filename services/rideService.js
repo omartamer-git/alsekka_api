@@ -120,7 +120,7 @@ async function verifyVoucher({ code }, uid) {
     }
 }
 
-async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId }) {
+async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, pickupLocationLat, pickupLocationLng }) {
     try {
         const passengerCount = await Passenger.count({
             where: {
@@ -166,6 +166,10 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId }
 
         const t = await sequelize.transaction();
 
+        if((pickupLocationLat || pickupLocationLng) && ride.pickupEnabled == 0) {
+            throw new BadRequestError();
+        }
+
 
         const newPassenger = await Passenger.create({
             UserId: uid,
@@ -175,7 +179,9 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId }
             seats: seats || 1,
             CardId: cardId || null,
             VoucherId: voucherId || null,
-            passengerFee: PASSENGER_FEE
+            passengerFee: PASSENGER_FEE,
+            pickupLocationLat,
+            pickupLocationLng
         }, { transaction: t });
 
         const user = await User.findByPk(uid);
@@ -347,6 +353,7 @@ async function getTripDetails({ uid, tripId }) {
             'datetime',
             'status',
             'seatsAvailable',
+            'pickupEnabled',
             'DriverId'
         ]
     });

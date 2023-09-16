@@ -41,7 +41,7 @@ module.exports = function (sequelize, DataTypes) {
     },
     pickupPrice: {
       type: DataTypes.INTEGER,
-      defaultValue: null
+      defaultValue: 0
     },
     datetime: {
       type: DataTypes.DATE,
