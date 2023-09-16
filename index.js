@@ -294,7 +294,7 @@ app.get("/ridedetails", authenticateToken, async (req, res, next) => {
 });
 
 app.get("/bookride", authenticateToken, async (req, res, next) => {
-    const { rideId, paymentMethod, seats, cardId, voucherId } = req.query;
+    const { rideId, paymentMethod, seats, cardId, voucherId, pickupLocationLat, pickupLocationLng } = req.query;
     const uid = req.user.userId;
 
     if (!uid || !rideId || !paymentMethod) {
@@ -305,7 +305,7 @@ app.get("/bookride", authenticateToken, async (req, res, next) => {
         return next(new BadRequestError());
     }
 
-    rideService.bookRide({ uid, rideId, paymentMethod, seats, cardId, voucherId }).then(
+    rideService.bookRide({ uid, rideId, paymentMethod, seats, cardId, voucherId, pickupLocationLat, pickupLocationLng }).then(
         newPassenger => {
             return res.json({ id: newPassenger.id })
         }
