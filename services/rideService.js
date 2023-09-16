@@ -534,6 +534,22 @@ async function checkOut({ tripId, passenger, amountPaid, rating }) {
         driver.balance = driver.balance - invoice.driverFeeTotal - invoice.passengerFeeTotal;
     }
 
+    const passengers = await Passenger.findAll({
+        where: {
+            UserId: passenger,
+            status: 'CONFIRMED'
+        },
+        include: [{
+            model: Invoice
+        }]
+    });
+
+    for(let p of passengers) {
+        p.Invoice.grandTotal -= invoice.balanceDue;
+        p.Invoice.balanceDue -= invoice.balanceDue;
+        await p.save({transaction: t});
+    }
+
     await driver.save({ transaction: t });
 
 
