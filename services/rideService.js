@@ -57,6 +57,8 @@ async function getRideDetails({ rideId }) {
                 'toLatitude',
                 'toLongitude',
                 'seatsAvailable',
+                'pickupEnabled',
+                'pickupPrice',
                 'DriverId',
                 [literal('(SELECT SUM(seats) FROM passengers WHERE RideId = Ride.id AND status != "CANCELLED")'), 'seatsOccupied']
             ],
@@ -219,7 +221,7 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId }
 
 }
 
-async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, mainTextTo, pricePerSeat, driver, datetime, car, community, gender, seatsAvailable }) {
+async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, mainTextTo, pricePerSeat, driver, datetime, car, community, gender, seatsAvailable, pickupEnabled, pickupPrice }) {
     try {
         const newRide = await Ride.create({
             fromLatitude: fromLatitude,
@@ -233,9 +235,11 @@ async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, 
             datetime: datetime,
             CarId: car,
             CommunityId: community,
+            pickupEnabled: pickupEnabled,
+            pickupPrice: pickupPrice || 0,
             gender: gender,
             seatsAvailable: seatsAvailable,
-            driverFee: DRIVER_FEE
+            driverFee: DRIVER_FEE,
         });
 
         return newRide;
