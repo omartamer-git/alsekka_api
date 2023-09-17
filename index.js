@@ -476,6 +476,17 @@ app.post("/checkout", authenticateToken, async (req, res, next) => {
     }).catch(next);
 });
 
+app.get("/triptotals", authenticateToken, async(req, res, next) => {
+    const { tripId } = req.query;
+    if(!tripId) {
+        return next(new BadRequestError());
+    }
+
+    rideService.getTripTotals(req.query).then(totals => {
+        return res.json(totals);
+    }).catch(next);
+});
+
 app.get("/noshow", authenticateToken, async (req, res, next) => {
     const { tripId, passenger } = req.query;
     const uid = req.user.userId;
