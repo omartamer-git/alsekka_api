@@ -613,6 +613,9 @@ async function submitDriverRatings({tripId, ratings}, uid) {
     if(ride.DriverId !== uid) {
         throw new UnauthorizedError();
     }
+    if(ride.driverCompletedRatings == 1) {
+        throw new BadRequestError();
+    }
 
     ride.driverCompletedRatings = true;
     ride.save();
