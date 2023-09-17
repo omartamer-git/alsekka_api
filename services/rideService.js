@@ -166,7 +166,7 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
 
         const t = await sequelize.transaction();
 
-        if((pickupLocationLat || pickupLocationLng) && ride.pickupEnabled == 0) {
+        if ((pickupLocationLat || pickupLocationLng) && ride.pickupEnabled == 0) {
             throw new BadRequestError();
         }
 
@@ -320,7 +320,7 @@ async function getDriverRides({ uid, limit }) {
                     [Op.gte]: new Date()
                 },
                 status: 'ONGOING',
-                [Op.and] : {
+                [Op.and]: {
                     datetime: {
                         [Op.lte]: new Date()
                     },
@@ -506,7 +506,7 @@ async function getTripTotals({ tripId }) {
 
     const ret = [];
 
-    for(const passenger of passengers) {
+    for (const passenger of passengers) {
         ret.push({
             id: passenger.UserId,
             grandTotal: passenger.Invoice.grandTotal
@@ -535,18 +535,8 @@ async function checkOut({ tripId, uid }) {
 
     const ride = await Ride.findByPk(tripId);
 
-    if(ride.DriverId !== uid) {
+    if (ride.DriverId !== uid) {
         throw new UnauthorizedError();
-    }
-
-    const invoice = await Invoice.findOne({
-        where: {
-            PassengerId: passengerDetails.id
-        }
-    });
-
-    if (!invoice) {
-        throw new InternalServerError();
     }
 
     const t = await sequelize.transaction();
@@ -555,36 +545,58 @@ async function checkOut({ tripId, uid }) {
         where: {
             status: 'ENROUTE',
             RideId: tripId
-        }
-    });
-
-    for(let passenger of passengers) {
-        passenger.status = 'ARRIVED';
-        await passenger.save({transaction: t});
-    }
-
-    const driver = await ride.getDriver();
-
-    if (invoice.paymentMethod === 'CARD') {
-        driver.balance = driver.balance + invoice.totalAmount - invoice.driverFeeTotal;
-    } else {
-        driver.balance = driver.balance - invoice.driverFeeTotal - invoice.passengerFeeTotal;
-    }
-
-    const passengers = await Passenger.findAll({
-        where: {
-            UserId: passenger,
-            status: 'CONFIRMED'
         },
         include: [{
             model: Invoice
         }]
     });
 
-    for(let p of passengers) {
-        p.Invoice.grandTotal -= invoice.balanceDue;
-        p.Invoice.balanceDue -= invoice.balanceDue;
-        await p.save({transaction: t});
+    // First, gather the UserIds of all passengers
+    const passengerIds = passengers.map(passenger => passenger.id);
+
+    // Update all passengers' status in a bulk update
+    await Passenger.update({ status: 'ARRIVED' }, {
+        where: {
+            id: { [Op.in]: passengerIds },
+        },
+        transaction: t,
+    });
+
+    const driver = await ride.getDriver();
+
+    for (let passenger of passengers) {
+
+        // invoicing
+
+        const invoice = passenger.Invoice;
+
+        if (!invoice) {
+            throw new InternalServerError();
+        }
+
+        if (invoice.paymentMethod === 'CARD') {
+            driver.balance = driver.balance + invoice.totalAmount - invoice.driverFeeTotal;
+        } else {
+            driver.balance = driver.balance - invoice.driverFeeTotal - invoice.passengerFeeTotal;
+        }
+    
+        // removing due balance from other rides
+
+        const passengersOtherRides = await Passenger.findAll({
+            where: {
+                UserId: passenger.UserId,
+                status: 'CONFIRMED'
+            },
+            include: [{
+                model: Invoice
+            }]
+        });
+
+        for (let p of passengersOtherRides) {
+            p.Invoice.grandTotal -= invoice.balanceDue;
+            p.Invoice.balanceDue -= invoice.balanceDue;
+            await p.Invoice.save({ transaction: t });
+        }
     }
 
     await driver.save({ transaction: t });
