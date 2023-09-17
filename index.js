@@ -502,6 +502,18 @@ app.get("/noshow", authenticateToken, async (req, res, next) => {
     ).catch(next);
 });
 
+app.post("/submitdriverratings", authenticateToken, async (req, res, next) => {
+    const {tripId, ratings} = req.body;
+
+    if(!tripId || !ratings) {
+        return next(new BadRequestError());
+    }
+    
+    rideService.submitDriverRatings(req.body, uid).then(res => {
+        res.json({success: 1});
+    }).catch(next);
+});
+
 app.get("/passengerdetails", authenticateToken, async (req, res, next) => {
     const { tripId, passenger } = req.query;
     const uid = req.user.userId;

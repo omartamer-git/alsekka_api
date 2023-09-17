@@ -66,6 +66,11 @@ module.exports = function (sequelize, DataTypes) {
       type: DataTypes.DECIMAL(2, 2),
       allowNull: false,
       defaultValue: 0
+    },
+    driverCompletedRatings: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false
     }
   }, {
     sequelize,
