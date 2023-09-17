@@ -511,6 +511,8 @@ async function getTripTotals({ tripId }) {
             grandTotal: passenger.Invoice.grandTotal
         })
     }
+
+    return ret;
 }
 
 async function checkIn({ tripId, passenger }) {
