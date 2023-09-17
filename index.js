@@ -464,14 +464,14 @@ app.get("/checkin", authenticateToken, async (req, res, next) => {
 });
 
 app.post("/checkout", authenticateToken, async (req, res, next) => {
-    let { tripId, passenger, amountPaid, rating } = req.body;
+    let { tripId } = req.body;
     const uid = req.user.userId;
 
-    if (!tripId || !passenger || !amountPaid || !uid) {
+    if (!tripId) {
         return next(new BadRequestError());
     }
 
-    rideService.checkOut({ tripId, passenger, amountPaid, rating, uid, ...req.query }).then(response => {
+    rideService.checkOut({ tripId, uid }).then(response => {
         return res.json({ success: 1 });
     }).catch(next);
 });
