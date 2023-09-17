@@ -599,9 +599,32 @@ async function checkOut({ tripId, uid }) {
         }
     }
 
+    ride.status = 'COMPLETED';
+
+    await ride.save({transaction: t});
+
     await driver.save({ transaction: t });
 
     await t.commit();
+}
+
+async function submitDriverRatings({tripId, ratings}, uid) {
+    const ride = await Ride.findByPk(tripId);
+    if(ride.DriverId !== uid) {
+        throw new UnauthorizedError();
+    }
+
+    ride.driverCompletedRatings = true;
+    ride.save();
+
+    for(const rating of ratings) {
+        const user = await User.findByPk(rating.id);
+        user.numRatings = user.numRatings + 1;
+        user.rating = (user.rating * user.numRatings + rating.stars) / user.numRatings + 1;
+        user.save();
+    }
+
+    return true;
 }
 
 async function noShow({ tripId, passenger }) {
@@ -672,5 +695,6 @@ module.exports = {
     getTripTotals,
     noShow,
     getPassengerDetails,
-    verifyVoucher
+    verifyVoucher,
+    submitDriverRatings
 };
