@@ -620,7 +620,7 @@ async function submitDriverRatings({tripId, ratings}, uid) {
     for(const rating of ratings) {
         const user = await User.findByPk(rating.id);
         user.numRatings = user.numRatings + 1;
-        user.rating = (user.rating * user.numRatings + rating.stars) / user.numRatings + 1;
+        user.rating = ((user.rating * user.numRatings) + rating.stars) / user.numRatings + 1;
         user.save();
     }
 
