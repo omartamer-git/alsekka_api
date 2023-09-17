@@ -370,7 +370,7 @@ async function getTripDetails({ uid, tripId }) {
 
     if (tripDetails.dataValues.isDriver === 1) {
         const passengersDetails = await Passenger.findAll({
-            attributes: ['UserId', 'paymentMethod', 'status'],
+            attributes: ['UserId', 'paymentMethod', 'status', 'pickupLocationLat', 'pickupLocationLng'],
             where: {
                 RideId: tripId
             },
