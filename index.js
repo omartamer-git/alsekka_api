@@ -508,6 +508,8 @@ app.post("/submitdriverratings", authenticateToken, async (req, res, next) => {
     if(!tripId || !ratings) {
         return next(new BadRequestError());
     }
+
+    const uid = req.user.userId;
     
     rideService.submitDriverRatings(req.body, uid).then(res => {
         res.json({success: 1});
