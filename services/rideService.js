@@ -492,6 +492,27 @@ async function startRide({ tripId }) {
     }
 }
 
+async function getTripTotals({ tripId }) {
+    const passengers = await Passenger.findAll({
+        where: {
+            status: 'ENROUTE',
+            RideId: tripId
+        },
+        include: [{
+            model: Invoice
+        }]
+    });
+
+    const ret = [];
+
+    for(const passenger of passengers) {
+        ret.push({
+            id: passenger.UserId,
+            grandTotal: passenger.Invoice.grandTotal
+        })
+    }
+}
+
 async function checkIn({ tripId, passenger }) {
     const passengerDetails = await Passenger.findOne({
         where: {
@@ -642,6 +663,7 @@ module.exports = {
     startRide,
     checkIn,
     checkOut,
+    getTripTotals,
     noShow,
     getPassengerDetails,
     verifyVoucher
