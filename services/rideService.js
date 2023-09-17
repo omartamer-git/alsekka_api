@@ -531,30 +531,13 @@ async function checkIn({ tripId, passenger }) {
     return true;
 }
 
-async function checkOut({ tripId, passenger, amountPaid, rating }) {
-    amountPaid = parseFloat(amountPaid);
-    if (!rating) {
-        rating = 5;
-    }
+async function checkOut({ tripId, uid }) {
 
-    const passengerDetails = await Passenger.findOne(
-        {
-            where: {
-                UserId: passenger,
-                RideId: tripId
-            },
-            include: [{
-                model: User,
-            }]
-        });
-    const ride = await Ride.findByPk(passengerDetails.RideId);
+    const ride = await Ride.findByPk(tripId);
 
-    if (passengerDetails === null) {
-        throw new NotFoundError("Ride/Passenger not found");
+    if(ride.DriverId !== uid) {
+        throw new UnauthorizedError();
     }
-    let balance = passengerDetails.User.balance;
-    const pricePerSeat = ride.pricePerSeat;
-    const numSeats = passengerDetails.seats;
 
     const invoice = await Invoice.findOne({
         where: {
@@ -567,6 +550,19 @@ async function checkOut({ tripId, passenger, amountPaid, rating }) {
     }
 
     const t = await sequelize.transaction();
+
+    const passengers = await Passenger.findAll({
+        where: {
+            status: 'ENROUTE',
+            RideId: tripId
+        }
+    });
+
+    for(let passenger of passengers) {
+        passenger.status = 'ARRIVED';
+        await passenger.save({transaction: t});
+    }
+
     const driver = await ride.getDriver();
 
     if (invoice.paymentMethod === 'CARD') {
@@ -592,11 +588,6 @@ async function checkOut({ tripId, passenger, amountPaid, rating }) {
     }
 
     await driver.save({ transaction: t });
-
-
-    passengerDetails.User.rating = newRating;
-    passengerDetails.User.numRatings = passengerDetails.User.numRatings + 1;
-    await passengerDetails.User.save({ transaction: t });
 
     await t.commit();
 }
