@@ -511,7 +511,7 @@ app.post("/submitdriverratings", authenticateToken, async (req, res, next) => {
 
     const uid = req.user.userId;
     
-    rideService.submitDriverRatings(req.body, uid).then(res => {
+    rideService.submitDriverRatings(req.body, uid).then(response => {
         res.json({success: 1});
     }).catch(next);
 });
