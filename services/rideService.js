@@ -349,6 +349,7 @@ async function getTripDetails({ uid, tripId }) {
         attributes: [
             [sequelize.literal(`(Ride.driverId=${uid})`), 'isDriver'],
             [sequelize.literal(`(SELECT SUM(seats) FROM passengers WHERE RideId=Ride.id AND status != "CANCELLED")`), 'seatsOccupied'],
+            'id',
             'fromLatitude',
             'fromLongitude',
             'toLatitude',
