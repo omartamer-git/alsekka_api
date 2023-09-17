@@ -319,7 +319,13 @@ async function getDriverRides({ uid, limit }) {
                 datetime: {
                     [Op.gte]: new Date()
                 },
-                status: 'ONGOING'
+                status: 'ONGOING',
+                [Op.and] : {
+                    datetime: {
+                        [Op.lte]: new Date()
+                    },
+                    status: 'SCHEDULED'
+                }
             }
         },
         ...(limit && { limit: limit }),
