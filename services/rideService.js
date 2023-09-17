@@ -577,7 +577,7 @@ async function checkOut({ tripId, uid }) {
         if (invoice.paymentMethod === 'CARD') {
             driver.balance = driver.balance + invoice.totalAmount - invoice.driverFeeTotal;
         } else {
-            driver.balance = driver.balance - invoice.driverFeeTotal - invoice.passengerFeeTotal;
+            driver.balance = driver.balance - invoice.driverFeeTotal - invoice.passengerFeeTotal - invoice.balanceDue;
         }
     
         // removing due balance from other rides
