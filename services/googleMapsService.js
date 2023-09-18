@@ -60,10 +60,7 @@ async function getOptimalPath({ tripId }, uid) {
         where: {
             status: 'CONFIRMED',
             RideId: tripId
-        },
-        include: [{
-            model: Invoice
-        }]
+        }
     });
 
 
