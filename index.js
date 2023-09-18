@@ -17,7 +17,7 @@ const cookieParser = require("cookie-parser");
 const jwt = require('jsonwebtoken');
 const { authenticateToken, sessionChecker } = require("./middleware/authenticateToken");
 const { JWT_SECRET, JWT_EXPIRATION } = require("./config/auth.config");
-const { getPredictions, geocode, getLocationFromPlaceId } = require("./services/googleMapsService");
+const { getPredictions, geocode, getLocationFromPlaceId, getOptimalPath } = require("./services/googleMapsService");
 const { staffLogin, findUser, updateUser, customerLicenses, updateLicense, getPendingLicenses, updateCar, getPendingCars, getMembers, createStaffMember, getStaffMember, editStaffMember, getAllAnnouncements, updateAnnouncement, createAnnouncement, getFullRide, cancelRide } = require("./services/staffService");
 const session = require("express-session");
 
@@ -1015,6 +1015,16 @@ app.get("/getLocationFromPlaceId", authenticateToken, async (req, res, next) => 
     getLocationFromPlaceId(place_id).then(result => {
         return res.json(result);
     }).catch(next);
+});
+
+app.get("/getOptimalPath", authenticateToken, async(req, res, next) => {
+    const {tripId} = req.query;
+    if(!tripId) {
+        return next(new BadRequestError());
+    }
+    const uid = req.user.userId;
+
+    getOptimalPath(req.query, uid).then(list => res.json(list)).catch(next);
 });
 
 app.get("/verifyvoucher", authenticateToken, async (req, res, next) => {

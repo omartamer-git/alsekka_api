@@ -385,6 +385,12 @@ async function getTripDetails({ uid, tripId }) {
         tripDetails.setDataValue('passengers', passengersDetails);
     }
 
+    const timeToTrip = new Date(tripDetails.datetime).getTime() - new Date().getTime();
+    if(timeToTrip > 1000 * 60 * 60 * 3) {
+        tripDetails.Driver.phone = null;
+    }
+
+
     return tripDetails;
 }
 
@@ -577,7 +583,7 @@ async function checkOut({ tripId, uid }) {
         if (invoice.paymentMethod === 'CARD') {
             driver.balance = driver.balance + invoice.totalAmount - invoice.driverFeeTotal;
         } else {
-            driver.balance = driver.balance - invoice.driverFeeTotal - invoice.passengerFeeTotal - invoice.balanceDue;
+            driver.balance = driver.balance - invoice.grandTotal + (invoice.totalAmount - invoice.driverFeeTotal);
         }
     
         // removing due balance from other rides
