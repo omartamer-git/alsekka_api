@@ -47,11 +47,7 @@ async function getLocationFromPlaceId(place_id) {
 };
 
 async function getOptimalPath({ tripId }, uid) {
-    const ride = await Ride.findByPk(tripId, {
-        include: [{
-            model: Passenger
-        }]
-    });
+    const ride = await Ride.findByPk(tripId);
     if (!ride) {
         throw new NotFoundError("Ride not found");
     }
@@ -59,6 +55,17 @@ async function getOptimalPath({ tripId }, uid) {
     if (ride.DriverId !== uid) {
         throw new UnauthorizedError();
     }
+
+    const passengers = await Passenger.findAll({
+        where: {
+            status: 'CONFIRMED',
+            RideId: tripId
+        },
+        include: [{
+            model: Invoice
+        }]
+    });
+
 
     const startingPoint = {
         latitude: ride.fromLatitude,
@@ -68,7 +75,7 @@ async function getOptimalPath({ tripId }, uid) {
     const intermediatePoints = [startingPoint];
 
     if (ride.pickupEnabled == 1) {
-        for (const passenger of ride.passengers) {
+        for (const passenger of passengers) {
             if (passenger.pickupLocationLat && passenger.pickupLocationLng) {
                 intermediatePoints.push({
                     passengerId: Passenger.UserId,
