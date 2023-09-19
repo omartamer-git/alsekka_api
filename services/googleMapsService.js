@@ -65,8 +65,11 @@ async function getOptimalPath({ tripId }, uid) {
 
 
     const startingPoint = {
-        latitude: ride.fromLatitude,
-        longitude: ride.fromLongitude
+        passengerId: 'start',
+        point: {
+            latitude: ride.fromLatitude,
+            longitude: ride.fromLongitude
+        }
     };
 
     const intermediatePoints = [];
