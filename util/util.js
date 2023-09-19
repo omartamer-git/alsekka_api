@@ -36,6 +36,11 @@ function generatePermutations(arr) {
 }
 
 function findOptimalPath(startingPoint, destinationPoints) {
+    console.log("sp");
+    console.log(startingPoint);
+
+    console.log("dp");
+    console.log(destinationPoints);
     const allPermutations = generatePermutations(destinationPoints);
 
     let optimalPath = [];
