@@ -1,27 +1,61 @@
-const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    // This function should calculate the distance between two coordinates.
-    // You can use Haversine formula or any suitable method for your use case.
-    // There are libraries available to calculate distance based on coordinates.
-    // Example: https://www.npmjs.com/package/geolib
-    // For simplicity, let's assume a constant radius of the Earth in meters.
-    const earthRadius = 6371000; // Radius of Earth in meters
+const geolib = require('geolib');
 
-    const dLat = (lat2 - lat1) * (Math.PI / 180);
-    const dLon = (lon2 - lon1) * (Math.PI / 180);
+function calculateDistance(pointA, pointB) {
+    return geolib.getDistance(pointA, pointB);
+}
 
-    const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * (Math.PI / 180)) *
-        Math.cos(lat2 * (Math.PI / 180)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
+function calculateTotalDistance(points) {
+    let totalDistance = 0;
 
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = earthRadius * c;
+    for (let i = 0; i < points.length - 1; i++) {
+        const pointA = points[i].point;
+        const pointB = points[i + 1].point;
+        totalDistance += calculateDistance(pointA, pointB);
+    }
 
-    return distance;
-};
+    return totalDistance;
+}
+
+function generatePermutations(arr) {
+    const permutations = [];
+
+    function permute(arr, m = []) {
+        if (arr.length === 0) {
+            permutations.push(m);
+        } else {
+            for (let i = 0; i < arr.length; i++) {
+                const curr = arr.slice();
+                const next = curr.splice(i, 1);
+                permute(curr.slice(), m.concat(next));
+            }
+        }
+    }
+
+    permute(arr);
+    return permutations;
+}
+
+function findOptimalPath(startingPoint, destinationPoints) {
+    const points = [{ passengerId: 'Start', point: startingPoint }, ...destinationPoints];
+    const passengerIds = points.map(point => point.passengerId);
+    const allPermutations = generatePermutations(destinationPoints);
+
+    let optimalPath = [];
+    let minDistance = Infinity;
+
+    for (const permutation of allPermutations) {
+        const orderedPoints = [...permutation];
+        const currentDistance = calculateTotalDistance(orderedPoints);
+
+        if (currentDistance < minDistance) {
+            minDistance = currentDistance;
+            optimalPath = orderedPoints.map(point => point.passengerId);
+        }
+    }
+
+    return optimalPath;
+}
 
 module.exports = {
-    calculateDistance
+    findOptimalPath
 }
