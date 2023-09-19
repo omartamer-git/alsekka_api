@@ -36,20 +36,18 @@ function generatePermutations(arr) {
 }
 
 function findOptimalPath(startingPoint, destinationPoints) {
-    const points = [{ passengerId: 'Start', point: startingPoint }, ...destinationPoints];
-    const passengerIds = points.map(point => point.passengerId);
     const allPermutations = generatePermutations(destinationPoints);
 
     let optimalPath = [];
     let minDistance = Infinity;
 
     for (const permutation of allPermutations) {
-        const orderedPoints = [...permutation];
+        const orderedPoints = [startingPoint, ...permutation];
         const currentDistance = calculateTotalDistance(orderedPoints);
 
         if (currentDistance < minDistance) {
             minDistance = currentDistance;
-            optimalPath = orderedPoints.map(point => point.passengerId);
+            optimalPath = permutation.map(point => point.passengerId);
         }
     }
 
