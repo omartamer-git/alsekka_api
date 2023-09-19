@@ -75,7 +75,7 @@ async function getOptimalPath({ tripId }, uid) {
         for (const passenger of passengers) {
             if (passenger.pickupLocationLat && passenger.pickupLocationLng) {
                 intermediatePoints.push({
-                    passengerId: Passenger.UserId,
+                    passengerId: passenger.UserId,
                     point: {
                         latitude: passenger.pickupLocationLat,
                         longitude: passenger.pickupLocationLng
