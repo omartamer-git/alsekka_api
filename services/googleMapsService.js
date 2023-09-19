@@ -1,7 +1,7 @@
 const { default: axios } = require("axios");
 const { Ride, Passenger } = require("../models");
 const { NotFoundError, UnauthorizedError } = require("../errors/Errors");
-const { calculateDistance } = require("../util/util");
+const { calculateDistance, findOptimalPath } = require("../util/util");
 
 const googleKey = "AIzaSyDUNz5SYhR1nrdfk9TW4gh3CDpLcDMKwuw";
 
@@ -69,7 +69,7 @@ async function getOptimalPath({ tripId }, uid) {
         longitude: ride.fromLongitude
     };
 
-    const intermediatePoints = [startingPoint];
+    const intermediatePoints = [];
 
     if (ride.pickupEnabled == 1) {
         for (const passenger of passengers) {
@@ -85,31 +85,8 @@ async function getOptimalPath({ tripId }, uid) {
         }
     }
 
-    const pointsOrdered = [startingPoint];
-
-    for(let i=0;i<intermediatePoints.length-1;i++) {
-        const point = pointsOrdered[i];
-        const pointsWithoutOriginalPoint = intermediatePoints.filter((p) => p !== point && !(pointsOrdered.find((e) => e === p)) );
-        let minDistance = Number.MAX_SAFE_INTEGER;
-        let minPoint = null;
-        for(const point2 of pointsWithoutOriginalPoint) {
-            const potentialMinDistance = calculateDistance(point.latitude, point.longitude, point2.latitude, point2.longitude);
-
-            if(potentialMinDistance <= minDistance) {
-                minDistance = potentialMinDistance;
-                minPoint = point2;
-            }
-        }
-
-        pointsOrdered.push(minPoint);
-    }
-
-    pointsOrdered.shift();
-    const ordered = pointsOrdered.map(point => {
-        return point.passengerId;
-    });
-
-    return ordered;
+    const result = findOptimalPath(startingPoint, intermediatePoints);
+    return result;
 }
 
 
