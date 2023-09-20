@@ -71,6 +71,14 @@ module.exports = function (sequelize, DataTypes) {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
       allowNull: false
+    },
+    polyline: {
+      type: DataTypes.TEXT,
+      allowNull: false
+    },
+    duration: {
+      type:DataTypes.INTEGER,
+      allowNull: false
     }
   }, {
     sequelize,

@@ -2,6 +2,7 @@ const { Sequelize, Op, literal } = require('sequelize');
 const { Ride, Passenger, User, sequelize, License, Car, Voucher, Invoice } = require('../models');
 const { NotFoundError, InternalServerError, BadRequestError, UnauthorizedError, GoneError } = require("../errors/Errors");
 const { DRIVER_FEE, PASSENGER_FEE } = require('../config/seaats.config');
+const { getDirections } = require('./googleMapsService');
 
 async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, gender, maxDistance }) {
     let secondGender;
@@ -59,6 +60,8 @@ async function getRideDetails({ rideId }) {
                 'seatsAvailable',
                 'pickupEnabled',
                 'pickupPrice',
+                'polyline',
+                'duration',
                 'DriverId',
                 [literal('(SELECT SUM(seats) FROM passengers WHERE RideId = Ride.id AND status != "CANCELLED")'), 'seatsOccupied']
             ],
@@ -229,6 +232,8 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
 
 async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, mainTextTo, pricePerSeat, driver, datetime, car, community, gender, seatsAvailable, pickupEnabled, pickupPrice }) {
     try {
+        const {polyline, duration} = await getDirections(fromLatitude, fromLongitude, toLatitude, toLongitude);
+
         const newRide = await Ride.create({
             fromLatitude: fromLatitude,
             fromLongitude: fromLongitude,
@@ -246,6 +251,8 @@ async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, 
             gender: gender,
             seatsAvailable: seatsAvailable,
             driverFee: DRIVER_FEE,
+            polyline: polyline,
+            duration: duration
         });
 
         return newRide;
@@ -361,7 +368,9 @@ async function getTripDetails({ uid, tripId }) {
             'status',
             'seatsAvailable',
             'pickupEnabled',
-            'DriverId'
+            'DriverId',
+            'polyline',
+            'duration'
         ]
     });
 
