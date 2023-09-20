@@ -103,9 +103,9 @@ async function getDirections(startLat, startLng, endLat, endLng) {
     const result = await axios.get(url, {params});
     const data = result.data;
 
-    const polyline = data.routes[0]["overview_polyline"];
+    const polyline = data.routes[0]["overview_polyline"].points;
     const duration = data.routes[0].legs[0].duration.value;
-
+    
     return {polyline, duration};
 }
 
