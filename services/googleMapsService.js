@@ -100,7 +100,7 @@ async function getDirections(startLat, startLng, endLat, endLng) {
         key: googleKey
     }
 
-    const result = await axios.get(url, params);
+    const result = await axios.get(url, {params});
     const data = result.data;
 
     const polyline = data.routes[0]["overview_polyline"];
