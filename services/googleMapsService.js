@@ -92,10 +92,28 @@ async function getOptimalPath({ tripId }, uid) {
     return result;
 }
 
+async function getDirections(startLat, startLng, endLat, endLng) {
+    const url = 'https://maps.googleapis.com/maps/api/directions/json';
+    const params = {
+        origin: `${startLat},${startLng}`,
+        destination: `${endLat},${endLng}`,
+        key: googleKey
+    }
+
+    const result = await axios.get(url, params);
+    const data = result.data;
+
+    const polyline = data.routes[0]["overview_polyline"];
+    const duration = data.routes[0].legs[0].duration.value;
+
+    return {polyline, duration};
+}
+
 
 module.exports = {
     getPredictions,
     geocode,
     getLocationFromPlaceId,
-    getOptimalPath
+    getOptimalPath,
+    getDirections
 }
