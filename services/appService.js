@@ -28,20 +28,33 @@ async function getAnnouncements(active) {
 }
 
 async function registerDevice({ token, platform }) {
-    if(platform === 'ios') {
-        const params = {
-            Protocol: 'application',
-            TopicArn: 'arn:aws:sns:eu-central-1:872912343417:seaats-marketing',
-            Endpoint: token
+    if (platform === 'ios') {
+        const paramsEndpoint = {
+            PlatformApplicationArn: 'arn:aws:sns:eu-central-1:872912343417:app/APNS/seaats',
+            Token: token
         };
 
-        sns.subscribe(params, (err, data) => {
-            if(err) {
-                console.error('Error subscribing device to SNS: ', err);
+        sns.createPlatformEndpoint(paramsEndpoint, (err, data) => {
+            if (err) {
+                console.error(err);
             } else {
-                console.log('Device successfully subscribed to SNS: ', data);
+                const paramsSubscribe = {
+                    Protocol: 'application',
+                    TopicArn: 'arn:aws:sns:eu-central-1:872912343417:seaats-marketing',
+                    Endpoint: data.EndpointArn
+                }
+
+                sns.subscribe(paramsSubscribe, (err, data) => {
+                    if (err) {
+                        console.error('Error subscribing device to SNS: ', err);
+                    } else {
+                        console.log('Device successfully subscribed to SNS: ', data);
+                    }
+                });
+
             }
         })
+
     }
 }
 
