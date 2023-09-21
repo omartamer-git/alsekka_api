@@ -24,11 +24,11 @@ module.exports = function (sequelize, DataTypes) {
     //   allowNull: false,
     // },
     fromLocation: {
-      type: Sequelize.GEOMETRY('POINT'),
+      type: Sequelize.GEOMETRY('POINT', 4326),
       allowNull: false
     },
     toLocation: {
-      type: Sequelize.GEOMETRY('POINT'),
+      type: Sequelize.GEOMETRY('POINT', 4326),
       allowNull: false
     },
     mainTextFrom: {
@@ -98,20 +98,6 @@ module.exports = function (sequelize, DataTypes) {
         using: "BTREE",
         fields: [
           { name: "id" },
-        ]
-      },
-      {
-        name: "from_location_spatial",
-        using: "SPATIAL",
-        fields: [
-          { attribute: "fromLocation" }
-        ]
-      },
-      {
-        name: "to_location_spatial",
-        using: "SPATIAL",
-        fields: [
-          { attribute: "toLocation" }
         ]
       },
       {

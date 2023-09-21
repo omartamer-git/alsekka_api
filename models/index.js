@@ -18,7 +18,28 @@ const sequelize = new Sequelize(dbConfig.DB, dbConfig.USER, dbConfig.PASSWORD, {
 const models = initModels(sequelize);
 
 sequelize.sync({ force: true }).then(() => {
-     console.log("Database is synchronized");
- });
+    console.log("Database is synchronized");
+    const createSpatialIndexQueryFrom = `CREATE SPATIAL INDEX spatial_from_location_idx ON rides (fromLocation);`;
+    const createSpatialIndexQueryTo = `CREATE SPATIAL INDEX spatial_from_location_idx ON rides (toLocation);`;
+
+    sequelize
+        .query(createSpatialIndexQueryFrom)
+        .then(() => {
+            console.log('Spatial index (FROM) created successfully.');
+        })
+        .catch((error) => {
+            console.error('Error creating spatial index:', error);
+        });
+
+    sequelize
+        .query(createSpatialIndexQueryTo)
+        .then(() => {
+            console.log('Spatial index (TO) created successfully.');
+        })
+        .catch((error) => {
+            console.error('Error creating spatial index:', error);
+        });
+
+});
 
 module.exports = models;

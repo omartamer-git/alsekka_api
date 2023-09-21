@@ -233,10 +233,10 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
 async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, mainTextTo, pricePerSeat, driver, datetime, car, community, gender, seatsAvailable, pickupEnabled, pickupPrice }) {
     try {
         const { polyline, duration } = await getDirections(fromLatitude, fromLongitude, toLatitude, toLongitude);
-
+        const SRID = 4326;
         const newRide = await Ride.create({
-            fromLocation: sequelize.fn('POINT', fromLatitude, fromLongitude),
-            toLocation: sequelize.fn('POINT', toLatitude, toLongitude),
+            fromLocation: sequelize.fn('ST_GeomFromText', `POINT(${fromLatitude} ${fromLongitude})`, SRID),
+            toLocation: sequelize.fn('ST_GeomFromText', `POINT(${toLatitude} ${toLongitude})`, SRID),
             mainTextFrom: mainTextFrom,
             mainTextTo: mainTextTo,
             pricePerSeat: pricePerSeat,
