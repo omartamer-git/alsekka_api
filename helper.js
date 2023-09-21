@@ -29,11 +29,11 @@ function uploadImageToGoogleCloud(file, bucketName) {
 }
 
 function uploadImage(file) {
-    return uploadImageToGoogleCloud(file, "alsekka_profile_pics");
+    return uploadImageToGoogleCloud(file, "seaatspublic");
 }
 
 function uploadLicenseImage(file) {
-    return uploadImageToGoogleCloud(file, "seaats_licenses");
+    return uploadImageToGoogleCloud(file, "seaatsprivate");
 }
 
 function isValidEmail(email) {
