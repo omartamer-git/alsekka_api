@@ -3,16 +3,22 @@ const { Ride, Passenger, User, sequelize, License, Car, Voucher, Invoice } = req
 const { NotFoundError, InternalServerError, BadRequestError, UnauthorizedError, GoneError } = require("../errors/Errors");
 const { DRIVER_FEE, PASSENGER_FEE } = require('../config/seaats.config');
 const { getDirections } = require('./googleMapsService');
+const { isFloat } = require('../util/util');
 
 async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, gender, maxDistance }) {
+    if (!isFloat(startLat) || !isFloat(startLng) || !isFloat(endLat) || !isFloat(endLng)) {
+        throw new BadRequestError();
+    }
+
+
     let secondGender;
     if (gender == "ANY") {
         const user = await User.findByPk(uid);
         secondGender = user.gender;
     }
 
-    let values = [startLat, startLng, endLat, endLng, uid, date, gender];
-    let rideQuery = `SELECT *, ST_Distance_Sphere(fromLocation, ST_GeomFromText('POINT(?,?)', 4326) ) as distanceStart, ST_Distance_Sphere(toLocation, ST_GeomFromText( 'POINT(?,?)', 4326 ) ) as distanceEnd FROM rides WHERE (CommunityID IN (SELECT CommunityId FROM CommunityMembers WHERE UserId=? AND joinStatus='APPROVED') OR CommunityID IS NULL) AND datetime >= ? AND (gender=? ${!secondGender ? "" : `OR gender='${secondGender}'`}) HAVING distanceStart <= 10000 AND distanceEnd <= 10000 ORDER BY datetime, distanceStart, distanceEnd`;
+    let values = [uid, date, gender];
+    let rideQuery = `SELECT *, ST_Distance_Sphere(fromLocation, ST_GeomFromText('POINT(${startLat},${startLng})', 4326) ) as distanceStart, ST_Distance_Sphere(toLocation, ST_GeomFromText( 'POINT(${endLat},${endLng})', 4326 ) ) as distanceEnd FROM rides WHERE (CommunityID IN (SELECT CommunityId FROM CommunityMembers WHERE UserId=? AND joinStatus='APPROVED') OR CommunityID IS NULL) AND datetime >= ? AND (gender=? ${!secondGender ? "" : `OR gender='${secondGender}'`}) HAVING distanceStart <= 10000 AND distanceEnd <= 10000 ORDER BY datetime, distanceStart, distanceEnd`;
 
     const rideResult = await sequelize.query(rideQuery, {
         replacements: values,

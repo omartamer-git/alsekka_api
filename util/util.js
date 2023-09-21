@@ -54,6 +54,11 @@ function findOptimalPath(startingPoint, destinationPoints) {
     return optimalPath;
 }
 
+function isFloat(value) {
+    return (!isNaN(value) && value.toString().indexOf('.') != -1);
+}
+
 module.exports = {
-    findOptimalPath
+    findOptimalPath,
+    isFloat
 }
