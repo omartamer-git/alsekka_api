@@ -28,7 +28,7 @@ async function getAnnouncements(active) {
 }
 
 async function registerDevice({ token, platform }) {
-    if(platform === 'iOS') {
+    if(platform === 'ios') {
         const params = {
             Protocol: 'application',
             TopicArn: 'arn:aws:sns:eu-central-1:872912343417:seaats-marketing',
