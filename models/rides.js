@@ -7,22 +7,6 @@ module.exports = function (sequelize, DataTypes) {
       allowNull: false,
       primaryKey: true
     },
-    // fromLatitude: {
-    //   type: DataTypes.DECIMAL(8, 6),
-    //   allowNull: false,
-    // },
-    // fromLongitude: {
-    //   type: DataTypes.DECIMAL(9, 6),
-    //   allowNull: false,
-    // },
-    // toLatitude: {
-    //   type: DataTypes.DECIMAL(8, 6),
-    //   allowNull: false,
-    // },
-    // toLongitude: {
-    //   type: DataTypes.DECIMAL(9, 6),
-    //   allowNull: false,
-    // },
     fromLocation: {
       type: Sequelize.GEOMETRY('POINT', 4326),
       allowNull: false
