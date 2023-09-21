@@ -3,8 +3,8 @@ const { Ride, Passenger } = require("../models");
 const { NotFoundError, UnauthorizedError } = require("../errors/Errors");
 const { calculateDistance, findOptimalPath } = require("../util/util");
 
-const googleKey = "AIzaSyDUNz5SYhR1nrdfk9TW4gh3CDpLcDMKwuw";
-
+// const googleKey = "AIzaSyDUNz5SYhR1nrdfk9TW4gh3CDpLcDMKwuw";
+const googleKey = "AIzaSyDgtya731fBmhzsGJGmcJq9fVwkUQ45e1c";
 async function getPredictions(text) {
     let pred = [];
     const url = 'https://maps.googleapis.com/maps/api/place/autocomplete/json';
