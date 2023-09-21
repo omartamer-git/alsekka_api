@@ -1041,6 +1041,16 @@ app.get("/verifyvoucher", authenticateToken, async (req, res, next) => {
     }).catch(next);
 });
 
+app.get("/registerdevice", async(req, res, next) => {
+    const {token, platform} = req.query;
+    if(!token || !platform) {
+        return next(new BadRequestError());
+    }
+
+    appService.registerDevice(req.query);
+    res.status(200).send();
+});
+
 app.post("/staff/login", async (req, res, next) => {
     const { username, password } = req.body;
     if (!username || !password) {
