@@ -11,8 +11,8 @@ async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, g
         secondGender = user.gender;
     }
 
-    let values = [startLat, startLng, startLat, endLat, endLng, endLat, uid, date, gender];
-    let rideQuery = `SELECT *, ST_Distance_Sphere(fromLocation, POINT(${startLat},${startLng})) as distanceStart, ST_Distance_Sphere(toLocation, POINT(${endLat},${endLng})) as distanceEnd FROM rides WHERE (CommunityID IN (SELECT CommunityId FROM CommunityMembers WHERE UserId=? AND joinStatus='APPROVED') OR CommunityID IS NULL) AND datetime >= ? AND (gender=? ${!secondGender ? "" : `OR gender='${secondGender}'`}) HAVING distanceStart <= 10000 AND distanceEnd <= 10000 ORDER BY datetime, distanceStart, distanceEnd`;
+    let values = [startLat, startLng, endLat, endLng, uid, date, gender];
+    let rideQuery = `SELECT *, ST_Distance_Sphere(fromLocation, POINT(?,?)) as distanceStart, ST_Distance_Sphere(toLocation, POINT(?,?)) as distanceEnd FROM rides WHERE (CommunityID IN (SELECT CommunityId FROM CommunityMembers WHERE UserId=? AND joinStatus='APPROVED') OR CommunityID IS NULL) AND datetime >= ? AND (gender=? ${!secondGender ? "" : `OR gender='${secondGender}'`}) HAVING distanceStart <= 10000 AND distanceEnd <= 10000 ORDER BY datetime, distanceStart, distanceEnd`;
 
     const rideResult = await sequelize.query(rideQuery, {
         replacements: values,
