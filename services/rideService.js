@@ -57,7 +57,7 @@ async function getRideDetails({ rideId }) {
                 'pricePerSeat',
                 'datetime',
                 [sequelize.literal('ST_X(fromLocation)'), 'fromLatitude'],
-                [sequelize.literal('ST_Y(fromLocation)'), 'fromLongitude']
+                [sequelize.literal('ST_Y(fromLocation)'), 'fromLongitude'],
                 [sequelize.literal('ST_X(toLocation)'), 'toLatitude'],
                 [sequelize.literal('ST_Y(toLocation)'), 'toLongitude'],
                 'seatsAvailable',
@@ -359,7 +359,7 @@ async function getTripDetails({ uid, tripId }) {
             [sequelize.literal(`(SELECT SUM(seats) FROM passengers WHERE RideId=Ride.id AND status != "CANCELLED")`), 'seatsOccupied'],
             'id',
             [sequelize.literal('ST_X(fromLocation)'), 'fromLatitude'],
-            [sequelize.literal('ST_Y(fromLocation)'), 'fromLongitude']
+            [sequelize.literal('ST_Y(fromLocation)'), 'fromLongitude'],
             [sequelize.literal('ST_X(toLocation)'), 'toLatitude'],
             [sequelize.literal('ST_Y(toLocation)'), 'toLongitude'],
             'mainTextFrom',
