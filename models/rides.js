@@ -7,21 +7,29 @@ module.exports = function (sequelize, DataTypes) {
       allowNull: false,
       primaryKey: true
     },
-    fromLatitude: {
-      type: DataTypes.DECIMAL(8, 6),
-      allowNull: false,
+    // fromLatitude: {
+    //   type: DataTypes.DECIMAL(8, 6),
+    //   allowNull: false,
+    // },
+    // fromLongitude: {
+    //   type: DataTypes.DECIMAL(9, 6),
+    //   allowNull: false,
+    // },
+    // toLatitude: {
+    //   type: DataTypes.DECIMAL(8, 6),
+    //   allowNull: false,
+    // },
+    // toLongitude: {
+    //   type: DataTypes.DECIMAL(9, 6),
+    //   allowNull: false,
+    // },
+    fromLocation: {
+      type: Sequelize.GEOMETRY('POINT'),
+      allowNull: false
     },
-    fromLongitude: {
-      type: DataTypes.DECIMAL(9, 6),
-      allowNull: false,
-    },
-    toLatitude: {
-      type: DataTypes.DECIMAL(8, 6),
-      allowNull: false,
-    },
-    toLongitude: {
-      type: DataTypes.DECIMAL(9, 6),
-      allowNull: false,
+    toLocation: {
+      type: Sequelize.GEOMETRY('POINT'),
+      allowNull: false
     },
     mainTextFrom: {
       type: DataTypes.STRING(100),
@@ -77,7 +85,7 @@ module.exports = function (sequelize, DataTypes) {
       allowNull: false
     },
     duration: {
-      type:DataTypes.INTEGER,
+      type: DataTypes.INTEGER,
       allowNull: false
     }
   }, {
@@ -92,6 +100,34 @@ module.exports = function (sequelize, DataTypes) {
           { name: "id" },
         ]
       },
+      {
+        name: "from_location_spatial",
+        using: "SPATIAL",
+        fields: [
+          { attribute: "fromLocation" }
+        ]
+      },
+      {
+        name: "to_location_spatial",
+        using: "SPATIAL",
+        fields: [
+          { attribute: "toLocation" }
+        ]
+      },
+      {
+        name: "datetime_index",
+        using: "BTREE",
+        fields: [
+          { name: "datetime" }
+        ]
+      },
+      {
+        name: "status_index",
+        using: "BTREE",
+        fields: [
+          { name: "status" }
+        ]
+      }
     ]
   });
 };

@@ -13,8 +13,8 @@ async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, g
 
     let values = [startLat, startLng, startLat, endLat, endLng, endLat, uid, date, gender];
     let rideQuery = `SELECT *, 
-  ( 6371 * acos( cos( radians(?) ) * cos( radians( fromLatitude ) ) * cos( radians( fromLongitude ) - radians(?) ) + sin( radians(?) ) * sin( radians( fromLatitude ) ) ) ) AS distanceStart,
-  ( 6371 * acos( cos( radians(?) ) * cos( radians( toLatitude ) ) * cos( radians( toLongitude ) - radians(?) ) + sin( radians(?) ) * sin( radians( toLatitude ) ) ) ) AS distanceEnd 
+  ( 6371 * acos( cos( radians(?) ) * cos( radians( ST_X(fromLocation) ) ) * cos( radians( fromLongitude ) - radians(?) ) + sin( radians(?) ) * sin( radians( ST_Y(from_location) ) ) ) ) AS distanceStart,
+  ( 6371 * acos( cos( radians(?) ) * cos( radians( ST_X(toLocation) ) ) * cos( radians( toLongitude ) - radians(?) ) + sin( radians(?) ) * sin( radians( ST_Y(toLocation) ) ) ) ) AS distanceEnd 
   FROM rides WHERE (CommunityID IN (SELECT CommunityId FROM CommunityMembers WHERE UserId=? AND joinStatus='APPROVED') OR CommunityID IS NULL) AND datetime >= ? AND (gender=? ${!secondGender ? "" : `OR gender='${secondGender}'`}) HAVING distanceStart <= 50 AND distanceEnd <= 50 ORDER BY datetime, distanceStart, distanceEnd`;
 
     const rideResult = await sequelize.query(rideQuery, {
@@ -53,10 +53,10 @@ async function getRideDetails({ rideId }) {
                 'datetime',
                 'pricePerSeat',
                 'datetime',
-                'fromLatitude',
-                'fromLongitude',
-                'toLatitude',
-                'toLongitude',
+                [sequelize.literal('ST_X(fromLocation)'), 'fromLatitude'],
+                [sequelize.literal('ST_Y(fromLocation)'), 'fromLongitude']
+                [sequelize.literal('ST_X(toLocation)'), 'toLatitude'],
+                [sequelize.literal('ST_Y(toLocation)'), 'toLongitude'],
                 'seatsAvailable',
                 'pickupEnabled',
                 'pickupPrice',
@@ -232,13 +232,11 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
 
 async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, mainTextTo, pricePerSeat, driver, datetime, car, community, gender, seatsAvailable, pickupEnabled, pickupPrice }) {
     try {
-        const {polyline, duration} = await getDirections(fromLatitude, fromLongitude, toLatitude, toLongitude);
+        const { polyline, duration } = await getDirections(fromLatitude, fromLongitude, toLatitude, toLongitude);
 
         const newRide = await Ride.create({
-            fromLatitude: fromLatitude,
-            fromLongitude: fromLongitude,
-            toLatitude: toLatitude,
-            toLongitude: toLongitude,
+            fromLocation: sequelize.fn('POINT', fromLatitude, fromLongitude),
+            toLocation: sequelize.fn('POINT', toLatitude, toLongitude),
             mainTextFrom: mainTextFrom,
             mainTextTo: mainTextTo,
             pricePerSeat: pricePerSeat,
@@ -357,10 +355,10 @@ async function getTripDetails({ uid, tripId }) {
             [sequelize.literal(`(Ride.driverId=${uid})`), 'isDriver'],
             [sequelize.literal(`(SELECT SUM(seats) FROM passengers WHERE RideId=Ride.id AND status != "CANCELLED")`), 'seatsOccupied'],
             'id',
-            'fromLatitude',
-            'fromLongitude',
-            'toLatitude',
-            'toLongitude',
+            [sequelize.literal('ST_X(fromLocation)'), 'fromLatitude'],
+            [sequelize.literal('ST_Y(fromLocation)'), 'fromLongitude']
+            [sequelize.literal('ST_X(toLocation)'), 'toLatitude'],
+            [sequelize.literal('ST_Y(toLocation)'), 'toLongitude'],
             'mainTextFrom',
             'mainTextTo',
             'pricePerSeat',
@@ -395,7 +393,7 @@ async function getTripDetails({ uid, tripId }) {
     }
 
     const timeToTrip = new Date(tripDetails.datetime).getTime() - new Date().getTime();
-    if(timeToTrip > 1000 * 60 * 60 * 3) {
+    if (timeToTrip > 1000 * 60 * 60 * 3) {
         tripDetails.Driver.phone = null;
     }
 
@@ -594,7 +592,7 @@ async function checkOut({ tripId, uid }) {
         } else {
             driver.balance = driver.balance - invoice.grandTotal + (invoice.totalAmount - invoice.driverFeeTotal);
         }
-    
+
         // removing due balance from other rides
 
         const passengersOtherRides = await Passenger.findAll({
@@ -616,28 +614,28 @@ async function checkOut({ tripId, uid }) {
 
     ride.status = 'COMPLETED';
 
-    await ride.save({transaction: t});
+    await ride.save({ transaction: t });
 
     await driver.save({ transaction: t });
 
     await t.commit();
 }
 
-async function submitDriverRatings({tripId, ratings}, uid) {
+async function submitDriverRatings({ tripId, ratings }, uid) {
     const ride = await Ride.findByPk(tripId);
-    if(ride.DriverId !== uid) {
+    if (ride.DriverId !== uid) {
         throw new UnauthorizedError();
     }
-    if(ride.driverCompletedRatings == 1) {
+    if (ride.driverCompletedRatings == 1) {
         throw new BadRequestError();
     }
 
     ride.driverCompletedRatings = true;
     ride.save();
 
-    for(const rating of ratings) {
+    for (const rating of ratings) {
         const user = await User.findByPk(rating.id);
-        
+
         user.rating = ((user.rating * user.numRatings) + rating.stars) / (user.numRatings + 1);
         user.numRatings = user.numRatings + 1;
         user.save();

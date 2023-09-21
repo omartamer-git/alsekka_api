@@ -90,14 +90,6 @@ module.exports = function (sequelize, DataTypes) {
           { name: "phone" },
         ]
       },
-      {
-        name: "email",
-        unique: true,
-        using: "BTREE",
-        fields: [
-          { name: "email" },
-        ]
-      },
     ]
   });
 };
