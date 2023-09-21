@@ -13,8 +13,8 @@ async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, g
 
     let values = [startLat, startLng, startLat, endLat, endLng, endLat, uid, date, gender];
     let rideQuery = `SELECT *, 
-  ( 6371 * acos( cos( radians(?) ) * cos( radians( ST_X(fromLocation) ) ) * cos( radians( fromLongitude ) - radians(?) ) + sin( radians(?) ) * sin( radians( ST_Y(from_location) ) ) ) ) AS distanceStart,
-  ( 6371 * acos( cos( radians(?) ) * cos( radians( ST_X(toLocation) ) ) * cos( radians( toLongitude ) - radians(?) ) + sin( radians(?) ) * sin( radians( ST_Y(toLocation) ) ) ) ) AS distanceEnd 
+  ( 6371 * acos( cos( radians(?) ) * cos( radians( ST_X(fromLocation) ) ) * cos( radians( ST_T(fromLocation) ) - radians(?) ) + sin( radians(?) ) * sin( radians( ST_Y(from_location) ) ) ) ) AS distanceStart,
+  ( 6371 * acos( cos( radians(?) ) * cos( radians( ST_X(toLocation) ) ) * cos( radians( ST_Y(toLocation) ) - radians(?) ) + sin( radians(?) ) * sin( radians( ST_Y(toLocation) ) ) ) ) AS distanceEnd 
   FROM rides WHERE (CommunityID IN (SELECT CommunityId FROM CommunityMembers WHERE UserId=? AND joinStatus='APPROVED') OR CommunityID IS NULL) AND datetime >= ? AND (gender=? ${!secondGender ? "" : `OR gender='${secondGender}'`}) HAVING distanceStart <= 50 AND distanceEnd <= 50 ORDER BY datetime, distanceStart, distanceEnd`;
 
     const rideResult = await sequelize.query(rideQuery, {
