@@ -1,13 +1,16 @@
 const { Announcement, DriverEnrollment } = require("../models")
 const { NotFoundError } = require("../errors/Errors")
 
-const AWS = require('aws-sdk');
+const AWS = require('aws-sdk'),
+      {
+          SNS
+      } = require("@aws-sdk/client-sns");
 AWS.config.update({
     accessKeyId: 'AKIA4WPNBKF4XUVMTRE4',
     secretAccessKey: 'fx6W1HLoNx/K1y9zrEKW6sGpXaerrYLzmu1iQt6+',
     region: 'eu-central-1',  // e.g., us-west-2
 });
-const sns = new AWS.SNS();
+const sns = new SNS();
 
 async function getAnnouncement(announcementId) {
     const announcement = await Announcement.findByPk(announcementId);
