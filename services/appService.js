@@ -1,16 +1,13 @@
 const { Announcement, DriverEnrollment } = require("../models")
 const { NotFoundError } = require("../errors/Errors")
 
-const AWS = require('aws-sdk'),
-      {
-          SNS
-      } = require("@aws-sdk/client-sns");
+const AWS = require('aws-sdk');
 AWS.config.update({
     accessKeyId: 'AKIA4WPNBKF4XUVMTRE4',
     secretAccessKey: 'fx6W1HLoNx/K1y9zrEKW6sGpXaerrYLzmu1iQt6+',
     region: 'eu-central-1',  // e.g., us-west-2
 });
-const sns = new SNS();
+const sns = new AWS.SNS();
 
 async function getAnnouncement(announcementId) {
     const announcement = await Announcement.findByPk(announcementId);
@@ -33,7 +30,7 @@ async function getAnnouncements(active) {
 async function registerDevice({ token, platform }) {
     if (platform === 'ios') {
         const paramsEndpoint = {
-            PlatformApplicationArn: 'arn:aws:sns:eu-central-1:872912343417:app/APNS_SANDBOX/seaats-app-dev',
+            PlatformApplicationArn: 'arn:aws:sns:eu-central-1:872912343417:app/APNS/seaats',
             Token: token
         };
 
