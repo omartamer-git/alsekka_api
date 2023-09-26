@@ -17,7 +17,7 @@ const sequelize = new Sequelize(dbConfig.DB, dbConfig.USER, dbConfig.PASSWORD, {
 
 const models = initModels(sequelize);
 
-sequelize.sync({ alter: true }).then(() => {
+sequelize.sync({ force: true }).then(() => {
     console.log("Database is synchronized");
     const createSpatialIndexQueryFrom = `CREATE SPATIAL INDEX spatial_from_location_idx ON rides (fromLocation);`;
     const createSpatialIndexQueryTo = `CREATE SPATIAL INDEX spatial_to_location_idx ON rides (toLocation);`;

@@ -238,15 +238,6 @@ async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, 
     try {
         const { polyline, duration } = await getDirections(fromLatitude, fromLongitude, toLatitude, toLongitude);
         const SRID = 4326;
-
-        const topicName = crypto.randomUUID();
-        const sns = AWS.SNS();
-        const params = {
-            Name: topicName
-        }
-        const topicData = await sns.createTopic(createTopicParams).promise();
-        const topicArn = topicData.TopicArn;
-
         const newRide = await Ride.create({
             fromLocation: sequelize.fn('ST_GeomFromText', `POINT(${fromLatitude} ${fromLongitude})`, SRID),
             toLocation: sequelize.fn('ST_GeomFromText', `POINT(${toLatitude} ${toLongitude})`, SRID),
@@ -263,8 +254,7 @@ async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, 
             seatsAvailable: seatsAvailable,
             driverFee: DRIVER_FEE,
             polyline: polyline,
-            duration: duration,
-            topicArn: topicArn
+            duration: duration
         });
 
         return newRide;
