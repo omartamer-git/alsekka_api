@@ -6,6 +6,15 @@ const { getDirections } = require('./googleMapsService');
 const { isFloat } = require('../util/util');
 const { subtractDates } = require('../helper');
 
+const AWS = require('aws-sdk');
+AWS.config.update({
+    accessKeyId: 'AKIA4WPNBKF4XUVMTRE4',
+    secretAccessKey: 'fx6W1HLoNx/K1y9zrEKW6sGpXaerrYLzmu1iQt6+',
+    region: 'eu-central-1',  // e.g., us-west-2
+});
+const sns = new AWS.SNS();
+
+
 async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, gender, maxDistance }) {
     if (!isFloat(startLat) || !isFloat(startLng) || !isFloat(endLat) || !isFloat(endLng)) {
         throw new BadRequestError();
@@ -240,7 +249,6 @@ async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, 
         const SRID = 4326;
 
         const topicName = crypto.randomUUID();
-        const sns = AWS.SNS();
         const params = {
             Name: topicName
         }
