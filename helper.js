@@ -104,6 +104,14 @@ function addMinutes(date, minutes) {
     return new Date(date.getTime() + minutes * 60000);
 }
 
+const subtractDates = (date, hoursBefore) => {
+    const inputDate = new Date(date);
+
+    const dateTime1HourBefore = new Date(inputDate.getTime() - hoursBefore * 60 * 60 * 1000);
+
+    return dateTime1HourBefore
+}
+
 
 module.exports = {
     isValidEmail,
@@ -112,5 +120,6 @@ module.exports = {
     generateOtp,
     addMinutes,
     uploadImage,
-    uploadLicenseImage
+    uploadLicenseImage,
+    subtractDates
 };
