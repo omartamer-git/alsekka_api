@@ -46,7 +46,7 @@ async function createUser({ fname, lname, phone, email, password, gender }) {
             profilePicture: gender === 'MALE' ? 'https://storage.googleapis.com/alsekka_profile_pics/default_male.png' : 'https://storage.googleapis.com/alsekka_profile_pics/default_female.png'
         });
         if(VERIFICATIONS_DISABLED) {
-            newUser.dataValues.verified = true;
+            newUser.verified = true;
         }
         return newUser;
     } catch (e) {
@@ -74,7 +74,7 @@ async function loginUser({ phone, email, password }) {
 
         userAccount.password = undefined;
         if(VERIFICATIONS_DISABLED) {
-            userAccount.dataValues.verified = true;
+            userAccount.verified = true;
         }
 
         const accessToken = jwt.sign({ userId: userAccount.id }, JWT_SECRET, { expiresIn: JWT_EXPIRATION });
@@ -108,7 +108,7 @@ async function userInfo({uid}) {
     });
 
     if(VERIFICATIONS_DISABLED) {
-        userAccount.dataValues.verified = true;
+        userAccount.verified = true;
     }
 
     return {
