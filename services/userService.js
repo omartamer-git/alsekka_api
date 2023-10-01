@@ -7,7 +7,7 @@ const { default: axios } = require("axios");
 const config = require("../config");
 const jwt = require('jsonwebtoken');
 const { JWT_SECRET, JWT_EXPIRATION, REFRESH_TOKEN_EXPIRATION } = require("../config/auth.config");
-const { DRIVER_FEE, PASSENGER_FEE, CARDS_ENABLED } = require("../config/seaats.config");
+const { DRIVER_FEE, PASSENGER_FEE, CARDS_ENABLED, VERIFICATIONS_DISABLED } = require("../config/seaats.config");
 
 async function accountAvailable(phone, email) {
     let userAccount;
@@ -45,6 +45,9 @@ async function createUser({ fname, lname, phone, email, password, gender }) {
             gender: gender,
             profilePicture: gender === 'MALE' ? 'https://storage.googleapis.com/alsekka_profile_pics/default_male.png' : 'https://storage.googleapis.com/alsekka_profile_pics/default_female.png'
         });
+        if(VERIFICATIONS_DISABLED) {
+            newUser.verified = true;
+        }
         return newUser;
     } catch (e) {
         throw new InternalServerError();
@@ -70,6 +73,9 @@ async function loginUser({ phone, email, password }) {
         });
 
         userAccount.password = undefined;
+        if(VERIFICATIONS_DISABLED) {
+            userAccount.verified = true;
+        }
 
         const accessToken = jwt.sign({ userId: userAccount.id }, JWT_SECRET, { expiresIn: JWT_EXPIRATION });
         const refreshToken = jwt.sign({ userId: userAccount.id }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRATION });
@@ -100,6 +106,10 @@ async function userInfo({uid}) {
             expiryDate: { [Op.gt]: today }
         }
     });
+
+    if(VERIFICATIONS_DISABLED) {
+        userAccount.verified = true;
+    }
 
     return {
         ...userAccount.dataValues,
