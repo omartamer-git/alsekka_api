@@ -73,14 +73,10 @@ async function loginUser({ phone, email, password }) {
         });
 
         userAccount.password = undefined;
-        if(VERIFICATIONS_DISABLED) {
-            userAccount.verified = true;
-        }
 
         const accessToken = jwt.sign({ userId: userAccount.id }, JWT_SECRET, { expiresIn: JWT_EXPIRATION });
         const refreshToken = jwt.sign({ userId: userAccount.id }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRATION });
 
-        // userAccount.driver = !!license;
         return {
             ...userAccount.dataValues,
             driver: !!license,
@@ -88,7 +84,8 @@ async function loginUser({ phone, email, password }) {
             refreshToken: refreshToken,
             driverFee: DRIVER_FEE,
             passengerFee: PASSENGER_FEE,
-            cardsEnabled: CARDS_ENABLED
+            cardsEnabled: CARDS_ENABLED,
+            verificationsDisabled: VERIFICATIONS_DISABLED
         };
     } else {
         throw new UnauthorizedError("Invalid phone and/or password. Please try again.");
@@ -107,16 +104,13 @@ async function userInfo({uid}) {
         }
     });
 
-    if(VERIFICATIONS_DISABLED) {
-        userAccount.verified = true;
-    }
-
     return {
         ...userAccount.dataValues,
         driver: !!license,
         driverFee: DRIVER_FEE,
         passengerFee: PASSENGER_FEE,
-        cardsEnabled: CARDS_ENABLED
+        cardsEnabled: CARDS_ENABLED,
+        verificationsDisabled: VERIFICATIONS_DISABLED
     }
 }
 
