@@ -72,16 +72,17 @@ async function loginUser({ phone, email, password, deviceToken, platform }) {
             }
         });
 
-        userAccount.password = undefined;
-
-        const accessToken = jwt.sign({ userId: userAccount.id }, JWT_SECRET, { expiresIn: JWT_EXPIRATION });
-        const refreshToken = jwt.sign({ userId: userAccount.id }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRATION });
-
         if(deviceToken && deviceToken !== userAccount.deviceToken) {
             userAccount.deviceToken = deviceToken;
             userAccount.platform = platform;
             userAccount.save();
         }
+
+        userAccount.password = undefined;
+
+        const accessToken = jwt.sign({ userId: userAccount.id }, JWT_SECRET, { expiresIn: JWT_EXPIRATION });
+        const refreshToken = jwt.sign({ userId: userAccount.id }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRATION });
+
 
         return {
             ...userAccount.dataValues,
