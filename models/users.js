@@ -65,6 +65,9 @@ module.exports = function (sequelize, DataTypes) {
     deviceToken: {
       type: DataTypes.TEXT,
       allowNull: true,
+    },
+    platform: {
+      type: DataTypes.ENUM('ios', 'android'),
     }
   }, {
     sequelize,

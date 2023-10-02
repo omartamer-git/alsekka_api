@@ -54,7 +54,7 @@ async function createUser({ fname, lname, phone, email, password, gender }) {
     }
 }
 
-async function loginUser({ phone, email, password, deviceToken }) {
+async function loginUser({ phone, email, password, deviceToken, platform }) {
     let userAccount;
     userAccount = await User.scope('auth').findOne({ where: { phone: phone } });
     if (!userAccount) {
@@ -79,6 +79,7 @@ async function loginUser({ phone, email, password, deviceToken }) {
 
         if(deviceToken && deviceToken !== userAccount.deviceToken) {
             userAccount.deviceToken = deviceToken;
+            userAccount.platform = platform;
             userAccount.save();
         }
 
