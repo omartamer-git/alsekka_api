@@ -1,4 +1,4 @@
-const { Announcement, DriverEnrollment } = require("../models")
+const { Announcement, DriverEnrollment, Device } = require("../models")
 const { NotFoundError } = require("../errors/Errors")
 
 const AWS = require('aws-sdk');
@@ -34,6 +34,18 @@ async function registerDevice({ token, platform }) {
             Token: token
         };
 
+        const existingDevice = await Device.findOne({
+            where: {
+                deviceToken: token
+            }
+        });
+
+        if (existingDevice !== null) {
+            return;
+        }
+
+
+
         sns.createPlatformEndpoint(paramsEndpoint, (err, data) => {
             if (err) {
                 console.error(err);
@@ -43,6 +55,12 @@ async function registerDevice({ token, platform }) {
                     TopicArn: 'arn:aws:sns:eu-central-1:872912343417:seaats-marketing',
                     Endpoint: data.EndpointArn
                 }
+
+                Device.create({
+                    deviceToken: token,
+                    platformEndpoint: data.EndpointArn,
+                    platform: platform
+                });
 
                 sns.subscribe(paramsSubscribe, (err, data) => {
                     if (err) {
