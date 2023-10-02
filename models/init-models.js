@@ -63,8 +63,8 @@ function initModels(sequelize) {
   Community.belongsTo(User, {as: 'Owner', foreignKey: "OwnerId"});
   User.hasMany(Community, { as: 'Administrated', foreignKey: "OwnerId" });
 
-  Ride.belongsToMany(User, { as: 'Passengers', through: Passenger });
-  User.belongsToMany(Ride, { as: 'Rides', through: Passenger });
+  // Ride.belongsToMany(User, { as: 'Passengers', through: Passenger });
+  // User.belongsToMany(Ride, { as: 'Rides', through: Passenger });
 
   Passenger.belongsTo(Ride);
   Ride.hasMany(Passenger);

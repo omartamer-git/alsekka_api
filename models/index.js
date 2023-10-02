@@ -39,7 +39,6 @@ sequelize.sync({ alter: true }).then(() => {
         .catch((error) => {
             console.error('Error creating spatial index:', error);
         });
-
 });
 
 module.exports = models;

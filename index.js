@@ -34,11 +34,9 @@ const multerMid = multer({
 })
 
 app.disable('x-powered-by')
-// app.use(multerMid.single('file'))
 app.use(multerMid.any());
 app.use(express.json());
 
-// app.use(cors());
 app.use(cookieParser());
 app.use(session({
     secret: 'seschret_password_goes_brazy',
@@ -122,7 +120,7 @@ app.get("/accountavailable", async (req, res, next) => {
 app.get("/userinfo", authenticateToken, async (req, res, next) => {
     const uid = req.user.userId;
 
-    userService.userInfo({ uid }).then((response) => {
+    userService.userInfo(req.query, uid).then((response) => {
         res.json(response);
     }).catch(next);
 });

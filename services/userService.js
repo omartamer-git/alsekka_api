@@ -54,7 +54,7 @@ async function createUser({ fname, lname, phone, email, password, gender }) {
     }
 }
 
-async function loginUser({ phone, email, password }) {
+async function loginUser({ phone, email, password, deviceToken }) {
     let userAccount;
     userAccount = await User.scope('auth').findOne({ where: { phone: phone } });
     if (!userAccount) {
@@ -77,6 +77,11 @@ async function loginUser({ phone, email, password }) {
         const accessToken = jwt.sign({ userId: userAccount.id }, JWT_SECRET, { expiresIn: JWT_EXPIRATION });
         const refreshToken = jwt.sign({ userId: userAccount.id }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRATION });
 
+        if(deviceToken && deviceToken !== userAccount.deviceToken) {
+            userAccount.deviceToken = deviceToken;
+            userAccount.save();
+        }
+
         return {
             ...userAccount.dataValues,
             driver: !!license,
@@ -92,7 +97,7 @@ async function loginUser({ phone, email, password }) {
     }
 }
 
-async function userInfo({uid}) {
+async function userInfo({deviceToken}, uid) {
     let userAccount = await User.findByPk(uid);
 
     const today = new Date();
@@ -103,6 +108,11 @@ async function userInfo({uid}) {
             expiryDate: { [Op.gt]: today }
         }
     });
+
+    if(deviceToken && deviceToken !== userAccount.deviceToken) {
+        userAccount.deviceToken = deviceToken;
+        userAccount.save();
+    }
 
     return {
         ...userAccount.dataValues,
