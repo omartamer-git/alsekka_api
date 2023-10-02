@@ -481,7 +481,7 @@ async function cancelPassenger({ tripId }, userId) {
             } else {
                 // handle late cancel cash
                 const driver = await ride.getDriver();
-                driver.balance = driver.balance + invoice.totalAmount - invoide.driverFeeTotal;
+                driver.balance = driver.balance + invoice.totalAmount - invoice.driverFeeTotal;
                 await driver.save({ transaction: t });
 
                 passenger.User.balance = passenger.User.balance - invoice.grandTotal;
