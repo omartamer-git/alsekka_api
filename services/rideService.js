@@ -282,13 +282,13 @@ async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, 
 }
 
 async function getUpcomingRides({ uid, limit }) {
-    const upcomingRides = await getPastRides({ uid, limit }, true);
+    const upcomingRides = await getPastRides({ uid, limit }, true, false);
     return upcomingRides;
 }
 
-async function getPastRides({ uid, limit, after, offset }, upcoming = false) {
+async function getPastRides({ uid, limit, after, offset }, upcoming = false, cancelled=true) {
     const passengerFinderQuery = await Passenger.findAll({
-        where: { UserId: uid },
+        where: { UserId: uid, status: !cancelled ? ([Op.ne]: 'CANCELLED') : undefined },
         attributes: ['RideId'],
         raw: true
     });
@@ -324,7 +324,6 @@ async function getPastRides({ uid, limit, after, offset }, upcoming = false) {
     } else if (after) {
         whereClauseRide.datetime = { [Op.lt]: after };
     }
-
 
 
     const upcomingRides = await Ride.findAll({
