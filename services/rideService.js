@@ -286,9 +286,12 @@ async function getUpcomingRides({ uid, limit }) {
     return upcomingRides;
 }
 
-async function getPastRides({ uid, limit, after, offset }, upcoming = false, cancelled=true) {
+async function getPastRides({ uid, limit, after, offset }, upcoming = false, cancelled = true) {
     const passengerFinderQuery = await Passenger.findAll({
-        where: { UserId: uid, status: !cancelled ? ([Op.ne]: 'CANCELLED') : undefined },
+        where: {
+            UserId: uid,
+            status: !cancelled ? { [Op.ne]: 'CANCELLED' } : undefined
+        },
         attributes: ['RideId'],
         raw: true
     });
