@@ -61,6 +61,10 @@ module.exports = function (sequelize, DataTypes) {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: 0,
+    },
+    deviceToken: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     }
   }, {
     sequelize,
