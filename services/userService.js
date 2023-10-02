@@ -1,5 +1,5 @@
 const { Op } = require("sequelize");
-const { User, License, sequelize, Card, BankAccount, MobileWallet, Referral, Withdrawal } = require("../models");
+const { User, License, sequelize, Card, BankAccount, MobileWallet, Referral, Withdrawal, Device } = require("../models");
 const bcrypt = require("bcrypt");
 const { getCardDetails, checkCardNumber, generateOtp, addMinutes, uploadImage, uploadLicenseImage } = require("../helper");
 const { UnauthorizedError, NotFoundError, ConflictError, InternalServerError, NotAcceptableError, BadRequestError } = require("../errors/Errors");
@@ -54,7 +54,7 @@ async function createUser({ fname, lname, phone, email, password, gender }) {
     }
 }
 
-async function loginUser({ phone, email, password, deviceToken, platform }) {
+async function loginUser({ phone, email, password, deviceToken }) {
     let userAccount;
     userAccount = await User.scope('auth').findOne({ where: { phone: phone } });
     if (!userAccount) {
@@ -72,10 +72,15 @@ async function loginUser({ phone, email, password, deviceToken, platform }) {
             }
         });
 
-        if(deviceToken && deviceToken !== userAccount.deviceToken) {
-            userAccount.deviceToken = deviceToken;
-            userAccount.platform = platform;
-            userAccount.save();
+        const device = await Device.findOne({
+            where: {
+                deviceToken: deviceToken
+            }
+        });
+
+        if(deviceToken && device.id !== userAccount.DeviceId) {
+            userAccount.DeviceId = device.id;
+            await userAccount.save();
         }
 
         userAccount.password = undefined;
@@ -111,10 +116,17 @@ async function userInfo({deviceToken}, uid) {
         }
     });
 
-    if(deviceToken && deviceToken !== userAccount.deviceToken) {
-        userAccount.deviceToken = deviceToken;
-        userAccount.save();
+    const device = await Device.findOne({
+        where: {
+            deviceToken: deviceToken
+        }
+    });
+
+    if(deviceToken && device.id !== userAccount.DeviceId) {
+        userAccount.DeviceId = device.id;
+        await userAccount.save();
     }
+
 
     return {
         ...userAccount.dataValues,
