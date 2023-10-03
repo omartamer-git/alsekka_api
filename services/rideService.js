@@ -7,6 +7,7 @@ const { isFloat } = require('../util/util');
 const { subtractDates } = require('../helper');
 
 const AWS = require('aws-sdk');
+const { sendNotificationToUser, sendNotificationToRide } = require('./appService');
 AWS.config.update({
     accessKeyId: 'AKIA4WPNBKF4XUVMTRE4',
     secretAccessKey: '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',
@@ -231,23 +232,7 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
             }, { transaction: t });
         }
 
-        const driver = await ride.getDriver();
-        const device = await driver.getDevice();
-        console.log(device.deviceToken);
-
-        const params = {
-            Message: 'A passenger has booked a ride with you to ' + ride.mainTextTo,
-            TargetArn: device.platformEndpoint
-        };
-
-        sns.publish(params, function (err, data) {
-            if (err) console.log(err, err.stack); // an error occurred
-            else {
-                console.log(data);           // successful response
-            }
-        });
-
-
+        sendNotificationToUser("New Passenger", 'A passenger has booked a ride with you to ' + ride.mainTextTo, ride.DriverId);
 
         await t.commit();
 
@@ -455,6 +440,7 @@ async function cancelRide({ tripId }) {
         }
         ride.status = "CANCELLED";
         ride.save();
+        sendNotificationToRide("Ride Cancelled", "Your ride to " + ride.mainTextTo + " has been cancelled by the driver. We apologize for the inconvenience.", null, ride.topicArn);
         return true;
     } else {
         throw new BadRequestError();
@@ -490,15 +476,15 @@ async function cancelPassenger({ tripId }, userId) {
         const tripDate = new Date(ride.datetime).getTime();
         const timeToTrip = tripDate - currDate;
         const t = await sequelize.transaction();
+        const driver = await ride.getDriver();
+
         if (timeToTrip < 1000 * 60 * 60 * 12) {
             // late cancel
             if (invoice.paymentMethod === 'CARD') {
-                const driver = await ride.getDriver();
                 driver.balance = driver.balance + invoice.totalAmount - invoice.driverFeeTotal;
                 await driver.save({ transaction: t });
             } else {
                 // handle late cancel cash
-                const driver = await ride.getDriver();
                 driver.balance = driver.balance + invoice.totalAmount - invoice.driverFeeTotal;
                 await driver.save({ transaction: t });
 
@@ -520,6 +506,8 @@ async function cancelPassenger({ tripId }, userId) {
         await passenger.save({ transaction: t });
         await t.commit();
 
+        sendNotificationToUser("Passenger Cancelled", `One of the passengers in your trip to ${ride.mainTextTo} has cancelled their seat, you will be compensated if they cancelled outside of the free cancellation window. We apologize for the inconvenience.`, null, null, driver.DeviceId);
+
         return true;
     } else {
         throw new BadRequestError();
@@ -540,6 +528,9 @@ async function startRide({ tripId }) {
         }
         ride.status = "ONGOING";
         ride.save();
+
+        sendNotificationToRide("Ride Started", `Your ride to ${ride.mainTextTo} has started!`, null, ride.topicArn)
+
         return true;
     } else {
         return false;
@@ -581,6 +572,9 @@ async function checkIn({ tripId, passenger }) {
     }
     passengerDetails.status = "ENROUTE";
     passengerDetails.save();
+
+    sendNotificationToUser("Welcome aboard!", `Welcome aboard this Seaats ride heading towards ${mainTextTo}!`, passenger);
+
     return true;
 }
 
@@ -659,6 +653,8 @@ async function checkOut({ tripId, uid }) {
     await driver.save({ transaction: t });
 
     await t.commit();
+
+    sendNotificationToUser("Farewell!", `Thank you for using Seaats! Feel free to leave a rating for this ride within the app!`, passenger);
 }
 
 async function submitDriverRatings({ tripId, ratings }, uid) {

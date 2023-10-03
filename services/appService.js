@@ -1,4 +1,4 @@
-const { Announcement, DriverEnrollment, Device } = require("../models")
+const { Announcement, DriverEnrollment, Device, User, Ride } = require("../models")
 const { NotFoundError } = require("../errors/Errors")
 
 const AWS = require('aws-sdk');
@@ -81,9 +81,62 @@ async function addEnrolledDriver({ fullName, phoneNumber, carDescription }) {
     return true;
 }
 
+async function sendNotificationToUser(title, message, userId=null, targetArn=null, deviceId=null) {
+    let targetArn_ = targetArn;
+    if(!targetArn_ && !deviceId) {
+        const user = await User.findByPk(userId, {
+            include: [
+                {
+                    model: Device
+                }
+            ]
+        });
+        targetArn_ = user.Device.platformEndpoint;
+    } else if(!targetArn && deviceId) {
+        const device = await Device.findByPk(deviceId);
+        targetArn_ = device.platformEndpoint;
+    }
+
+    const params = {
+        Message: message,
+        Subject: title,
+        TargetArn: targetArn_
+    };
+
+    sns.publish(params, function (err, data) {
+        if (err) console.log(err, err.stack); // an error occurred
+        else {
+            console.log(data);           // successful response
+        }
+    });
+}
+
+async function sendNotificationToRide(title, message, rideId=null, topicArn=null) {
+    let targetArn_ = topicArn;
+    if(!targetArn_) {
+        const ride = await Ride.findByPk(rideId);
+        targetArn_ = ride.topicArn;
+    }
+
+    const params = {
+        Message: message,
+        Subject: title,
+        TopicArn: targetArn_
+    };
+
+    sns.publish(params, function (err, data) {
+        if (err) console.log(err, err.stack); // an error occurred
+        else {
+            console.log(data);           // successful response
+        }
+    });
+}
+
 module.exports = {
     getAnnouncement,
     getAnnouncements,
     addEnrolledDriver,
-    registerDevice
+    registerDevice,
+    sendNotificationToUser,
+    sendNotificationToRide
 }
