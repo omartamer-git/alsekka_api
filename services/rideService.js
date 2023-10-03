@@ -231,6 +231,22 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
             }, { transaction: t });
         }
 
+        const driver = await ride.getDriver();
+        const device = await driver.getDevice();
+        console.log(device.deviceToken);
+
+        const params = {
+            Message: 'A passenger has booked a ride with you to ' + ride.mainTextTo,
+            TargetArn: device.platformEndpoint
+        };
+
+        sns.publish(params, function (err, data) {
+            if (err) console.log(err, err.stack); // an error occurred
+            else {
+                console.log(data);           // successful response
+            }
+        });
+
 
 
         await t.commit();
