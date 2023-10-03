@@ -8,11 +8,11 @@ module.exports = function(sequelize, DataTypes) {
       primaryKey: true
     },
     deviceToken: {
-        type: DataTypes.Text,
+        type: DataTypes.TEXT,
         allowNull: false,
     },
     platformEndpoint: {
-        type: DataTypes.Text,
+        type: DataTypes.STRING(2048),
         allowNull: false
     },
     platform: {
@@ -33,7 +33,6 @@ module.exports = function(sequelize, DataTypes) {
       },
       {
         name: "DEVICETOKEN",
-        using: "BTREE",
         unique: true,
         fields: [
             { name: "deviceToken" }
