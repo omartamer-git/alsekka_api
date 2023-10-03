@@ -30,7 +30,7 @@ async function getAnnouncements(active) {
 async function registerDevice({ token, platform }) {
     if (platform === 'ios') {
         const paramsEndpoint = {
-            PlatformApplicationArn: 'arn:aws:sns:eu-central-1:872912343417:app/APNS/seaats',
+            PlatformApplicationArn: 'arn:aws:sns:eu-central-1:872912343417:app/APNS_SANDBOX/seaats-app-dev',
             Token: token
         };
 
