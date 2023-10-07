@@ -51,6 +51,7 @@ async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, g
             "pricePerSeat": ride.pricePerSeat,
             "datetime": ride.datetime,
             "seatsAvailable": ride.seatsAvailable,
+            "duration": ride.duration,
             "seatsOccupied": countSeatsOccupied,
         });
     }
@@ -305,6 +306,7 @@ async function getPastRides({ uid, limit, after, offset }, upcoming = false, can
         'datetime',
         'status',
         'seatsAvailable',
+        'duration',
         'DriverId',
         [literal('(SELECT SUM(seats) FROM passengers WHERE RideId = Ride.id AND status != "CANCELLED")'), 'seatsOccupied']
     ];
