@@ -357,7 +357,6 @@ app.get("/upcomingrides", authenticateToken, async (req, res, next) => {
 app.get("/pastrides", authenticateToken, async (req, res, next) => {
     const uid = req.user.userId;
     let limit = req.query.limit;
-    let after = req.query.after;
 
     if (limit) {
         req.query.limit = parseInt(limit);

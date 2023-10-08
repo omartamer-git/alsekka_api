@@ -290,11 +290,11 @@ async function getUpcomingRides({ uid, limit }) {
     return upcomingRides;
 }
 
-async function getPastRides({ uid, limit, after, offset }, upcoming = false, cancelled = true) {
+async function getPastRides({ uid, limit, page }, upcoming = false, cancelled = true) {
     const passengerFinderQuery = await Passenger.findAll({
         where: {
             UserId: uid,
-            status: !cancelled ? { [Op.ne]: 'CANCELLED' } : undefined
+            ...(cancelled ? {} : { status: { [Op.ne]: 'CANCELLED' } })
         },
         attributes: ['RideId'],
         raw: true
@@ -318,20 +318,13 @@ async function getPastRides({ uid, limit, after, offset }, upcoming = false, can
             { id: { [Op.in]: rideIdsWherePassenger } }
         ]
     };
-    if (upcoming && after) {
-        whereClauseRide.status = { [Op.or]: ['SCHEDULED', 'ONGOING'] };
-        whereClauseRide.datetime = {
-            [Op.and]: [
-                { [Op.gte]: new Date() },
-                { [Op.lt]: after }
-            ]
-        };
-    } else if (upcoming) {
+    
+    if (upcoming) {
         whereClauseRide.status = { [Op.or]: ['SCHEDULED', 'ONGOING'] };
         whereClauseRide.datetime = { [Op.gte]: new Date() };
-    } else if (after) {
-        whereClauseRide.datetime = { [Op.lt]: after };
     }
+
+    const offset = (limit && page) ? (page - 1) * limit : 0;
 
 
     const upcomingRides = await Ride.findAll({

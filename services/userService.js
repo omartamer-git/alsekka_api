@@ -45,7 +45,7 @@ async function createUser({ fname, lname, phone, email, password, gender }) {
             gender: gender,
             profilePicture: gender === 'MALE' ? 'https://storage.googleapis.com/alsekka_profile_pics/default_male.png' : 'https://storage.googleapis.com/alsekka_profile_pics/default_female.png'
         });
-        if(VERIFICATIONS_DISABLED) {
+        if (VERIFICATIONS_DISABLED) {
             newUser.verified = true;
         }
         return newUser;
@@ -72,16 +72,19 @@ async function loginUser({ phone, email, password, deviceToken }) {
             }
         });
 
-        const device = await Device.findOne({
-            where: {
-                deviceToken: deviceToken
-            }
-        });
+        if (deviceToken) {
+            const device = await Device.findOne({
+                where: {
+                    deviceToken: deviceToken
+                }
+            });
 
-        if(deviceToken && device.id !== userAccount.DeviceId) {
-            userAccount.DeviceId = device.id;
-            await userAccount.save();
+            if (deviceToken && device.id !== userAccount.DeviceId) {
+                userAccount.DeviceId = device.id;
+                await userAccount.save();
+            }
         }
+
 
         userAccount.password = undefined;
 
@@ -104,7 +107,7 @@ async function loginUser({ phone, email, password, deviceToken }) {
     }
 }
 
-async function userInfo({deviceToken}, uid) {
+async function userInfo({ deviceToken }, uid) {
     let userAccount = await User.findByPk(uid);
 
     const today = new Date();
@@ -116,17 +119,18 @@ async function userInfo({deviceToken}, uid) {
         }
     });
 
-    const device = await Device.findOne({
-        where: {
-            deviceToken: deviceToken
-        }
-    });
-
-    if(deviceToken && device.id !== userAccount.DeviceId) {
-        userAccount.DeviceId = device.id;
-        await userAccount.save();
+    if(deviceToken) {
+        const device = await Device.findOne({
+            where: {
+                deviceToken: deviceToken
+            }
+        });
+    
+        if (deviceToken && device.id !== userAccount.DeviceId) {
+            userAccount.DeviceId = device.id;
+            await userAccount.save();
+        }    
     }
-
 
     return {
         ...userAccount.dataValues,
@@ -163,8 +167,8 @@ setInterval(() => {
     }
 }, 1000 * 60 * config.otp.expiryMinutes);
 
-async function getOtp( phone ) {
-    const user = await User.findOne({where: {phone: phone}, attributes: ['id', 'phone'] });
+async function getOtp(phone) {
+    const user = await User.findOne({ where: { phone: phone }, attributes: ['id', 'phone'] });
     let otp = 0;
     const uid = user.id;
     if (uid in otpCodes) {
@@ -202,9 +206,9 @@ async function getOtp( phone ) {
 }
 
 async function verifyOtp({ phone, otp }) {
-    const user = await User.findOne({where: {phone: phone}, attributes: ['id', 'phone'] });
+    const user = await User.findOne({ where: { phone: phone }, attributes: ['id', 'phone'] });
     const uid = user.id;
- 
+
     const actualOtp = otpCodes[uid];
     if (!actualOtp) {
         throw new UnauthorizedError("This verification code is no longer valid, please try again");
@@ -219,7 +223,7 @@ async function verifyOtp({ phone, otp }) {
 }
 
 async function verifyUser(phone) {
-    User.findOne({where: {phone: phone}}).then(user => {
+    User.findOne({ where: { phone: phone } }).then(user => {
         user.verified = true;
         user.save();
     });
@@ -233,7 +237,7 @@ async function uploadProfilePicture(uid, file) {
     return user;
 }
 
-async function addReferral(uid, {referralCode}) {
+async function addReferral(uid, { referralCode }) {
     try {
         const reffererId = parseInt(referralCode);
 
@@ -243,7 +247,7 @@ async function addReferral(uid, {referralCode}) {
         });
 
         return reference;
-    } catch(err) {
+    } catch (err) {
         throw new BadRequestError("Referral account is newer than your account");
     }
 }
@@ -251,7 +255,7 @@ async function addReferral(uid, {referralCode}) {
 async function submitLicense({ uid, frontSide, backSide }) {
     try {
         const frontUrl = await uploadLicenseImage(frontSide);
-        const backUrl = await uploadLicenseImage(backSide);    
+        const backUrl = await uploadLicenseImage(backSide);
         const license = await License.create({
             UserId: uid,
             front: frontUrl,
@@ -300,7 +304,7 @@ async function getWallet({ uid }) {
     return cards;
 }
 
-async function submitWithdrawalRequest({paymentMethodType, paymentMethodId}, uid) {
+async function submitWithdrawalRequest({ paymentMethodType, paymentMethodId }, uid) {
     const user = await User.findByPk(uid);
 
     console.log(paymentMethodType);
@@ -323,7 +327,7 @@ async function submitWithdrawalRequest({paymentMethodType, paymentMethodId}, uid
 
     await t.commit();
 
-    return {balance: newBalance};
+    return { balance: newBalance };
 }
 
 
@@ -443,9 +447,11 @@ async function updatePhone({ uid, phone }) {
 
 async function updatePassword(phone, newPassword) {
     try {
-        const user = await User.scope('auth').findOne({where: {
-            phone: phone
-        }});
+        const user = await User.scope('auth').findOne({
+            where: {
+                phone: phone
+            }
+        });
 
         try {
             const hash = await bcrypt.hash(newPassword, 10);
