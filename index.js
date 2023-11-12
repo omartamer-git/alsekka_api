@@ -197,17 +197,17 @@ app.get("/verify", async (req, res, next) => {
 
 app.get("/otpcallback", async (req, res, next) => {
     /*
-OTP=""
+    OTP=""
 
-Mobile=""
+    Mobile=""
 
-Reference=""
+    Reference=""
 
-Secret=""
+    Secret=""
 
-ClientID=""
+    ClientID=""
 
-ClientName=""
+    ClientName=""
     */
 
     console.log(req.query);
@@ -220,23 +220,34 @@ ClientName=""
     res.status(200).json({});
 });
 
-app.patch("/verify", async (req, res, next) => {
-    const { otp, phone } = req.body;
+app.get("/isverified", async (req, res, next) => {
+    const phone = req.query.phone;
 
-    if (!phone || !otp) {
-        return next(new BadRequestError());
+    const isVerified = await userService.isVerified(phone);
+    if(isVerified) {
+        res.json({verified: true});
+    } else {
+        res.json({verified: false});
     }
-
-    userService.verifyOtp(req.body).then(response => {
-        if (response === true) {
-            userService.verifyUser(phone).then(() => {
-                res.json({ message: "Account successfully verified" });
-            });
-        } else {
-            next(new UnauthorizedError("Invalid verification code. Please try again."));
-        }
-    }).catch(next);
 });
+
+// app.patch("/verify", async (req, res, next) => {
+//     const { otp, phone } = req.body;
+
+//     if (!phone || !otp) {
+//         return next(new BadRequestError());
+//     }
+
+//     userService.verifyOtp(req.body).then(response => {
+//         if (response === true) {
+//             userService.verifyUser(phone).then(() => {
+//                 res.json({ message: "Account successfully verified" });
+//             });
+//         } else {
+//             next(new UnauthorizedError("Invalid verification code. Please try again."));
+//         }
+//     }).catch(next);
+// });
 
 app.patch("/verifysecurity", async (req, res, next) => {
     const { otp, phone } = req.body;

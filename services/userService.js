@@ -260,6 +260,17 @@ async function verifyUser(phone) {
     }
 }
 
+async function isVerified(phone) {
+    const user = await User.findOne({where: {phone: phone}});
+    if(user) {
+        if(user.verified === true) {
+            return true;
+        }
+    } else {
+        return false;
+    }
+}
+
 async function uploadProfilePicture(uid, file) {
     const imageUrl = await uploadImage(file);
     const user = await User.findByPk(uid);
@@ -521,6 +532,7 @@ module.exports = {
     userInfo,
     updatePassword,
     addReferral,
+    isVerified,
     uploadProfilePicture,
     submitWithdrawalRequest
 }
