@@ -171,58 +171,63 @@ async function getOtp(phone) {
     const user = await User.findOne({ where: { phone: phone }, attributes: ['id', 'phone'] });
     let otp = 0;
     const uid = user.id;
-    if (uid in otpCodes) {
-        if (otpCodes[uid].expiry > new Date()) {
-            otp = generateOtp().toString();
-        } else {
-            otp = otpCodes[uid]
+    // if (uid in otpCodes) {
+    //     if (otpCodes[uid].expiry > new Date()) {
+    //         otp = generateOtp().toString();
+    //     } else {
+    //         otp = otpCodes[uid]
+    //     }
+    // } else {
+    //     otp = generateOtp();
+    //     otpCodes[uid.toString()] = {
+    //         otp: otp,
+    //         expiry: addMinutes(new Date(), config.otp.expiryMinutes)
+    //     }
+
+    // body = {
+    //     environment: config.otp.environment,
+    //     username: config.otp.username,
+    //     password: config.otp.password,
+    //     sender: config.otp.sender,
+    //     template: config.otp.template,
+    //     mobile: "2" + user.phone,
+    //     otp: otp
+    // };
+    // const response = await axios.post("https://smsmisr.com/api/OTP/", body, {
+    //     headers: {
+    //         'Content-Type': 'application/json'
+    //     }
+    // });
+    // const data = response.data;
+    // if (data.Code != "4901") {
+    //     throw new InternalServerError();
+    // }
+
+    const params = {
+        "username": "25496940dd23fdaa990ac1d54adefa05cd43607bb47b7d41c2f9016edb98039e",
+        "password": "67bd7d7edba830e85934671b5515e84a1150348fb14c020ad058490d2e1f13f8",
+        "reference": uid,
+        "message": "Welcome to Seaats! We have verified your account. Please head back to the app to continue the sign up process."
+    }
+
+    console.log("waiting for resp");
+
+    const response = await axios.get("https://wasage.com/api/otp/", {
+        params: params,
+        headers: {
+            'Content-Type': 'application/json',
         }
+    });
+
+    console.log("resp");
+    console.log(response);
+
+    const data = response.data;
+    console.log(data);
+    if (data.Code == "5500") {
+        return data.Clickable;
     } else {
-        otp = generateOtp();
-        otpCodes[uid.toString()] = {
-            otp: otp,
-            expiry: addMinutes(new Date(), config.otp.expiryMinutes)
-        }
-
-        // body = {
-        //     environment: config.otp.environment,
-        //     username: config.otp.username,
-        //     password: config.otp.password,
-        //     sender: config.otp.sender,
-        //     template: config.otp.template,
-        //     mobile: "2" + user.phone,
-        //     otp: otp
-        // };
-        // const response = await axios.post("https://smsmisr.com/api/OTP/", body, {
-        //     headers: {
-        //         'Content-Type': 'application/json'
-        //     }
-        // });
-        // const data = response.data;
-        // if (data.Code != "4901") {
-        //     throw new InternalServerError();
-        // }
-
-        const params = {
-            "username": "25496940dd23fdaa990ac1d54adefa05cd43607bb47b7d41c2f9016edb98039e",
-            "password": "67bd7d7edba830e85934671b5515e84a1150348fb14c020ad058490d2e1f13f8",
-            "reference": uid,
-            "message": "Welcome to Seaats! We have verified your account. Please head back to the app to continue the sign up process."
-        }
-
-        const response = await axios.get("https://wasage.com/api/otp/", { params }, {
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        });
-
-        const data = response.data;
-        if(data.Code == "5500") {
-            return data.Clickable;
-        } else {
-            throw new InternalServerError("An unknown error occurred");
-        }
-
+        throw new InternalServerError("An unknown error occurred");
     }
 }
 
