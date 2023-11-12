@@ -243,8 +243,8 @@ async function verifyOtp({ phone, otp }) {
     }
 }
 
-async function verifyUser(phone) {
-    User.findOne({ where: { phone: phone } }).then(user => {
+async function verifyUser(id) {
+    User.findByPk(id).then(user => {
         user.verified = true;
         user.save();
     });
