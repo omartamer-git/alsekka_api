@@ -22,8 +22,10 @@ async function accountAvailable(phone, email) {
 }
 
 async function createUser({ fname, lname, phone, email, password, gender }) {
-    if(!(phone in otpCodes) || !otpCodes[phone].verified) {
-        throw new BadRequestError("Phone number is not verified");
+    if (!VERIFICATIONS_DISABLED) {
+        if (!(phone in otpCodes) || !otpCodes[phone].verified) {
+            throw new BadRequestError("Phone number is not verified");
+        }
     }
     fname = fname.charAt(0).toUpperCase() + fname.slice(1);
     lname = lname.charAt(0).toUpperCase() + lname.slice(1);
@@ -48,11 +50,9 @@ async function createUser({ fname, lname, phone, email, password, gender }) {
             email: email,
             password: hash,
             gender: gender,
+            verified: true,
             profilePicture: gender === 'MALE' ? 'https://storage.googleapis.com/alsekka_profile_pics/default_male.png' : 'https://storage.googleapis.com/alsekka_profile_pics/default_female.png'
         });
-        if (VERIFICATIONS_DISABLED) {
-            newUser.verified = true;
-        }
         return newUser;
     } catch (e) {
         throw new InternalServerError();
@@ -279,7 +279,7 @@ async function isVerified(phone) {
     //     return false;
     // }
 
-    if(phone in otpCodes) {
+    if (phone in otpCodes) {
         return otpCodes[phone].verified;
     }
     return false;
