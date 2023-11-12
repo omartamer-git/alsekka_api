@@ -174,7 +174,7 @@ setInterval(() => {
 async function getOtp(phone) {
     otpCodes[phone] = {
         verified: false,
-        expiry: addMinutes(new Date(), config.otp.expiryMinutes);
+        expiry: addMinutes(new Date(), config.otp.expiryMinutes)
     }
     // if (uid in otpCodes) {
     //     if (otpCodes[uid].expiry > new Date()) {
