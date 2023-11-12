@@ -9,6 +9,8 @@ const jwt = require('jsonwebtoken');
 const { JWT_SECRET, JWT_EXPIRATION, REFRESH_TOKEN_EXPIRATION } = require("../config/auth.config");
 const { DRIVER_FEE, PASSENGER_FEE, CARDS_ENABLED, VERIFICATIONS_DISABLED } = require("../config/seaats.config");
 
+let otpCodes = {};
+
 async function accountAvailable(phone, email) {
     let userAccount;
     if (phone) {
@@ -20,6 +22,9 @@ async function accountAvailable(phone, email) {
 }
 
 async function createUser({ fname, lname, phone, email, password, gender }) {
+    if(!(phone in otpCodes) || !otpCodes[phone].verified) {
+        throw new BadRequestError("Phone number is not verified");
+    }
     fname = fname.charAt(0).toUpperCase() + fname.slice(1);
     lname = lname.charAt(0).toUpperCase() + lname.slice(1);
     email = email.toLowerCase();
@@ -158,7 +163,6 @@ async function refreshToken({ refreshToken }) {
     }
 }
 
-let otpCodes = {};
 setInterval(() => {
     for (const [uid, codeObj] of Object.entries(otpCodes)) {
         if (codeObj.expiry > new Date()) {
@@ -168,9 +172,10 @@ setInterval(() => {
 }, 1000 * 60 * config.otp.expiryMinutes);
 
 async function getOtp(phone) {
-    const user = await User.findOne({ where: { phone: phone }, attributes: ['id', 'phone'] });
-    let otp = 0;
-    const uid = user.id;
+    otpCodes[phone] = {
+        verified: false,
+        expiry: addMinutes(new Date(), config.otp.expiryMinutes);
+    }
     // if (uid in otpCodes) {
     //     if (otpCodes[uid].expiry > new Date()) {
     //         otp = generateOtp().toString();
@@ -206,7 +211,7 @@ async function getOtp(phone) {
     const params = {
         "username": "25496940dd23fdaa990ac1d54adefa05cd43607bb47b7d41c2f9016edb98039e",
         "password": "67bd7d7edba830e85934671b5515e84a1150348fb14c020ad058490d2e1f13f8",
-        "reference": uid,
+        "reference": phone,
         "message": "Welcome to Seaats! We have verified your account. Please head back to the app to continue the sign up process."
     }
 
@@ -250,25 +255,34 @@ async function verifyOtp({ phone, otp }) {
 
 async function verifyUser(phone) {
     try {
-        User.findOne({ where: { phone: phone } }).then(user => {
-            user.verified = true;
-            user.save();
-        });
-    } catch(e) {
+        // User.findOne({ where: { phone: phone } }).then(user => {
+        //     user.verified = true;
+        //     user.save();
+        // });
+        otpCodes[phone] = {
+            verified: true,
+            expiry: addMinutes(new Date(), 15)
+        }
+    } catch (e) {
         // couldn't verify
         console.log(e);
     }
 }
 
 async function isVerified(phone) {
-    const user = await User.findOne({where: {phone: phone}});
-    if(user) {
-        if(user.verified === true) {
-            return true;
-        }
-    } else {
-        return false;
+    // const user = await User.findOne({ where: { phone: phone } });
+    // if (user) {
+    //     if (user.verified === true) {
+    //         return true;
+    //     }
+    // } else {
+    //     return false;
+    // }
+
+    if(phone in otpCodes) {
+        return otpCodes[phone].verified;
     }
+    return false;
 }
 
 async function uploadProfilePicture(uid, file) {
