@@ -248,11 +248,16 @@ async function verifyOtp({ phone, otp }) {
     }
 }
 
-async function verifyUser(id) {
-    User.findByPk(id).then(user => {
-        user.verified = true;
-        user.save();
-    });
+async function verifyUser(phone) {
+    try {
+        User.findOne({ where: { phone: phone } }).then(user => {
+            user.verified = true;
+            user.save();
+        });
+    } catch(e) {
+        // couldn't verify
+        console.log(e);
+    }
 }
 
 async function uploadProfilePicture(uid, file) {

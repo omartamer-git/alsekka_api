@@ -215,7 +215,7 @@ ClientName=""
         return next(new InternalServerError("Invalid Request"));
     }
 
-    userService.verifyUser(req.query.ClientID);
+    userService.verifyUser(req.query.Mobile.substring(1));
 
     res.status(200).json({});
 });
