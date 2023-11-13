@@ -11,6 +11,8 @@ const { DRIVER_FEE, PASSENGER_FEE, CARDS_ENABLED, VERIFICATIONS_DISABLED, REFERR
 
 let otpCodes = {};
 
+let otpCodes = {};
+
 async function accountAvailable(phone, email) {
     let userAccount;
     if (phone) {
@@ -174,44 +176,44 @@ setInterval(() => {
 }, 1000 * 60 * config.otp.expiryMinutes);
 
 async function getOtp(phone) {
-try {    
-otpCodes[phone] = {
-        verified: false,
-        expiry: addMinutes(new Date(), config.otp.expiryMinutes)
-    }
-
-    const params = {
-        "username": "25496940dd23fdaa990ac1d54adefa05cd43607bb47b7d41c2f9016edb98039e",
-        "password": "67bd7d7edba830e85934671b5515e84a1150348fb14c020ad058490d2e1f13f8",
-        "reference": phone,
-        "message": "Welcome to Seaats! We have verified your account. Please head back to the app to continue the sign up process."
-    }
-
-    console.log("waiting for resp");
-
-    const response = await axios.get("https://wasage.com/api/otp/", {
-        params: params,
-        headers: {
-            'Content-Type': 'application/json',
+    try {
+        otpCodes[phone] = {
+            verified: false,
+            expiry: addMinutes(new Date(), config.otp.expiryMinutes)
         }
-    });
 
-    console.log("resp");
-    console.log(response);
+        const params = {
+            "username": "25496940dd23fdaa990ac1d54adefa05cd43607bb47b7d41c2f9016edb98039e",
+            "password": "67bd7d7edba830e85934671b5515e84a1150348fb14c020ad058490d2e1f13f8",
+            "reference": phone,
+            "message": "Welcome to Seaats! We have verified your account. Please head back to the app to continue the sign up process."
+        }
 
-    const data = response.data;
-    console.log(data);
-    const jwtToken = jwt.sign({ phone: phone }, JWT_SECRET, { expiresIn: SECURITY_EXPIRATION });
+        console.log("waiting for resp");
 
-    if (data.Code == "5500") {
-console.log(jwtToken);
-console.log("done");  
-console.log(data.Clickable);      
-return { uri: data.Clickable, token: jwtToken };
-    } else {
-        throw new InternalServerError("An unknown error occurred");
-    }
-} catch(err) { console.log(err) }
+        const response = await axios.get("https://wasage.com/api/otp/", {
+            params: params,
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+
+        console.log("resp");
+        console.log(response);
+
+        const data = response.data;
+        console.log(data);
+        const jwtToken = jwt.sign({ phone: phone }, JWT_SECRET, { expiresIn: SECURITY_EXPIRATION });
+
+        if (data.Code == "5500") {
+            console.log(jwtToken);
+            console.log("done");
+            console.log(data.Clickable);
+            return { uri: data.Clickable, token: jwtToken };
+        } else {
+            throw new InternalServerError("An unknown error occurred");
+        }
+    } catch (err) { console.log(err) }
 }
 
 async function verifyOtp({ phone, otp }) {

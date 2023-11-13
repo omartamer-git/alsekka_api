@@ -192,9 +192,7 @@ app.get("/verify", async (req, res, next) => {
     }
 
     userService.getOtp(phone).then(response => {
-console.log('hi');
-console.log(response);        
-return res.json(response);
+      return res.json(response);
     }).catch(next);
 });
 
