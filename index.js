@@ -231,24 +231,6 @@ app.get("/isverified", async (req, res, next) => {
     }
 });
 
-// app.patch("/verify", async (req, res, next) => {
-//     const { otp, phone } = req.body;
-
-//     if (!phone || !otp) {
-//         return next(new BadRequestError());
-//     }
-
-//     userService.verifyOtp(req.body).then(response => {
-//         if (response === true) {
-//             userService.verifyUser(phone).then(() => {
-//                 res.json({ message: "Account successfully verified" });
-//             });
-//         } else {
-//             next(new UnauthorizedError("Invalid verification code. Please try again."));
-//         }
-//     }).catch(next);
-// });
-
 app.patch("/verifysecurity", async (req, res, next) => {
     const { otp, phone } = req.body;
     if (!phone || !otp) {
