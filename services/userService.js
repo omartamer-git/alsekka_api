@@ -173,7 +173,8 @@ setInterval(() => {
 }, 1000 * 60 * config.otp.expiryMinutes);
 
 async function getOtp(phone) {
-    otpCodes[phone] = {
+try {    
+otpCodes[phone] = {
         verified: false,
         expiry: addMinutes(new Date(), config.otp.expiryMinutes)
     }
@@ -202,10 +203,14 @@ async function getOtp(phone) {
     const jwtToken = jwt.sign({ phone: phone }, JWT_SECRET, { expiresIn: SECURITY_EXPIRATION });
 
     if (data.Code == "5500") {
-        return { uri: response, token: jwtToken };
+console.log(jwtToken);
+console.log("done");  
+console.log(data.Clickable);      
+return { uri: data.Clickable, token: jwtToken };
     } else {
         throw new InternalServerError("An unknown error occurred");
     }
+} catch(err) { console.log(err) }
 }
 
 async function verifyOtp({ phone, otp }) {
