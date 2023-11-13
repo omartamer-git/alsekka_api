@@ -9,7 +9,6 @@ const jwt = require('jsonwebtoken');
 const { JWT_SECRET, JWT_EXPIRATION, REFRESH_TOKEN_EXPIRATION, SECURITY_EXPIRATION } = require("../config/auth.config");
 const { DRIVER_FEE, PASSENGER_FEE, CARDS_ENABLED, VERIFICATIONS_DISABLED, REFERRALS_DISABLED } = require("../config/seaats.config");
 
-let otpCodes = {};
 
 let otpCodes = {};
 
