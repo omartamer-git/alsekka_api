@@ -24,6 +24,7 @@ const session = require("express-session");
 
 const { BadRequestError, NotAcceptableError, UnauthorizedError, InternalServerError } = require("./errors/Errors");
 const { default: axios } = require("axios");
+const { REFERRALS_DISABLED } = require("./config/seaats.config");
 const app = express();
 
 const multerMid = multer({
@@ -191,7 +192,7 @@ app.get("/verify", async (req, res, next) => {
     }
 
     userService.getOtp(phone).then(response => {
-        return res.json({ uri: response });
+      return res.json(response);
     }).catch(next);
 });
 
@@ -272,7 +273,7 @@ app.post("/referral", authenticateToken, async (req, res, next) => {
     const { referralCode } = req.body;
     const uid = req.user.userId;
 
-    if (!referralCode) {
+    if (!referralCode || REFERRALS_DISABLED) {
         next(new BadRequestError());
     }
 
