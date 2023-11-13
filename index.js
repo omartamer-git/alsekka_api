@@ -22,7 +22,7 @@ const { staffLogin, findUser, updateUser, customerLicenses, updateLicense, getPe
 const session = require("express-session");
 
 
-const { BadRequestError, NotAcceptableError, UnauthorizedError } = require("./errors/Errors");
+const { BadRequestError, NotAcceptableError, UnauthorizedError, InternalServerError } = require("./errors/Errors");
 const { default: axios } = require("axios");
 const app = express();
 
@@ -191,26 +191,44 @@ app.get("/verify", async (req, res, next) => {
     }
 
     userService.getOtp(phone).then(response => {
-        return res.json({ success: 1 });
+        return res.json({ uri: response });
     }).catch(next);
 });
 
-app.patch("/verify", async (req, res, next) => {
-    const { otp, phone } = req.body;
+app.get("/otpcallback", async (req, res, next) => {
+    /*
+    OTP=""
 
-    if (!phone || !otp) {
-        return next(new BadRequestError());
+    Mobile=""
+
+    Reference=""
+
+    Secret=""
+
+    ClientID=""
+
+    ClientName=""
+    */
+
+    console.log(req.query);
+    if(req.query.Secret !== "13053a5e941fd14089aa0fe0138fddbedefcce22168e1d01f2da199ad09e8d38") {
+        return next(new InternalServerError("Invalid Request"));
     }
 
-    userService.verifyOtp(req.body).then(response => {
-        if (response === true) {
-            userService.verifyUser(phone).then(() => {
-                res.json({ message: "Account successfully verified" });
-            });
-        } else {
-            next(new UnauthorizedError("Invalid verification code. Please try again."));
-        }
-    }).catch(next);
+    userService.verifyUser(req.query.Mobile.substring(1));
+
+    res.status(200).json({});
+});
+
+app.get("/isverified", async (req, res, next) => {
+    const phone = req.query.phone;
+
+    const isVerified = await userService.isVerified(phone);
+    if(isVerified) {
+        res.json({verified: true});
+    } else {
+        res.json({verified: false});
+    }
 });
 
 app.patch("/verifysecurity", async (req, res, next) => {
@@ -473,9 +491,9 @@ app.post("/checkout", authenticateToken, async (req, res, next) => {
     }).catch(next);
 });
 
-app.get("/triptotals", authenticateToken, async(req, res, next) => {
+app.get("/triptotals", authenticateToken, async (req, res, next) => {
     const { tripId } = req.query;
-    if(!tripId) {
+    if (!tripId) {
         return next(new BadRequestError());
     }
 
@@ -500,16 +518,16 @@ app.get("/noshow", authenticateToken, async (req, res, next) => {
 });
 
 app.post("/submitdriverratings", authenticateToken, async (req, res, next) => {
-    const {tripId, ratings} = req.body;
+    const { tripId, ratings } = req.body;
 
-    if(!tripId || !ratings) {
+    if (!tripId || !ratings) {
         return next(new BadRequestError());
     }
 
     const uid = req.user.userId;
-    
+
     rideService.submitDriverRatings(req.body, uid).then(response => {
-        res.json({success: 1});
+        res.json({ success: 1 });
     }).catch(next);
 });
 
@@ -1014,9 +1032,9 @@ app.get("/getLocationFromPlaceId", authenticateToken, async (req, res, next) => 
     }).catch(next);
 });
 
-app.get("/getOptimalPath", authenticateToken, async(req, res, next) => {
-    const {tripId} = req.query;
-    if(!tripId) {
+app.get("/getOptimalPath", authenticateToken, async (req, res, next) => {
+    const { tripId } = req.query;
+    if (!tripId) {
         return next(new BadRequestError());
     }
     const uid = req.user.userId;
@@ -1038,9 +1056,9 @@ app.get("/verifyvoucher", authenticateToken, async (req, res, next) => {
     }).catch(next);
 });
 
-app.get("/registerdevice", async(req, res, next) => {
-    const {token, platform} = req.query;
-    if(!token || !platform) {
+app.get("/registerdevice", async (req, res, next) => {
+    const { token, platform } = req.query;
+    if (!token || !platform) {
         return next(new BadRequestError());
     }
 

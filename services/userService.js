@@ -9,6 +9,8 @@ const jwt = require('jsonwebtoken');
 const { JWT_SECRET, JWT_EXPIRATION, REFRESH_TOKEN_EXPIRATION } = require("../config/auth.config");
 const { DRIVER_FEE, PASSENGER_FEE, CARDS_ENABLED, VERIFICATIONS_DISABLED } = require("../config/seaats.config");
 
+let otpCodes = {};
+
 async function accountAvailable(phone, email) {
     let userAccount;
     if (phone) {
@@ -20,6 +22,11 @@ async function accountAvailable(phone, email) {
 }
 
 async function createUser({ fname, lname, phone, email, password, gender }) {
+    if (!VERIFICATIONS_DISABLED) {
+        if (!(phone in otpCodes) || !otpCodes[phone].verified) {
+            throw new BadRequestError("Phone number is not verified");
+        }
+    }
     fname = fname.charAt(0).toUpperCase() + fname.slice(1);
     lname = lname.charAt(0).toUpperCase() + lname.slice(1);
     email = email.toLowerCase();
@@ -43,11 +50,9 @@ async function createUser({ fname, lname, phone, email, password, gender }) {
             email: email,
             password: hash,
             gender: gender,
+            verified: true,
             profilePicture: gender === 'MALE' ? 'https://storage.googleapis.com/alsekka_profile_pics/default_male.png' : 'https://storage.googleapis.com/alsekka_profile_pics/default_female.png'
         });
-        if (VERIFICATIONS_DISABLED) {
-            newUser.verified = true;
-        }
         return newUser;
     } catch (e) {
         throw new InternalServerError();
@@ -119,17 +124,17 @@ async function userInfo({ deviceToken }, uid) {
         }
     });
 
-    if(deviceToken) {
+    if (deviceToken) {
         const device = await Device.findOne({
             where: {
                 deviceToken: deviceToken
             }
         });
-    
+
         if (deviceToken && device.id !== userAccount.DeviceId) {
             userAccount.DeviceId = device.id;
             await userAccount.save();
-        }    
+        }
     }
 
     return {
@@ -158,7 +163,6 @@ async function refreshToken({ refreshToken }) {
     }
 }
 
-let otpCodes = {};
 setInterval(() => {
     for (const [uid, codeObj] of Object.entries(otpCodes)) {
         if (codeObj.expiry > new Date()) {
@@ -168,40 +172,67 @@ setInterval(() => {
 }, 1000 * 60 * config.otp.expiryMinutes);
 
 async function getOtp(phone) {
-    const user = await User.findOne({ where: { phone: phone }, attributes: ['id', 'phone'] });
-    let otp = 0;
-    const uid = user.id;
-    if (uid in otpCodes) {
-        if (otpCodes[uid].expiry > new Date()) {
-            otp = generateOtp().toString();
-        } else {
-            otp = otpCodes[uid]
-        }
-    } else {
-        otp = generateOtp();
-        otpCodes[uid.toString()] = {
-            otp: otp,
-            expiry: addMinutes(new Date(), config.otp.expiryMinutes)
-        }
+    otpCodes[phone] = {
+        verified: false,
+        expiry: addMinutes(new Date(), config.otp.expiryMinutes)
+    }
+    // if (uid in otpCodes) {
+    //     if (otpCodes[uid].expiry > new Date()) {
+    //         otp = generateOtp().toString();
+    //     } else {
+    //         otp = otpCodes[uid]
+    //     }
+    // } else {
+    //     otp = generateOtp();
+    //     otpCodes[uid.toString()] = {
+    //         otp: otp,
+    //         expiry: addMinutes(new Date(), config.otp.expiryMinutes)
+    //     }
 
-        body = {
-            environment: config.otp.environment,
-            username: config.otp.username,
-            password: config.otp.password,
-            sender: config.otp.sender,
-            template: config.otp.template,
-            mobile: "2" + user.phone,
-            otp: otp
-        };
-        const response = await axios.post("https://smsmisr.com/api/OTP/", body, {
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
-        const data = response.data;
-        if (data.Code != "4901") {
-            throw new InternalServerError();
+    // body = {
+    //     environment: config.otp.environment,
+    //     username: config.otp.username,
+    //     password: config.otp.password,
+    //     sender: config.otp.sender,
+    //     template: config.otp.template,
+    //     mobile: "2" + user.phone,
+    //     otp: otp
+    // };
+    // const response = await axios.post("https://smsmisr.com/api/OTP/", body, {
+    //     headers: {
+    //         'Content-Type': 'application/json'
+    //     }
+    // });
+    // const data = response.data;
+    // if (data.Code != "4901") {
+    //     throw new InternalServerError();
+    // }
+
+    const params = {
+        "username": "25496940dd23fdaa990ac1d54adefa05cd43607bb47b7d41c2f9016edb98039e",
+        "password": "67bd7d7edba830e85934671b5515e84a1150348fb14c020ad058490d2e1f13f8",
+        "reference": phone,
+        "message": "Welcome to Seaats! We have verified your account. Please head back to the app to continue the sign up process."
+    }
+
+    console.log("waiting for resp");
+
+    const response = await axios.get("https://wasage.com/api/otp/", {
+        params: params,
+        headers: {
+            'Content-Type': 'application/json',
         }
+    });
+
+    console.log("resp");
+    console.log(response);
+
+    const data = response.data;
+    console.log(data);
+    if (data.Code == "5500") {
+        return data.Clickable;
+    } else {
+        throw new InternalServerError("An unknown error occurred");
     }
 }
 
@@ -223,10 +254,35 @@ async function verifyOtp({ phone, otp }) {
 }
 
 async function verifyUser(phone) {
-    User.findOne({ where: { phone: phone } }).then(user => {
-        user.verified = true;
-        user.save();
-    });
+    try {
+        // User.findOne({ where: { phone: phone } }).then(user => {
+        //     user.verified = true;
+        //     user.save();
+        // });
+        otpCodes[phone] = {
+            verified: true,
+            expiry: addMinutes(new Date(), 15)
+        }
+    } catch (e) {
+        // couldn't verify
+        console.log(e);
+    }
+}
+
+async function isVerified(phone) {
+    // const user = await User.findOne({ where: { phone: phone } });
+    // if (user) {
+    //     if (user.verified === true) {
+    //         return true;
+    //     }
+    // } else {
+    //     return false;
+    // }
+
+    if (phone in otpCodes) {
+        return otpCodes[phone].verified;
+    }
+    return false;
 }
 
 async function uploadProfilePicture(uid, file) {
@@ -490,6 +546,7 @@ module.exports = {
     userInfo,
     updatePassword,
     addReferral,
+    isVerified,
     uploadProfilePicture,
     submitWithdrawalRequest
 }
