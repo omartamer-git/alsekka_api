@@ -180,7 +180,7 @@ async function getOtp(phone) {
     const params = {
         "username": "25496940dd23fdaa990ac1d54adefa05cd43607bb47b7d41c2f9016edb98039e",
         "password": "67bd7d7edba830e85934671b5515e84a1150348fb14c020ad058490d2e1f13f8",
-        "reference": ref,
+        "reference": phone,
         "message": "Welcome to Seaats! We have verified your account. Please head back to the app to continue the sign up process."
     }
 
