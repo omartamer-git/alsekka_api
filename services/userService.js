@@ -6,7 +6,7 @@ const { UnauthorizedError, NotFoundError, ConflictError, InternalServerError, No
 const { default: axios } = require("axios");
 const config = require("../config");
 const jwt = require('jsonwebtoken');
-const { JWT_SECRET, JWT_EXPIRATION, REFRESH_TOKEN_EXPIRATION } = require("../config/auth.config");
+const { JWT_SECRET, JWT_EXPIRATION, REFRESH_TOKEN_EXPIRATION, SECURITY_EXPIRATION } = require("../config/auth.config");
 const { DRIVER_FEE, PASSENGER_FEE, CARDS_ENABLED, VERIFICATIONS_DISABLED } = require("../config/seaats.config");
 
 let otpCodes = {};
@@ -176,42 +176,11 @@ async function getOtp(phone) {
         verified: false,
         expiry: addMinutes(new Date(), config.otp.expiryMinutes)
     }
-    // if (uid in otpCodes) {
-    //     if (otpCodes[uid].expiry > new Date()) {
-    //         otp = generateOtp().toString();
-    //     } else {
-    //         otp = otpCodes[uid]
-    //     }
-    // } else {
-    //     otp = generateOtp();
-    //     otpCodes[uid.toString()] = {
-    //         otp: otp,
-    //         expiry: addMinutes(new Date(), config.otp.expiryMinutes)
-    //     }
-
-    // body = {
-    //     environment: config.otp.environment,
-    //     username: config.otp.username,
-    //     password: config.otp.password,
-    //     sender: config.otp.sender,
-    //     template: config.otp.template,
-    //     mobile: "2" + user.phone,
-    //     otp: otp
-    // };
-    // const response = await axios.post("https://smsmisr.com/api/OTP/", body, {
-    //     headers: {
-    //         'Content-Type': 'application/json'
-    //     }
-    // });
-    // const data = response.data;
-    // if (data.Code != "4901") {
-    //     throw new InternalServerError();
-    // }
 
     const params = {
         "username": "25496940dd23fdaa990ac1d54adefa05cd43607bb47b7d41c2f9016edb98039e",
         "password": "67bd7d7edba830e85934671b5515e84a1150348fb14c020ad058490d2e1f13f8",
-        "reference": phone,
+        "reference": ref,
         "message": "Welcome to Seaats! We have verified your account. Please head back to the app to continue the sign up process."
     }
 
@@ -229,8 +198,10 @@ async function getOtp(phone) {
 
     const data = response.data;
     console.log(data);
+    const jwtToken = jwt.sign({ phone: phone }, JWT_SECRET, { expiresIn: SECURITY_EXPIRATION });
+
     if (data.Code == "5500") {
-        return data.Clickable;
+        return { uri: response, token: jwtToken };
     } else {
         throw new InternalServerError("An unknown error occurred");
     }

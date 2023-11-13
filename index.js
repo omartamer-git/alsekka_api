@@ -191,7 +191,7 @@ app.get("/verify", async (req, res, next) => {
     }
 
     userService.getOtp(phone).then(response => {
-        return res.json({ uri: response });
+        return res.json(response);
     }).catch(next);
 });
 
