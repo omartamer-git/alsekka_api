@@ -144,7 +144,8 @@ async function userInfo({ deviceToken }, uid) {
         driverFee: DRIVER_FEE,
         passengerFee: PASSENGER_FEE,
         cardsEnabled: CARDS_ENABLED,
-        verificationsDisabled: VERIFICATIONS_DISABLED
+        verificationsDisabled: VERIFICATIONS_DISABLED,
+        referralsDisabled: REFERRALS_DISABLED
     }
 }
 
