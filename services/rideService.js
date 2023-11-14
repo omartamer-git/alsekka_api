@@ -54,6 +54,8 @@ async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, g
             "duration": ride.duration,
             "model": ride.model,
             "brand": ride.brand,
+            "pickupEnabled": ride.pickupEnabled,
+            "gender": ride.gender,
             "seatsOccupied": countSeatsOccupied,
         });
     }
@@ -77,6 +79,7 @@ async function getRideDetails({ rideId }) {
                 'seatsAvailable',
                 'pickupEnabled',
                 'pickupPrice',
+                'gender',
                 'polyline',
                 'duration',
                 'DriverId',
@@ -310,6 +313,8 @@ async function getPastRides({ uid, limit, page }, upcoming = false, cancelled = 
         'seatsAvailable',
         'duration',
         'DriverId',
+        'pickupEnabled',
+        'gender',
         [literal('(SELECT SUM(seats) FROM passengers WHERE RideId = Ride.id AND status != "CANCELLED")'), 'seatsOccupied']
     ];
     const whereClauseRide = {
@@ -388,6 +393,7 @@ async function getTripDetails({ uid, tripId }) {
             'status',
             'seatsAvailable',
             'pickupEnabled',
+            'gender',
             'DriverId',
             'polyline',
             'duration'
