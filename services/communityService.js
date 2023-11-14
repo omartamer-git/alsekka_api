@@ -46,6 +46,7 @@ async function updateCommunity({ communityId, description, private, joinQuestion
         throw new UnauthorizedError();
     }
 
+
     let imageUrl = community.picture;
 
     if (picture) {
@@ -131,6 +132,7 @@ async function getUserFeed({ uid, communityId, page }) {
                 'mainTextTo',
                 'pricePerSeat',
                 'datetime',
+                'duration',
                 [sequelize.literal('(SELECT SUM(seats) FROM passengers WHERE RideId = Ride.id AND status != "CANCELLED")'), 'seatsOccupied']
             ],
             include: [{

@@ -638,7 +638,7 @@ app.patch("/updatecommunity", authenticateToken, async (req, res, next) => {
     const file = req.files[0];
     const uid = req.user.userId;
 
-    if (!communityId || !description || !private || (private === 1 && !joinQuestion)) {
+    if (!communityId || !description || !private || (private == 1 && !joinQuestion)) {
         return next(new BadRequestError());
     }
 
