@@ -54,6 +54,13 @@ async function updateCommunity({ communityId, description, private, joinQuestion
 
     community.description = description;
     community.private = private;
+    if(private == 0) {
+        await Community.update({joinStatus: 'APPROVED'}, {
+            where: {
+                CommunityId: communityId
+            }
+        });
+    }
     community.joinQuestion = private === 1 ? joinQuestion : null;
     community.picture = imageUrl;
 
