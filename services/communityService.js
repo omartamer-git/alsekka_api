@@ -133,6 +133,7 @@ async function getUserFeed({ uid, communityId, page }) {
                 'pricePerSeat',
                 'datetime',
                 'duration',
+                'DriverId',
                 [sequelize.literal('(SELECT SUM(seats) FROM passengers WHERE RideId = Ride.id AND status != "CANCELLED")'), 'seatsOccupied']
             ],
             include: [{
