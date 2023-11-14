@@ -55,7 +55,7 @@ async function updateCommunity({ communityId, description, private, joinQuestion
     community.description = description;
     community.private = private;
     if(private == 0) {
-        await Community.update({joinStatus: 'APPROVED'}, {
+        await CommunityMember.update({joinStatus: 'APPROVED'}, {
             where: {
                 CommunityId: communityId
             }
