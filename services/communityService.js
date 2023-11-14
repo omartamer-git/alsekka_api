@@ -55,8 +55,8 @@ async function updateCommunity({ communityId, description, private, joinQuestion
 
     community.description = description;
     community.private = private;
-    if(private == 0) {
-        await CommunityMember.update({joinStatus: 'APPROVED'}, {
+    if (private == 0) {
+        await CommunityMember.update({ joinStatus: 'APPROVED' }, {
             where: {
                 CommunityId: communityId
             }
@@ -119,52 +119,57 @@ async function getCommunityDetails({ communityId, uid }) {
 }
 
 async function getUserFeed({ uid, communityId, page }) {
-    const feed = await
-        Ride.findAll({
-            where: {
-                datetime: {
-                    [Op.gt]: new Date(),
-                },
-            },
-            attributes: [
-                ['id', 'ride_id'],
-                'mainTextFrom',
-                'mainTextTo',
-                'pricePerSeat',
-                'datetime',
-                'duration',
-                'DriverId',
-                [sequelize.literal('(SELECT SUM(seats) FROM passengers WHERE RideId = Ride.id AND status != "CANCELLED")'), 'seatsOccupied']
-            ],
-            include: [{
-                model: Community,
-                required: true,
-                attributes: [['name', 'community_name']],
-                include: [{
-                    model: User,
-                    required: true,
-                    as: 'Member',
-                    attributes: [],
-                    where: {
-                        id: uid
-                    }
-                }]
-            },
-            {
-                model: User,
-                as: 'Driver',
-                required: true,
-                attributes: ['firstName', 'lastName'],
-            }
-            ],
-            order: [['datetime', 'DESC']],
-            limit: 3,
-            offset: (page - 1) * 3
-        });
+    const whereCondition = {
+        datetime: {
+            [Op.gt]: new Date(),
+        },
+    };
 
+    if (communityId !== null) {
+        whereCondition.CommunityId = communityId;
+    }
+
+    const feed = await Ride.findAll({
+        where: whereCondition,
+        attributes: [
+            ['id', 'ride_id'],
+            'mainTextFrom',
+            'mainTextTo',
+            'pricePerSeat',
+            'datetime',
+            'duration',
+            'DriverId',
+            [sequelize.literal('(SELECT SUM(seats) FROM passengers WHERE RideId = Ride.id AND status != "CANCELLED")'), 'seatsOccupied']
+        ],
+        include: [{
+            model: Community,
+            required: true,
+            attributes: [['name', 'community_name']],
+            include: [{
+                model: User,
+                required: true,
+                as: 'Member',
+                attributes: [],
+                where: {
+                    id: uid
+                }
+            }]
+        },
+        {
+            model: User,
+            as: 'Driver',
+            required: true,
+            attributes: ['firstName', 'lastName'],
+        }
+        ],
+        order: [['datetime', 'DESC']],
+        limit: 3,
+        offset: (page - 1) * 3
+    });
 
     return feed;
 }
+
 
 async function leaveCommunity({ communityId }, uid) {
     const member = await CommunityMember.findOne({
