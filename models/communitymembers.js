@@ -1,5 +1,5 @@
 const Sequelize = require('sequelize');
-module.exports = function(sequelize, DataTypes) {
+module.exports = function (sequelize, DataTypes) {
   return sequelize.define('CommunityMember', {
     id: {
       autoIncrement: true,
@@ -27,6 +27,11 @@ module.exports = function(sequelize, DataTypes) {
         fields: [
           { name: "id" },
         ]
+      },
+      {
+        name: 'createdAt_index',
+        using: 'BTREE',
+        fields: ['createdAt'],
       },
     ]
   });
