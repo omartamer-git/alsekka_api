@@ -70,13 +70,56 @@ async function updateCommunity({ communityId, description, private, joinQuestion
     return community;
 }
 
-async function getCommunities({ page }) {
-    const communities = await Community.findAll({
-        limit: 3,
-        offset: (page - 1) * 3
-    });
+async function getCommunities({ uid, page }) {
+    const userId = uid;
+    try {
+        const weekAgo = new Date();
+        const limit = 3;
+        weekAgo.setDate(weekAgo.getDate() - timeframeInDays);
 
-    return communities;
+        // Get communities with the biggest influx of new members in the past week
+        const trendingCommunities = await Community.findAll({
+            include: [
+                {
+                    model: CommunityMember,
+                    as: 'members',
+                    where: {
+                        createdAt: {
+                            [Sequelize.Op.gte]: weekAgo,
+                        },
+                    },
+                },
+            ],
+            order: [[Sequelize.literal('COUNT(members.id)'), 'DESC']], // Order by the count of new members
+            group: ['Community.id'], // Ensure uniqueness of communities in the result
+            limit,
+        });
+
+        // Exclude communities the user is already a member of
+        const userCommunities = await Community.findAll({
+            include: [
+                {
+                    model: CommunityMember,
+                    as: 'members',
+                    where: {
+                        userId,
+                    },
+                },
+            ],
+        });
+
+        const recommendedCommunities = trendingCommunities.filter((community) => {
+            const isUserMember = userCommunities.some(
+                (userCommunity) => userCommunity.id === community.id
+            );
+            return !isUserMember;
+        });
+
+        return recommendedCommunities;
+    } catch (error) {
+        console.error('Error getting recommended communities:', error);
+        throw error;
+    }
 }
 
 async function getUserCommunities({ uid }) {

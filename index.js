@@ -854,7 +854,7 @@ app.post("/bankaccount", authenticateToken, async (req, res, next) => {
     const { fullName, bankName, accNumber, swiftCode } = req.body;
     const uid = req.user.userId;
 
-    if (!uid || !fullName || !bankName || !accNumber || !swiftCode) {
+    if (!uid || !fullName || !bankName || !accNumber) {
         return next(new BadRequestError());
     }
 

@@ -21,7 +21,7 @@ module.exports = function (sequelize, DataTypes) {
     },
     swiftCode: {
       type: DataTypes.STRING(11),
-      allowNull: false
+      allowNull: true
     },
   }, {
     sequelize,
