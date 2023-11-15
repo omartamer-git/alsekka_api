@@ -8,7 +8,7 @@ module.exports = function(sequelize, DataTypes) {
       primaryKey: true
     },
     deviceToken: {
-        type: DataTypes.TEXT,
+        type: DataTypes.STRING(256),
         allowNull: false,
     },
     platformEndpoint: {
