@@ -29,7 +29,11 @@ async function createUser({ fname, lname, phone, email, password, gender }) {
         }
     }
     fname = fname.charAt(0).toUpperCase() + fname.slice(1);
+    fname = fname.trim();
+     
     lname = lname.charAt(0).toUpperCase() + lname.slice(1);
+    lname = lname.trim();
+    
     email = email.toLowerCase();
 
     const emailAvailable = await accountAvailable(undefined, email);
