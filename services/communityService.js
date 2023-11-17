@@ -1,4 +1,4 @@
-const { Op } = require("sequelize");
+const { Op, Sequelize } = require("sequelize");
 const { Community, User, Ride, sequelize, RideCommunity, CommunityMember } = require("../models");
 const { BadRequestError, NotAcceptableError, NotFoundError, ConflictError, UnauthorizedError } = require("../errors/Errors");
 const { uploadImage } = require("../helper");
