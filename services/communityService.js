@@ -75,47 +75,29 @@ async function getCommunities({ uid, page }) {
     try {
         const weekAgo = new Date();
         const limit = 3;
-        weekAgo.setDate(weekAgo.getDate() - 7);
+        weekAgo.setDate(weekAgo.getDate() - 21);
 
-        // Get communities with the biggest influx of new members in the past week
-        const trendingCommunities = await Community.findAll({
+        const trendingCommunities = await CommunityMember.findAll({
             include: [
                 {
-                    model: CommunityMember,
-                    as: 'members',
-                    where: {
-                        createdAt: {
-                            [Sequelize.Op.gte]: weekAgo,
-                        },
-                    },
-                },
+                    model: Community
+                }
             ],
-            order: [[Sequelize.literal('COUNT(members.id)'), 'DESC']], // Order by the count of new members
-            group: ['Community.id'], // Ensure uniqueness of communities in the result
-            limit,
+            where: {
+                createdAt: {
+                    [Sequelize.Op.gte]: weekAgo
+                }
+            },
+            order: [[Sequelize.literal('COUNT(id)'), 'DESC']],
+            group: ['CommunityId'],
+            limit: 3
         });
 
-        // Exclude communities the user is already a member of
-        const userCommunities = await Community.findAll({
-            include: [
-                {
-                    model: CommunityMember,
-                    as: 'members',
-                    where: {
-                        userId,
-                    },
-                },
-            ],
-        });
+        const coms = coms.map(c => c.Community);
 
-        const recommendedCommunities = trendingCommunities.filter((community) => {
-            const isUserMember = userCommunities.some(
-                (userCommunity) => userCommunity.id === community.id
-            );
-            return !isUserMember;
-        });
+        // console.log(trendingCommunities);
 
-        return recommendedCommunities;
+        return coms;
     } catch (error) {
         console.error('Error getting recommended communities:', error);
         throw error;
