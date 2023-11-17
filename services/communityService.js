@@ -75,7 +75,7 @@ async function getCommunities({ uid, page }) {
     try {
         const weekAgo = new Date();
         const limit = 3;
-        weekAgo.setDate(weekAgo.getDate() - timeframeInDays);
+        weekAgo.setDate(weekAgo.getDate() - 7);
 
         // Get communities with the biggest influx of new members in the past week
         const trendingCommunities = await Community.findAll({
