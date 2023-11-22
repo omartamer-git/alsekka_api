@@ -140,6 +140,15 @@ app.get("/createaccount", async (req, res, next) => {
     ).catch(next);
 });
 
+app.post("/deleteuser", async (req, res, next) => {
+    const password = req.body?.password;
+    const uid = req.user.userId;
+
+    if(!password) return next(new BadRequestError());
+    await userService.deleteUser(uid, req.body);
+    res.status(200).json({});
+});
+
 app.get("/login", async (req, res, next) => {
     const { phone, email, password } = req.query;
     if ((!phone && !email) || !password) {
