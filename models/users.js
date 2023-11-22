@@ -62,6 +62,16 @@ module.exports = function (sequelize, DataTypes) {
       allowNull: false,
       defaultValue: 0,
     },
+    deleted: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    },
+    deletedSince: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null
+    }
   }, {
     sequelize,
     timestamps: true,

@@ -64,6 +64,16 @@ async function createUser({ fname, lname, phone, email, password, gender }) {
     }
 }
 
+async function deleteUser(id, {password}) {
+    const user = await User.findByPk(id);
+    const result = await bcrypt.compare(password, user.password);
+    if(!result) throw new UnauthorizedError("Invalid username and/or password");
+    user.deleted = true;
+    user.deletedSince = new Date();
+    await user.save();
+    return true;
+}
+
 async function loginUser({ phone, email, password, deviceToken }) {
     let userAccount;
     userAccount = await User.scope('auth').findOne({ where: { phone: phone } });
@@ -510,6 +520,7 @@ async function updatePassword(phone, newPassword) {
 module.exports = {
     accountAvailable,
     createUser,
+    deleteUser,
     loginUser,
     getOtp,
     verifyOtp,
