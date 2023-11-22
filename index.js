@@ -140,7 +140,7 @@ app.get("/createaccount", async (req, res, next) => {
     ).catch(next);
 });
 
-app.post("/deleteuser", async (req, res, next) => {
+app.post("/deleteuser", authenticateToken, async (req, res, next) => {
     const password = req.body?.password;
     const uid = req.user.userId;
 
