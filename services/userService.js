@@ -82,6 +82,7 @@ async function loginUser({ phone, email, password, deviceToken }) {
     }
 
     if (userAccount.deleted) {
+        const currentDate = new Date();
         let fourteenDaysAgo = new Date();
         fourteenDaysAgo.setDate(currentDate.getDate() - 14);
 
