@@ -144,9 +144,10 @@ app.post("/deleteuser", authenticateToken, async (req, res, next) => {
     const password = req.body?.password;
     const uid = req.user.userId;
 
-    if(!password) return next(new BadRequestError());
-    await userService.deleteUser(uid, req.body);
-    res.status(200).json({});
+    if (!password) return next(new BadRequestError());
+    userService.deleteUser(uid, req.body).then(() => {
+        res.status(200).json({});
+    }).catch(next);
 });
 
 app.get("/login", async (req, res, next) => {
@@ -201,7 +202,7 @@ app.get("/verify", async (req, res, next) => {
     }
 
     userService.getOtp(phone).then(response => {
-      return res.json(response);
+        return res.json(response);
     }).catch(next);
 });
 
@@ -221,7 +222,7 @@ app.get("/otpcallback", async (req, res, next) => {
     */
 
     console.log(req.query);
-    if(req.query.Secret !== "13053a5e941fd14089aa0fe0138fddbedefcce22168e1d01f2da199ad09e8d38") {
+    if (req.query.Secret !== "13053a5e941fd14089aa0fe0138fddbedefcce22168e1d01f2da199ad09e8d38") {
         return next(new InternalServerError("Invalid Request"));
     }
 
@@ -234,10 +235,10 @@ app.get("/isverified", async (req, res, next) => {
     const phone = req.query.phone;
 
     const isVerified = await userService.isVerified(phone);
-    if(isVerified) {
-        res.json({verified: true});
+    if (isVerified) {
+        res.json({ verified: true });
     } else {
-        res.json({verified: false});
+        res.json({ verified: false });
     }
 });
 
