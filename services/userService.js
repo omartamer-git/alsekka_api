@@ -65,7 +65,7 @@ async function createUser({ fname, lname, phone, email, password, gender }) {
 }
 
 async function deleteUser(id, {password}) {
-    const user = await User.findByPk(id);
+    const user = await User.scope('auth').findByPk(id);
     const result = await bcrypt.compare(password, user.password);
     if(!result) throw new UnauthorizedError("Invalid username and/or password");
     user.deleted = true;
