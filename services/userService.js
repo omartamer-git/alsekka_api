@@ -30,10 +30,10 @@ async function createUser({ fname, lname, phone, email, password, gender }) {
     }
     fname = fname.charAt(0).toUpperCase() + fname.slice(1);
     fname = fname.trim();
-     
+
     lname = lname.charAt(0).toUpperCase() + lname.slice(1);
     lname = lname.trim();
-    
+
     email = email.toLowerCase();
 
     const emailAvailable = await accountAvailable(undefined, email);
@@ -64,10 +64,10 @@ async function createUser({ fname, lname, phone, email, password, gender }) {
     }
 }
 
-async function deleteUser(id, {password}) {
+async function deleteUser(id, { password }) {
     const user = await User.scope('auth').findByPk(id);
     const result = await bcrypt.compare(password, user.password);
-    if(!result) throw new UnauthorizedError("Invalid username and/or password");
+    if (!result) throw new UnauthorizedError("Invalid username and/or password");
     user.deleted = true;
     user.deletedSince = new Date();
     await user.save();
@@ -81,8 +81,22 @@ async function loginUser({ phone, email, password, deviceToken }) {
         throw new UnauthorizedError("Invalid phone and/or password. Please try again.");
     }
 
+    if (userAccount.deleted) {
+        let fourteenDaysAgo = new Date();
+        fourteenDaysAgo.setDate(currentDate.getDate() - 14);
+
+        if (userAccount.deletedSince <= fourteenDaysAgo) {
+            throw new UnauthorizedError("Invalid phone and/or password. Please try again.");
+        }
+    }
+
     const result = await bcrypt.compare(password, userAccount.password);
     if (result) {
+        if(userAccount.deleted) {
+            userAccount.deleted = false;
+            userAccount.deletedSince = null;
+            userAccount.save();
+        }
         const today = new Date();
         const license = await License.findOne({
             where: {
