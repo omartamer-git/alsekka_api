@@ -24,7 +24,7 @@ const session = require("express-session");
 
 const { BadRequestError, NotAcceptableError, UnauthorizedError, InternalServerError } = require("./errors/Errors");
 const { default: axios } = require("axios");
-const { REFERRALS_DISABLED } = require("./config/seaats.config");
+const { REFERRALS_DISABLED, ALLOWED_EMAILS } = require("./config/seaats.config");
 const app = express();
 
 const multerMid = multer({
@@ -179,7 +179,9 @@ app.post('/uploadprofilepicture', authenticateToken, async (req, res, next) => {
     }
 })
 
-
+app.get("/allowedemails", async(req, res, next) => {
+    res.status(200).send(ALLOWED_EMAILS);
+});
 
 
 app.post("/refreshToken", async (req, res, next) => {
