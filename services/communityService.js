@@ -77,12 +77,7 @@ async function getCommunities({ uid, page }) {
         const limit = 3;
         weekAgo.setDate(weekAgo.getDate() - 21);
 
-        const trendingCommunities = await CommunityMember.findAll({
-            include: [
-                {
-                    model: Community
-                }
-            ],
+        const trendingMembers = await CommunityMember.findAll({
             where: {
                 createdAt: {
                     [Sequelize.Op.gte]: weekAgo
@@ -93,7 +88,15 @@ async function getCommunities({ uid, page }) {
             limit: 3
         });
 
-        const coms = coms.map(c => c.Community);
+        const ids = trendingMembers.map(c => c.CommunityId);
+
+        const coms = await Community.findAll({
+            where: {
+                id: {
+                    [Op.in]: ids
+                }
+            }
+        });
 
         // console.log(trendingCommunities);
 
