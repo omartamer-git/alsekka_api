@@ -78,6 +78,7 @@ async function getCommunities({ uid, page }) {
         weekAgo.setDate(weekAgo.getDate() - 21);
 
         const trendingMembers = await CommunityMember.findAll({
+            attributes: ['CommunityId'],
             where: {
                 createdAt: {
                     [Sequelize.Op.gte]: weekAgo
