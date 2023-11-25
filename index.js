@@ -20,7 +20,7 @@ const multerMid = multer({
 app.disable('x-powered-by')
 app.use(multerMid.any());
 app.use(express.json());
-
+app.set('trust proxy', 1);
 app.use(cookieParser());
 app.use(session({
     secret: 'seschret_password_goes_brazy',
