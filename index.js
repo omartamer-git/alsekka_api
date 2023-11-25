@@ -8,7 +8,7 @@ const { authenticateToken } = require("./middleware/authenticateToken");
 const session = require("express-session");
 const { BadRequestError, NotAcceptableError, InternalServerError } = require("./errors/Errors");
 const { default: axios } = require("axios");
-const { REFERRALS_DISABLED, ALLOWED_EMAILS } = require("./config/seaats.config");
+const { REFERRALS_DISABLED, ALLOWED_EMAILS, LATEST_APP_VERSION, MINIMUM_APP_VERSION } = require("./config/seaats.config");
 const app = express();
 const multerMid = multer({
     storage: multer.memoryStorage(),
@@ -60,6 +60,12 @@ app.use('/v1/ride', rideRoutes);
 app.use('/v1/staff', staffRoutes);
 app.use('/v1/user', userRoutes);
 
+app.get("/version", async(req, res, next) => {
+    res.json({
+        current: LATEST_APP_VERSION,
+        min: MINIMUM_APP_VERSION
+    });
+});
 
 app.post("/driverenrollment", async (req, res, next) => {
     const { fullName, phoneNumber, carDescription, token } = req.body;
