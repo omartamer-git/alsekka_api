@@ -184,7 +184,6 @@ router.get("/wallet", authenticateToken, async (req, res, next) => {
 router.post("/submitlicense", authenticateToken, async (req, res, next) => {
     const front = req.files[0];
     const back = req.files[1];
-    // console.log(req);
     const uid = req.user.userId;
 
     if (!front || !back) {

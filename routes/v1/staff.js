@@ -136,8 +136,6 @@ router.post("/editmember", sessionChecker, async (req, res, next) => {
         return next(new BadRequestError());
     }
 
-    console.log(req.body);
-
     editStaffMember(req.body).then(() => {
         res.json({ success: 1 });
     }).catch(next);
@@ -154,7 +152,7 @@ router.post("/updateannouncement", sessionChecker, async (req, res, next) => {
     if (!id) {
         return next(new BadRequestError());
     }
-    console.log(req.body);
+
     updateAnnouncement(req.body).then(() => {
         res.json({ success: 1 });
     }).catch(next);

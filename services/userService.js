@@ -217,7 +217,6 @@ async function getOtp(phone) {
             "message": "Welcome to Seaats! We have verified your account. Please head back to the app to continue the sign up process."
         }
 
-        console.log("waiting for resp");
 
         const response = await axios.get("https://wasage.com/api/otp/", {
             params: params,
@@ -226,17 +225,10 @@ async function getOtp(phone) {
             }
         });
 
-        console.log("resp");
-        console.log(response);
-
         const data = response.data;
-        console.log(data);
         const jwtToken = jwt.sign({ phone: phone }, JWT_SECRET, { expiresIn: SECURITY_EXPIRATION });
 
         if (data.Code == "5500") {
-            console.log(jwtToken);
-            console.log("done");
-            console.log(data.Clickable);
             return { uri: data.Clickable, token: jwtToken };
         } else {
             throw new InternalServerError("An unknown error occurred");
@@ -263,30 +255,16 @@ async function verifyOtp({ phone, otp }) {
 
 async function verifyUser(phone) {
     try {
-        // User.findOne({ where: { phone: phone } }).then(user => {
-        //     user.verified = true;
-        //     user.save();
-        // });
         otpCodes[phone] = {
             verified: true,
             expiry: addMinutes(new Date(), 15)
         }
     } catch (e) {
-        // couldn't verify
         console.log(e);
     }
 }
 
 async function isVerified(phone) {
-    // const user = await User.findOne({ where: { phone: phone } });
-    // if (user) {
-    //     if (user.verified === true) {
-    //         return true;
-    //     }
-    // } else {
-    //     return false;
-    // }
-
     if (phone in otpCodes) {
         return otpCodes[phone].verified;
     }
@@ -370,9 +348,6 @@ async function getWallet({ uid }) {
 
 async function submitWithdrawalRequest({ paymentMethodType, paymentMethodId }, uid) {
     const user = await User.findByPk(uid);
-
-    console.log(paymentMethodType);
-    console.log(paymentMethodId);
 
     const oldBalance = user.balance;
     const newBalance = Math.min(0, oldBalance);
