@@ -33,7 +33,7 @@ router.get("/userinfo", authenticateToken, async (req, res, next) => {
 router.get("/createaccount", async (req, res, next) => {
     let { fname, lname, phone, email, password, gender } = req.query;
 
-    if (!fname || !lname || !phone || !email || !password || !gender || isValidEmail(email)) {
+    if (!fname || !lname || !phone || !email || !password || !gender || !isValidEmail(email)) {
         return next(new BadRequestError());
     }
 
