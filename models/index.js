@@ -1,11 +1,11 @@
 const dbConfig = require("../config/db.config.js");
-
 const Sequelize = require("sequelize");
 const initModels = require("./init-models.js");
 const sequelize = new Sequelize(dbConfig.DB, dbConfig.USER, dbConfig.PASSWORD, {
     host: dbConfig.HOST,
     dialect: dbConfig.dialect,
     operatorsAliases: false,
+    logging: process.env.NODE_ENV === 'production' ? false : console.log,
 
     pool: {
         max: dbConfig.pool.max,

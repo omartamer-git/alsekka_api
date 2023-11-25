@@ -99,8 +99,6 @@ async function getCommunities({ uid, page }) {
             }
         });
 
-        // console.log(trendingCommunities);
-
         return coms;
     } catch (error) {
         console.error('Error getting recommended communities:', error);
@@ -225,7 +223,7 @@ async function getCommunityMembers({ communityId }, uid) {
         if (community.OwnerId !== uid) {
             throw new UnauthorizedError();
         }
-        console.log(community);
+
         const members = await CommunityMember.findAll({
             attributes: ['id', 'joinAnswer'],
             where: {
