@@ -40,6 +40,16 @@ const mapsRoutes = require('./routes/v1/maps');
 const rideRoutes = require('./routes/v1/ride');
 const staffRoutes = require('./routes/v1/staff');
 const userRoutes = require('./routes/v1/user');
+const { default: rateLimit } = require("express-rate-limit");
+
+const limiter = rateLimit({
+	windowMs: 60 * 60 * 1000, // 6015 minutes
+	max: 450, // Limit each IP to 450 requests per `window` (here, per 60 minutes)
+	standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+	legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+
+app.use(limiter);
 
 // v1 API
 app.use('/v1/car', carRoutes);
