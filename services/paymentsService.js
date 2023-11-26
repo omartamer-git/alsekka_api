@@ -1,5 +1,6 @@
 const { PASSENGER_FEE } = require("../config/seaats.config");
 const { User, Invoice, DriverInvoice } = require("../models");
+const { dateDiffInDays } = require("../util/util");
 
 async function createInvoice(uid, seats, ride, voucher, passengerId, t) {
     const user = await User.findByPk(uid, {
@@ -126,10 +127,10 @@ async function cancelRideInvoices(ride, t) {
         }
     });
 
-    const currDate = new Date().getTime();
-    const tripDate = new Date(ride.datetime).getTime();
-    const timeToTrip = tripDate - currDate;
-    if (timeToTrip <= 1000 * 60 * 60 * 36) {
+    const currDate = new Date();
+    const tripDate = new Date(ride.datetime);
+    console.log(dateDiffInDays(tripDate, currDate));
+    if (dateDiffInDays(tripDate, currDate) <= 1.5) {
         const driver = await User.findByPk(ride.DriverId);
 
         // charge driver to re-allocate passengers
