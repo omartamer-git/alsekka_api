@@ -1,5 +1,5 @@
 const { PASSENGER_FEE } = require("../config/seaats.config");
-const { User, Invoice } = require("../models");
+const { User, Invoice, DriverInvoice } = require("../models");
 
 async function createInvoice(uid, seats, ride, voucher, passengerId, t) {
     const user = await User.findByPk(uid, {
@@ -114,8 +114,50 @@ async function checkOutRide(ride, passengers, t) {
     await driver.save({ transaction: t });
 }
 
+async function cancelRideInvoices(ride, t) {
+    const passengers = await ride.getPassengers({
+        include: [
+            {
+                model: Invoice,
+                where: {
+                    status: 'CONFIRMED'
+                }
+            }
+        ]
+    });
+
+    const currDate = new Date().getTime();
+    const tripDate = new Date(ride.datetime).getTime();
+    const timeToTrip = tripDate - currDate;
+    if (timeToTrip <= 1000 * 60 * 60 * 36) {
+        const driver = await User.findByPk(ride.DriverId);
+
+        // charge driver to re-allocate passengers
+        const deduction = - (ride.pricePerSeat * passengers.length);
+        driver.balance = driver.balance + deduction;
+        await DriverInvoice.create({
+            amount: deduction,
+            transactionType: 'LATE_CANCELLATION',
+            status: "BALANCE_DEDUCTED"
+        }, { transaction: t });
+    }
+
+    for (const passenger of passengers) {
+        passenger.Invoice.status = "REVERSED";
+        passenger.status = "DRIVER_CANCELLED";
+
+        if (passenger.Invoice.paymentMethod === "CARD") {
+            passenger.balance += passenger.Invoice.totalAmount;
+        }
+
+        await passenger.Invoice.save({ transaction: t });
+        await passenger.save({ transaction: t });
+    }
+}
+
 module.exports = {
     createInvoice,
     cancelPassengerInvoice,
-    checkOutRide
+    checkOutRide,
+    cancelRideInvoices
 }
