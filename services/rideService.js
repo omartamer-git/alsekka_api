@@ -29,7 +29,7 @@ async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, g
     }
 
     let values = [uid, date, subtractDates(date, -24), gender];
-    let rideQuery = `SELECT R.*, ST_Distance_Sphere(fromLocation, ST_GeomFromText('POINT(${startLat} ${startLng})', 4326) ) as distanceStart, ST_Distance_Sphere(toLocation, ST_GeomFromText( 'POINT(${endLat} ${endLng})', 4326 ) ) as distanceEnd, C.brand, C.model FROM rides AS R, cars AS C  WHERE (C.UserId = R.DriverId) AND (CommunityID IN (SELECT CommunityId FROM CommunityMembers WHERE UserId=? AND joinStatus='APPROVED') OR CommunityID IS NULL) AND datetime >= ? AND datetime <= ? AND (gender=? ${!secondGender ? "" : `OR gender='${secondGender}'`}) HAVING distanceStart <= 10000 AND distanceEnd <= 10000 ORDER BY datetime, distanceStart, distanceEnd`;
+    let rideQuery = `SELECT R.*, ST_Distance_Sphere(fromLocation, ST_GeomFromText('POINT(${startLat} ${startLng})', 4326) ) as distanceStart, ST_Distance_Sphere(toLocation, ST_GeomFromText( 'POINT(${endLat} ${endLng})', 4326 ) ) as distanceEnd, C.brand, C.model FROM rides AS R, cars AS C  WHERE (C.UserId = R.DriverId) AND (CommunityID IN (SELECT CommunityId FROM CommunityMembers WHERE UserId=? AND joinStatus='APPROVED') OR CommunityID IS NULL) AND datetime >= ? AND datetime <= ? AND status='SCHEDULED' AND (gender=? ${!secondGender ? "" : `OR gender='${secondGender}'`}) HAVING distanceStart <= 10000 AND distanceEnd <= 10000 ORDER BY datetime, distanceStart, distanceEnd`;
 
     const rideResult = await sequelize.query(rideQuery, {
         replacements: values,
@@ -438,8 +438,9 @@ async function cancelRide({ tripId }) {
         const currDate = new Date().getTime();
         const tripDate = new Date(ride.datetime).getTime();
         const timeToTrip = tripDate - currDate;
-        if (timeToTrip < 1000 * 60 * 60 * 12) {
-            throw new BadRequestError();
+        if (timeToTrip <= 1000 * 60 * 60 * 36) {
+            const driver = await User.findByPk(ride.DriverId);
+            // driver.balance = driver.balance - (ride.pricePerSeat * )
         }
         ride.status = "CANCELLED";
         ride.save();
