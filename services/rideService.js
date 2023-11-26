@@ -413,6 +413,7 @@ async function cancelRide({ tripId }) {
 
         ride.status = "CANCELLED";
         ride.save({transaction: t});
+        await t.commit();
         sendNotificationToRide("Ride Cancelled", "Your ride to " + ride.mainTextTo + " has been cancelled by the driver. We apologize for the inconvenience.", null, ride.topicArn);
         return true;
     } else {
