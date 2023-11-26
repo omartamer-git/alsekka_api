@@ -133,8 +133,8 @@ async function cancelRideInvoices(ride, t) {
         const driver = await User.findByPk(ride.DriverId);
 
         // charge driver to re-allocate passengers
-        const deduction = - (ride.pricePerSeat * passengers.length);
-        driver.balance = driver.balance + deduction;
+        const deduction = -1.0 * (ride.pricePerSeat * passengers.length);
+        driver.balance = (1 * driver.balance) + (1 * deduction);
         await DriverInvoice.create({
             amount: deduction,
             transactionType: 'LATE_CANCELLATION',
