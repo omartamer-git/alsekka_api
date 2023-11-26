@@ -8,7 +8,7 @@ const { subtractDates } = require('../helper');
 
 const AWS = require('aws-sdk');
 const { sendNotificationToUser, sendNotificationToRide } = require('./appService');
-const { createInvoice, cancelPassengerInvoice, checkOutRide } = require('./paymentsService');
+const { createInvoice, cancelPassengerInvoice, checkOutRide, cancelRideInvoices } = require('./paymentsService');
 AWS.config.update({
     accessKeyId: 'AKIA4WPNBKF4XUVMTRE4',
     secretAccessKey: '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',
@@ -407,15 +407,12 @@ async function cancelRide({ tripId }) {
         throw new NotFoundError();
     }
     if (ride.status === "SCHEDULED") {
-        const currDate = new Date().getTime();
-        const tripDate = new Date(ride.datetime).getTime();
-        const timeToTrip = tripDate - currDate;
-        if (timeToTrip <= 1000 * 60 * 60 * 36) {
-            const driver = await User.findByPk(ride.DriverId);
-            // driver.balance = driver.balance - (ride.pricePerSeat * )
-        }
+        const t = await sequelize.transaction();
+
+        await cancelRideInvoices(ride, t);
+
         ride.status = "CANCELLED";
-        ride.save();
+        ride.save({transaction: t});
         sendNotificationToRide("Ride Cancelled", "Your ride to " + ride.mainTextTo + " has been cancelled by the driver. We apologize for the inconvenience.", null, ride.topicArn);
         return true;
     } else {
