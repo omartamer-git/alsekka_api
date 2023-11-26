@@ -142,6 +142,7 @@ async function cancelRideInvoices(ride, t) {
             DriverId: ride.DriverId,
             Rideid: ride.id
         }, { transaction: t });
+        await driver.save({transaction: t});
     }
 
     for (const passenger of passengers) {
