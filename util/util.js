@@ -55,7 +55,7 @@ function findOptimalPath(startingPoint, destinationPoints) {
 }
 
 
-export function dateDiffInDays(a, b) {
+function dateDiffInDays(a, b) {
     const _MS_PER_DAY = 1000 * 60 * 60 * 24;
     // Discard the time and time-zone information.
     const utc1 = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
