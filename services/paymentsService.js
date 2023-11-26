@@ -140,7 +140,7 @@ async function cancelRideInvoices(ride, t) {
             transactionType: 'LATE_CANCELLATION',
             status: "BALANCE_DEDUCTED",
             DriverId: ride.DriverId,
-            Rideid: ride.id
+            RideId: ride.id
         }, { transaction: t });
         await driver.save({transaction: t});
     }
