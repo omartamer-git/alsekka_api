@@ -119,11 +119,11 @@ async function cancelRideInvoices(ride, t) {
         include: [
             {
                 model: Invoice,
-                where: {
-                    status: 'CONFIRMED'
-                }
             }
-        ]
+        ],
+        where: {
+            status: 'CONFIRMED'
+        }
     });
 
     const currDate = new Date().getTime();
