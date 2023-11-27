@@ -232,7 +232,6 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
             }, { transaction: t });
 
             await createInvoice(uid, seats, paymentMethod, ride, voucher, newPassenger.id, t);
-            await t.commit();
         } else {
             oldPassenger = prevPassenger[0];
             if(oldPassenger.seats > seats) {
@@ -248,6 +247,8 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
 
             await createInvoice(uid, seats, paymentMethod, ride, voucher, oldPassenger.id, t, true);
         }
+
+        await t.commit();
 
         sendNotificationToUser("New Passenger", 'A passenger has booked a ride with you to ' + ride.mainTextTo, ride.DriverId);
 
