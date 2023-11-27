@@ -1,7 +1,7 @@
 const { PASSENGER_FEE } = require("../config/seaats.config");
 const { User, Invoice, DriverInvoice } = require("../models");
 
-async function createInvoice(uid, seats, ride, voucher, passengerId, t) {
+async function createInvoice(uid, seats, paymentMethod, ride, voucher, passengerId, t) {
     const user = await User.findByPk(uid, {
         attributes: ['balance']
     });

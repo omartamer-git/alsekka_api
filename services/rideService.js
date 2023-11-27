@@ -208,7 +208,7 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
             pickupLocationLng
         }, { transaction: t });
 
-        await createInvoice(uid, seats, ride, voucher, newPassenger.id, t);
+        await createInvoice(uid, seats, paymentMethod, ride, voucher, newPassenger.id, t);
 
         sendNotificationToUser("New Passenger", 'A passenger has booked a ride with you to ' + ride.mainTextTo, ride.DriverId);
 
