@@ -102,6 +102,8 @@ async function getRideDetails(uid, { rideId }) {
         throw new NotFoundError("Ride not found");
     }
 
+    const rideJSON = ride.toJSON();
+
     const prevPassenger = await Passenger.findOne({
         where: {
             RideId: rideId,
@@ -110,10 +112,10 @@ async function getRideDetails(uid, { rideId }) {
     });
 
     if(prevPassenger) {
-        ride.Passenger = prevPassenger;
+        rideJSON.Passenger = prevPassenger;
     }
 
-    return ride;
+    return rideJSON;
 }
 
 async function verifyVoucher({ code }, uid) {
