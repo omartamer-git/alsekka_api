@@ -93,7 +93,7 @@ async function loginUser({ phone, email, password, deviceToken }) {
 
     const result = await bcrypt.compare(password, userAccount.password);
     if (result) {
-        if(userAccount.deleted) {
+        if (userAccount.deleted) {
             userAccount.deleted = false;
             userAccount.deletedSince = null;
             userAccount.save();
@@ -316,9 +316,11 @@ async function getLicense({ uid }) {
     const license = await License.findOne({
         where: {
             UserId: uid,
-            [Op.or]: {
-                expiryDate: null,
-                expiryDate: { [Op.gt]: sequelize.literal('CURDATE()') }
+            expiryDate: {
+                [Op.or]: {
+                    [Op.eq]: null,
+                    [Op.gt]: sequelize.literal('CURDATE()')
+                }
             }
         },
         order: [['expiryDate', 'DESC']]
