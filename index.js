@@ -9,6 +9,12 @@ const session = require("express-session");
 const { BadRequestError, NotAcceptableError, InternalServerError } = require("./errors/Errors");
 const { default: axios } = require("axios");
 const { REFERRALS_DISABLED, ALLOWED_EMAILS, LATEST_APP_VERSION, MINIMUM_APP_VERSION } = require("./config/seaats.config");
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+
 const app = express();
 const multerMid = multer({
     storage: multer.memoryStorage(),
@@ -43,10 +49,10 @@ const userRoutes = require('./routes/v1/user');
 const { default: rateLimit } = require("express-rate-limit");
 
 const limiter = rateLimit({
-	windowMs: 60 * 60 * 1000, // 6015 minutes
-	max: 450, // Limit each IP to 450 requests per `window` (here, per 60 minutes)
-	standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-	legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    windowMs: 60 * 60 * 1000, // 6015 minutes
+    max: 450, // Limit each IP to 450 requests per `window` (here, per 60 minutes)
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 
 app.use(limiter);
@@ -60,7 +66,7 @@ app.use('/v1/ride', rideRoutes);
 app.use('/v1/staff', staffRoutes);
 app.use('/v1/user', userRoutes);
 
-app.get("/version", async(req, res, next) => {
+app.get("/version", async (req, res, next) => {
     res.json({
         current: LATEST_APP_VERSION,
         min: MINIMUM_APP_VERSION
@@ -99,7 +105,7 @@ app.post("/driverenrollment", async (req, res, next) => {
     }).catch(next);
 });
 
-app.get("/allowedemails", async(req, res, next) => {
+app.get("/allowedemails", async (req, res, next) => {
     res.status(200).send(ALLOWED_EMAILS);
 });
 
