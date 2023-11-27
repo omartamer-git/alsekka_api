@@ -56,7 +56,7 @@ async function registerDevice({ token, platform }) {
                     Endpoint: data.EndpointArn
                 }
 
-                Device.create({
+                await Device.create({
                     deviceToken: token,
                     platformEndpoint: data.EndpointArn,
                     platform: platform
