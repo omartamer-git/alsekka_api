@@ -25,7 +25,7 @@ router.get("/ridedetails", authenticateToken, async (req, res, next) => {
         return next(new BadRequestError());
     }
 
-    rideService.getRideDetails(req.query).then(
+    rideService.getRideDetails(req.user.userId, req.query).then(
         ride => {
             res.status(200).json(ride);
         }

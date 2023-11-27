@@ -64,7 +64,7 @@ async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, g
     return result;
 }
 
-async function getRideDetails({ rideId }) {
+async function getRideDetails(uid, { rideId }) {
     const ride = await Ride.findByPk(rideId,
         {
             attributes: [
@@ -97,8 +97,20 @@ async function getRideDetails({ rideId }) {
                 }
             ],
         });
+
     if (ride === null) {
         throw new NotFoundError("Ride not found");
+    }
+
+    const prevPassenger = await Passenger.findOne({
+        where: {
+            RideId: rideId,
+            UserId: uid
+        }
+    });
+
+    if(prevPassenger) {
+        ride.Passenger = prevPassenger;
     }
 
     return ride;
@@ -295,7 +307,7 @@ async function getPastRides({ uid, limit, page }, upcoming = false, cancelled = 
             { id: { [Op.in]: rideIdsWherePassenger } }
         ]
     };
-    
+
     if (upcoming) {
         whereClauseRide.status = { [Op.or]: ['SCHEDULED', 'ONGOING'] };
         whereClauseRide.datetime = { [Op.gte]: new Date() };
@@ -412,7 +424,7 @@ async function cancelRide({ tripId }) {
         await cancelRideInvoices(ride, t);
 
         ride.status = "CANCELLED";
-        await ride.save({transaction: t});
+        await ride.save({ transaction: t });
         await t.commit();
         sendNotificationToRide("Ride Cancelled", "Your ride to " + ride.mainTextTo + " has been cancelled by the driver. We apologize for the inconvenience.", null, ride.topicArn);
         return true;
