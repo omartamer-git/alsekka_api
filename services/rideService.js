@@ -209,10 +209,10 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
         }, { transaction: t });
 
         await createInvoice(uid, seats, paymentMethod, ride, voucher, newPassenger.id, t);
+        await t.commit();
 
         sendNotificationToUser("New Passenger", 'A passenger has booked a ride with you to ' + ride.mainTextTo, ride.DriverId);
 
-        await t.commit();
 
         return newPassenger;
     } catch (err) {

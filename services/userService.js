@@ -74,6 +74,15 @@ async function deleteUser(id, { password }) {
     return true;
 }
 
+async function linkUserDevice(id, { deviceToken }) {
+    const user = await User.findByPk(id);
+    const device = await Device.findOne({ where: { deviceToken: deviceToken } });
+    if(device && user.DeviceId !== device.id) {
+        user.DeviceId = device.id;
+        await user.save();
+    }
+}
+
 async function loginUser({ phone, email, password, deviceToken }) {
     let userAccount;
     userAccount = await User.scope('auth').findOne({ where: { phone: phone } });
@@ -107,18 +116,18 @@ async function loginUser({ phone, email, password, deviceToken }) {
             }
         });
 
-        if (deviceToken) {
-            const device = await Device.findOne({
-                where: {
-                    deviceToken: deviceToken
-                }
-            });
+        // if (deviceToken) {
+        //     const device = await Device.findOne({
+        //         where: {
+        //             deviceToken: deviceToken
+        //         }
+        //     });
 
-            if (deviceToken && device.id !== userAccount.DeviceId) {
-                userAccount.DeviceId = device.id;
-                await userAccount.save();
-            }
-        }
+        //     if (deviceToken && device.id !== userAccount.DeviceId) {
+        //         userAccount.DeviceId = device.id;
+        //         await userAccount.save();
+        //     }
+        // }
 
 
         userAccount.password = undefined;
@@ -155,18 +164,18 @@ async function userInfo({ deviceToken }, uid) {
         }
     });
 
-    if (deviceToken) {
-        const device = await Device.findOne({
-            where: {
-                deviceToken: deviceToken
-            }
-        });
+    // if (deviceToken) {
+    //     const device = await Device.findOne({
+    //         where: {
+    //             deviceToken: deviceToken
+    //         }
+    //     });
 
-        if (deviceToken && device.id !== userAccount.DeviceId) {
-            userAccount.DeviceId = device.id;
-            await userAccount.save();
-        }
-    }
+    //     if (deviceToken && device.id !== userAccount.DeviceId) {
+    //         userAccount.DeviceId = device.id;
+    //         await userAccount.save();
+    //     }
+    // }
 
     return {
         ...userAccount.dataValues,
@@ -514,6 +523,7 @@ module.exports = {
     createUser,
     deleteUser,
     loginUser,
+    linkUserDevice,
     getOtp,
     verifyOtp,
     verifyUser,
