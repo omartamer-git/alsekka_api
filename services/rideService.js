@@ -111,7 +111,7 @@ async function getRideDetails(uid, { rideId }) {
         }
     });
 
-    if(prevPassenger) {
+    if (prevPassenger) {
         rideJSON.Passenger = prevPassenger;
     }
 
@@ -160,12 +160,16 @@ async function verifyVoucher({ code }, uid) {
 
 async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, pickupLocationLat, pickupLocationLng }) {
     try {
-        const passengerCount = await Passenger.count({
+        const passengers = await Passenger.findAll({
             where: {
                 RideId: rideId,
                 status: "CONFIRMED"
             }
         });
+
+
+
+        const passengerCount = passengers.length;
 
         const ride = await Ride.findByPk(rideId);
 
@@ -177,8 +181,10 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
             throw new GoneError("Ride no longer available.");
         }
 
+        const prevPassenger = passengers.filter(p => p.UserId === uid);
+
         let voucher;
-        if (voucherId) {
+        if (prevPassenger.length === 0 && voucherId) {
             voucher = await Voucher.findByPk(voucherId);
             if (voucher === null) {
                 throw new NotFoundError();
@@ -208,22 +214,37 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
             throw new BadRequestError();
         }
 
+        if (prevPassenger.length === 0) {
+            const newPassenger = await Passenger.create({
+                UserId: uid,
+                RideId: rideId,
+                paymentMethod: paymentMethod,
+                status: 'CONFIRMED',
+                seats: seats || 1,
+                CardId: cardId || null,
+                VoucherId: voucherId || null,
+                passengerFee: PASSENGER_FEE,
+                pickupLocationLat,
+                pickupLocationLng
+            }, { transaction: t });
 
-        const newPassenger = await Passenger.create({
-            UserId: uid,
-            RideId: rideId,
-            paymentMethod: paymentMethod,
-            status: 'CONFIRMED',
-            seats: seats || 1,
-            CardId: cardId || null,
-            VoucherId: voucherId || null,
-            passengerFee: PASSENGER_FEE,
-            pickupLocationLat,
-            pickupLocationLng
-        }, { transaction: t });
+            await createInvoice(uid, seats, paymentMethod, ride, voucher, newPassenger.id, t);
+            await t.commit();
+        } else {
+            const oldPassenger = prevPassenger[0];
+            if(oldPassenger.seats > seats) {
+                throw new BadRequestError();
+            }
 
-        await createInvoice(uid, seats, paymentMethod, ride, voucher, newPassenger.id, t);
-        await t.commit();
+            if(oldPassenger.VoucherId) {
+                voucher = await Voucher.findByPk(oldPassenger.VoucherId);
+            }
+
+            oldPassenger.seats = seats;
+            oldPassenger.save({transaction: t});
+
+            await createInvoice(uid, seats, paymentMethod, ride, voucher, oldPassenger.id, t, true);
+        }
 
         sendNotificationToUser("New Passenger", 'A passenger has booked a ride with you to ' + ride.mainTextTo, ride.DriverId);
 
