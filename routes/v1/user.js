@@ -67,6 +67,15 @@ router.get("/login", async (req, res, next) => {
     ).catch(next);
 });
 
+router.post("/linkdevice", authenticateToken, async (req, res, next) => {
+    const { deviceToken } = req.body;
+
+    if(!deviceToken) { return next(new BadRequestError()) }
+    userService.linkUserDevice(req.user.userId, req.body).then(() => {
+        res.status(200).send();
+    }).catch(next);
+});
+
 router.post('/uploadprofilepicture', authenticateToken, async (req, res, next) => {
     try {
         if (!req.files) {
