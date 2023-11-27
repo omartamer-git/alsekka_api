@@ -46,7 +46,7 @@ async function registerDevice({ token, platform }) {
 
 
 
-        sns.createPlatformEndpoint(paramsEndpoint, (err, data) => {
+        sns.createPlatformEndpoint(paramsEndpoint, async (err, data) => {
             if (err) {
                 console.error(err);
             } else {
@@ -91,7 +91,7 @@ async function registerDevice({ token, platform }) {
 
 
 
-        sns.createPlatformEndpoint(paramsEndpoint, (err, data) => {
+        sns.createPlatformEndpoint(paramsEndpoint, async (err, data) => {
             if (err) {
                 console.error(err);
             } else {
@@ -101,7 +101,7 @@ async function registerDevice({ token, platform }) {
                     Endpoint: data.EndpointArn
                 }
 
-                Device.create({
+                await Device.create({
                     deviceToken: token,
                     platformEndpoint: data.EndpointArn,
                     platform: platform
