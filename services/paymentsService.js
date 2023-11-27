@@ -50,7 +50,7 @@ async function createInvoice(uid, seats, paymentMethod, ride, voucher, passenger
                 dueDate,
             }, {
                 where: {
-                    passengerId: passengerId
+                    PassengerId: passengerId
                 },
                 transaction: t
             })
