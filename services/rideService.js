@@ -214,8 +214,11 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
             throw new BadRequestError();
         }
 
+        let newPassenger;
+        let oldPassenger;
+
         if (prevPassenger.length === 0) {
-            const newPassenger = await Passenger.create({
+            newPassenger = await Passenger.create({
                 UserId: uid,
                 RideId: rideId,
                 paymentMethod: paymentMethod,
@@ -231,7 +234,7 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
             await createInvoice(uid, seats, paymentMethod, ride, voucher, newPassenger.id, t);
             await t.commit();
         } else {
-            const oldPassenger = prevPassenger[0];
+            oldPassenger = prevPassenger[0];
             if(oldPassenger.seats > seats) {
                 throw new BadRequestError();
             }
@@ -249,7 +252,7 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
         sendNotificationToUser("New Passenger", 'A passenger has booked a ride with you to ' + ride.mainTextTo, ride.DriverId);
 
 
-        return newPassenger ? newPassenger : prevPassenger[0];
+        return newPassenger ? newPassenger : oldPassenger;
     } catch (err) {
         console.error(err);
         throw new NotFoundError("Ride not found");
