@@ -1,7 +1,7 @@
 const { PASSENGER_FEE } = require("../config/seaats.config");
 const { User, Invoice, DriverInvoice } = require("../models");
 
-async function createInvoice(uid, seats, paymentMethod, ride, voucher, passengerId, t) {
+async function createInvoice(uid, seats, paymentMethod, ride, voucher, passengerId, t, update = false) {
     const user = await User.findByPk(uid, {
         attributes: ['balance']
     });
@@ -18,21 +18,42 @@ async function createInvoice(uid, seats, paymentMethod, ride, voucher, passenger
     const grandTotal = totalAmount + driverFeeTotal + passengerFeeTotal + balanceDue - discountAmount;
     const dueDate = ride.datetime;
 
-    if (paymentMethod === 'CARD') {
-        // card handling logic here
-        // Take grandTotal from card
+
+    if (!update) {
+        if (paymentMethod === 'CARD') {
+            // card handling logic here
+            // Take grandTotal from card
+        } else {
+            await Invoice.create({
+                totalAmount,
+                balanceDue,
+                discountAmount,
+                grandTotal,
+                driverFeeTotal,
+                passengerFeeTotal,
+                dueDate,
+                paymentMethod,
+                PassengerId: passengerId,
+            }, { transaction: t });
+        }
     } else {
-        await Invoice.create({
-            totalAmount,
-            balanceDue,
-            discountAmount,
-            grandTotal,
-            driverFeeTotal,
-            passengerFeeTotal,
-            dueDate,
-            paymentMethod,
-            PassengerId: passengerId,
-        }, { transaction: t });
+        if(paymentMethod === 'CARD') {
+
+        } else {
+            await Invoice.update({
+                totalAmount,
+                balanceDue,
+                discountAmount,
+                grandTotal,
+                driverFeeTotal,
+                passengerFeeTotal,
+                dueDate,
+            }, {
+                where: {
+                    passengerId: passengerId
+                }
+            })
+        }
     }
 }
 
@@ -142,7 +163,7 @@ async function cancelRideInvoices(ride, t) {
             DriverId: ride.DriverId,
             RideId: ride.id
         }, { transaction: t });
-        await driver.save({transaction: t});
+        await driver.save({ transaction: t });
     }
 
     for (const passenger of passengers) {
