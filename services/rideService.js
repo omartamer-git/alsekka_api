@@ -249,7 +249,7 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
         sendNotificationToUser("New Passenger", 'A passenger has booked a ride with you to ' + ride.mainTextTo, ride.DriverId);
 
 
-        return newPassenger;
+        return newPassenger ? newPassenger : prevPassenger[0];
     } catch (err) {
         console.error(err);
         throw new NotFoundError("Ride not found");
