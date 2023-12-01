@@ -2,19 +2,15 @@ const { Sequelize, Op, literal } = require('sequelize');
 const { Ride, Passenger, User, sequelize, License, Car, Voucher, Invoice } = require('../models');
 const { NotFoundError, InternalServerError, BadRequestError, UnauthorizedError, GoneError } = require("../errors/Errors");
 const { DRIVER_FEE, PASSENGER_FEE } = require('../config/seaats.config');
+const { SNS, SNSClient } = require("@aws-sdk/client-sns");
 const { getDirections } = require('./googleMapsService');
 const { isFloat } = require('../util/util');
 const { subtractDates } = require('../helper');
 
-const AWS = require('aws-sdk');
 const { sendNotificationToUser, sendNotificationToRide } = require('./appService');
 const { createInvoice, cancelPassengerInvoice, checkOutRide, cancelRideInvoices } = require('./paymentsService');
-AWS.config.update({
-    accessKeyId: 'AKIA4WPNBKF4XUVMTRE4',
-    secretAccessKey: 'fx6W1HLoNx/K1y9zrEKW6sGpXaerrYLzmu1iQt6+',
-    region: 'eu-central-1',  // e.g., us-west-2
-});
-const sns = new AWS.SNS();
+
+const sns = new SNSClient({ region: 'eu-central-1' })
 
 
 async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, gender, maxDistance }) {
