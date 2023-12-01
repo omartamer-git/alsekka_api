@@ -2,13 +2,7 @@ const { Announcement, DriverEnrollment, Device, User, Ride } = require("../model
 const { NotFoundError } = require("../errors/Errors")
 
 
-const { SNS, SNSClient } = require("@aws-sdk/client-sns");
-// AWS.config.update({
-//     accessKeyId: 'AKIA4WPNBKF4XUVMTRE4',
-//     secretAccessKey: 'fx6W1HLoNx/K1y9zrEKW6sGpXaerrYLzmu1iQt6+',
-//     region: 'eu-central-1',  // e.g., us-west-2
-// });
-// const sns = new AWS.SNS();
+const { SNSClient, CreatePlatformEndpointCommand, SubscribeCommand, PublishCommand } = require("@aws-sdk/client-sns");
 
 const sns = new SNSClient({ region: 'eu-central-1' })
 
@@ -31,96 +25,48 @@ async function getAnnouncements(active) {
 }
 
 async function registerDevice({ token, platform }) {
-    if (platform === 'ios') {
-        const paramsEndpoint = {
-            PlatformApplicationArn: 'arn:aws:sns:eu-central-1:872912343417:app/APNS_SANDBOX/seaats-app-dev',
-            Token: token
-        };
+    let PlatformApplicationArn = platform === 'ios' ? 'arn:aws:sns:eu-central-1:872912343417:app/APNS_SANDBOX/seaats-app-dev' : 'arn:aws:sns:eu-central-1:872912343417:app/GCM/android-seaats';
 
-        const existingDevice = await Device.findOne({
-            where: {
-                deviceToken: token
-            }
-        });
+    const paramsEndpoint = {
+        PlatformApplicationArn: PlatformApplicationArn,
+        Token: token
+    };
 
-        if (existingDevice !== null) {
-            return;
+    const existingDevice = await Device.findOne({
+        where: {
+            deviceToken: token
         }
+    });
 
-
-
-        sns.createPlatformEndpoint(paramsEndpoint, async (err, data) => {
-            if (err) {
-                console.error(err);
-            } else {
-                const paramsSubscribe = {
-                    Protocol: 'application',
-                    TopicArn: 'arn:aws:sns:eu-central-1:872912343417:seaats-marketing',
-                    Endpoint: data.EndpointArn
-                }
-
-                await Device.create({
-                    deviceToken: token,
-                    platformEndpoint: data.EndpointArn,
-                    platform: platform
-                });
-
-                sns.subscribe(paramsSubscribe, (err, data) => {
-                    if (err) {
-                        console.error('Error subscribing device to SNS: ', err);
-                    } else {
-                        console.log('Device successfully subscribed to SNS: ', data);
-                    }
-                });
-
-            }
-        })
-
-    } else {
-        const paramsEndpoint = {
-            PlatformApplicationArn: 'arn:aws:sns:eu-central-1:872912343417:app/GCM/android-seaats',
-            Token: token
-        };
-
-        const existingDevice = await Device.findOne({
-            where: {
-                deviceToken: token
-            }
-        });
-
-        if (existingDevice !== null) {
-            return;
-        }
-
-
-
-        sns.createPlatformEndpoint(paramsEndpoint, async (err, data) => {
-            if (err) {
-                console.error(err);
-            } else {
-                const paramsSubscribe = {
-                    Protocol: 'application',
-                    TopicArn: 'arn:aws:sns:eu-central-1:872912343417:seaats-marketing',
-                    Endpoint: data.EndpointArn
-                }
-
-                await Device.create({
-                    deviceToken: token,
-                    platformEndpoint: data.EndpointArn,
-                    platform: platform
-                });
-
-                sns.subscribe(paramsSubscribe, (err, data) => {
-                    if (err) {
-                        console.error('Error subscribing device to SNS: ', err);
-                    } else {
-                        console.log('Device successfully subscribed to SNS: ', data);
-                    }
-                });
-
-            }
-        })
+    if (existingDevice !== null) {
+        return;
     }
+
+    const command = new CreatePlatformEndpointCommand(paramsEndpoint);
+
+
+
+    sns.send(command).then((data) => {
+        const paramsSubscribe = {
+            Protocol: 'application',
+            TopicArn: 'arn:aws:sns:eu-central-1:872912343417:seaats-marketing',
+            Endpoint: data.EndpointArn
+        }
+
+        await Device.create({
+            deviceToken: token,
+            platformEndpoint: data.EndpointArn,
+            platform: platform
+        });
+
+        const subscribeCommand = new SubscribeCommand(paramsSubscribe);
+
+        sns.send(subscribeCommand).then(() => {
+            // successful sub
+        }).catch(err => {
+            console.log(err);
+        })
+    }).catch(err => console.log(err));
 }
 
 async function addEnrolledDriver({ fullName, phoneNumber, carDescription }) {
@@ -150,12 +96,13 @@ async function sendNotificationToUser(title, message, userId = null, targetArn =
         TargetArn: targetArn_
     };
 
-    sns.publish(params, function (err, data) {
-        if (err) console.log(err, err.stack); // an error occurred
-        else {
-            console.log(data);           // successful response
-        }
-    });
+    const publishCommand = new PublishCommand(params);
+
+    sns.send(publishCommand).then(data => {
+
+    }).catch(err => {
+        console.log(err);
+    })
 }
 
 async function sendNotificationToRide(title, message, rideId = null, topicArn = null) {

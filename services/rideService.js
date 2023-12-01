@@ -2,7 +2,7 @@ const { Sequelize, Op, literal } = require('sequelize');
 const { Ride, Passenger, User, sequelize, License, Car, Voucher, Invoice } = require('../models');
 const { NotFoundError, InternalServerError, BadRequestError, UnauthorizedError, GoneError } = require("../errors/Errors");
 const { DRIVER_FEE, PASSENGER_FEE } = require('../config/seaats.config');
-const { SNS, SNSClient } = require("@aws-sdk/client-sns");
+const { SNS, SNSClient, CreateTopicCommand } = require("@aws-sdk/client-sns");
 const { getDirections } = require('./googleMapsService');
 const { isFloat } = require('../util/util');
 const { subtractDates } = require('../helper');
@@ -268,7 +268,10 @@ async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, 
         const params = {
             Name: topicName
         }
-        const topicData = await sns.createTopic(params).promise();
+
+        const topicCommand = CreateTopicCommand(params);
+        const topicData = await sns.send(topicCommand);
+
         const topicArn = topicData.TopicArn;
 
         const newRide = await Ride.create({
