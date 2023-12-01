@@ -569,7 +569,7 @@ async function checkIn({ tripId, passenger }) {
     passengerDetails.status = "ENROUTE";
     passengerDetails.save();
 
-    sendNotificationToUser("Welcome aboard!", `Welcome aboard this Seaats ride heading towards ${mainTextTo}!`, passenger);
+    sendNotificationToUser("Welcome aboard!", `Welcome aboard this Seaats ride!`, passenger);
 
     return true;
 }
