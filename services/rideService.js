@@ -388,14 +388,6 @@ async function getTripDetails({ uid, tripId }) {
                 attributes: ['id', 'firstName', 'lastName', 'phone', 'rating', 'profilePicture']
             },
             {
-                model: Passenger,
-                attributes: ['pickupLocationLat', 'pickupLocationLng'],
-                required: false,
-                where: {
-                    id: uid
-                }
-            },
-            {
                 model: Car
             }
         ],
@@ -439,6 +431,15 @@ async function getTripDetails({ uid, tripId }) {
             ]
         });
         tripDetails.setDataValue('passengers', passengersDetails);
+    } else {
+        const passengerDetails = await Passenger.findOne({
+            where: {
+                UserId: uid,
+                RideId: tripId
+            }
+        });
+
+        tripDetails.setDataValue('passenger', passengerDetails);
     }
 
     const timeToTrip = new Date(tripDetails.datetime).getTime() - new Date().getTime();
