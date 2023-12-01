@@ -46,7 +46,7 @@ async function registerDevice({ token, platform }) {
 
 
 
-    sns.send(command).then((data) => {
+    sns.send(command).then(async (data) => {
         const paramsSubscribe = {
             Protocol: 'application',
             TopicArn: 'arn:aws:sns:eu-central-1:872912343417:seaats-marketing',
