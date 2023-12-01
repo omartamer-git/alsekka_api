@@ -613,7 +613,7 @@ async function checkOut({ tripId, uid }) {
 
     await t.commit();
 
-    sendNotificationToUser("Farewell!", `Thank you for using Seaats! Feel free to leave a rating for this ride within the app!`, passenger);
+    sendNotificationToRide("Farewell!", `Thank you for using Seaats! Feel free to leave a rating for this ride within the app!`, null, ride.topicArn).catch(e => console.log(e));
 }
 
 async function submitDriverRatings({ tripId, ratings }, uid) {
