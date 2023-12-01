@@ -394,7 +394,7 @@ async function getTripDetails({ uid, tripId }) {
                 where: {
                     id: uid
                 }
-            }
+            },
             {
                 model: Car
             }
