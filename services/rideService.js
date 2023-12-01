@@ -250,7 +250,9 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
 
         await t.commit();
 
-        sendNotificationToUser("New Passenger", 'A passenger has booked a ride with you to ' + ride.mainTextTo, ride.DriverId);
+        sendNotificationToUser("New Passenger", 'A passenger has booked a ride with you to ' + ride.mainTextTo, ride.DriverId).catch((e) => {
+            console.log(e);
+        });
 
 
         return newPassenger ? newPassenger : oldPassenger;
@@ -453,7 +455,11 @@ async function cancelRide({ tripId }) {
         ride.status = "CANCELLED";
         await ride.save({ transaction: t });
         await t.commit();
-        sendNotificationToRide("Ride Cancelled", "Your ride to " + ride.mainTextTo + " has been cancelled by the driver. We apologize for the inconvenience.", null, ride.topicArn);
+        sendNotificationToRide("Ride Cancelled", "Your ride to " + ride.mainTextTo + " has been cancelled by the driver. We apologize for the inconvenience.", null, ride.topicArn).then(() => {
+            // notification sent
+        }).catch((e) => {
+            console.log(e);
+        });
         return true;
     } else {
         throw new BadRequestError();
@@ -488,7 +494,11 @@ async function cancelPassenger({ tripId }, userId) {
         await passenger.save({ transaction: t });
         await t.commit();
 
-        sendNotificationToUser("Passenger Cancelled", `One of the passengers in your trip to ${ride.mainTextTo} has cancelled their seat, you will be compensated if they cancelled outside of the free cancellation window. We apologize for the inconvenience.`, null, null, driver.DeviceId);
+        sendNotificationToUser("Passenger Cancelled", `One of the passengers in your trip to ${ride.mainTextTo} has cancelled their seat, you will be compensated if they cancelled outside of the free cancellation window. We apologize for the inconvenience.`, null, null, driver.DeviceId).then(() => {
+            // notification sent
+        }).catch((e) => {
+            console.log(e);
+        })
 
         return true;
     } else {
@@ -511,7 +521,11 @@ async function startRide({ tripId }) {
         ride.status = "ONGOING";
         ride.save();
 
-        sendNotificationToRide("Ride Started", `Your ride to ${ride.mainTextTo} has started!`, null, ride.topicArn)
+        sendNotificationToRide("Ride Started", `Your ride to ${ride.mainTextTo} has started!`, null, ride.topicArn).then(() => {
+            // notification sent
+        }).catch((e) => {
+            console.log(e);
+        })
 
         return true;
     } else {
