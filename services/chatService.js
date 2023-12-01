@@ -208,7 +208,7 @@ async function sendMessage({ uid, receiver, message }) {
         const user = await User.findByPk(uid);
 
 
-        sendNotificationToUser(user.firstName, message, receiver);
+        sendNotificationToUser(user.firstName, `${user.firstName}: ${message.substring(0,30)}${message.length>30?"...":""}`, receiver);
 
         return newMessage;
     } catch (err) {
