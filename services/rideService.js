@@ -388,6 +388,14 @@ async function getTripDetails({ uid, tripId }) {
                 attributes: ['id', 'firstName', 'lastName', 'phone', 'rating', 'profilePicture']
             },
             {
+                model: Passenger,
+                attributes: ['pickupLocationLat', 'pickupLocationLng'],
+                required: false,
+                where: {
+                    id: uid
+                }
+            }
+            {
                 model: Car
             }
         ],
