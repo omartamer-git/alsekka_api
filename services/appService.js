@@ -2,7 +2,6 @@ const { Announcement, DriverEnrollment, Device, User, Ride } = require("../model
 const { NotFoundError } = require("../errors/Errors")
 
 
-const AWS = require('aws-sdk');
 const { SNS, SNSClient } = require("@aws-sdk/client-sns");
 // AWS.config.update({
 //     accessKeyId: 'AKIA4WPNBKF4XUVMTRE4',
