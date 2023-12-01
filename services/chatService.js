@@ -1,6 +1,7 @@
 const { User, ChatMessage, CustomerServiceConversation, CustomerServiceChat } = require("../models");
 const { Sequelize, Op, literal } = require('sequelize');
-const { NotFoundError } = require("../errors/Errors")
+const { NotFoundError } = require("../errors/Errors");
+const { sendNotificationToUser } = require("./appService");
 
 async function loadChat({ receiver }) {
     const user = await User.findByPk(receiver, {
@@ -203,6 +204,12 @@ async function sendMessage({ uid, receiver, message }) {
             ReceiverId: receiver,
             message: message
         });
+
+        const user = await User.findByPk(uid);
+
+
+        sendNotificationToUser(user.firstName, message, receiver);
+
         return newMessage;
     } catch (err) {
         throw new NotFoundError();
