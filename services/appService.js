@@ -118,12 +118,11 @@ async function sendNotificationToRide(title, message, rideId = null, topicArn = 
         TopicArn: targetArn_
     };
 
-    sns.publish(params, function (err, data) {
-        if (err) console.log(err, err.stack); // an error occurred
-        else {
-            console.log(data);           // successful response
-        }
-    });
+    const publishCommand = new PublishCommand(params);
+
+    sns.send(publishCommand).catch((e) => {
+        console.log(e);
+    })
 }
 
 module.exports = {
