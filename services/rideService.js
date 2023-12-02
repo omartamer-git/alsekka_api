@@ -269,7 +269,7 @@ async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, 
             Name: topicName
         }
 
-        const topicCommand = CreateTopicCommand(params);
+        const topicCommand = new CreateTopicCommand(params);
         const topicData = await sns.send(topicCommand);
 
         const topicArn = topicData.TopicArn;
