@@ -9,6 +9,7 @@ const session = require("express-session");
 const { BadRequestError, NotAcceptableError, InternalServerError } = require("./errors/Errors");
 const { default: axios } = require("axios");
 const { REFERRALS_DISABLED, ALLOWED_EMAILS, LATEST_APP_VERSION, MINIMUM_APP_VERSION } = require("./config/seaats.config");
+const cron = require('node-cron');
 
 process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled Rejection at:', promise, 'reason:', reason);
@@ -47,6 +48,10 @@ const rideRoutes = require('./routes/v1/ride');
 const staffRoutes = require('./routes/v1/staff');
 const userRoutes = require('./routes/v1/user');
 const { default: rateLimit } = require("express-rate-limit");
+const { Ride } = require("./models");
+const { subtractDates } = require("./helper");
+const { Op } = require("sequelize");
+const { cancelRide } = require("./services/rideService");
 
 const limiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 6015 minutes
@@ -147,6 +152,30 @@ app.get("/registerdevice", async (req, res, next) => {
 
     appService.registerDevice(req.query);
     res.status(200).send();
+});
+
+cron.schedule('*/5 * * * *', () => {
+    const oneHourPrior = subtractDates(new Date(), 1);
+    Ride.findAll({
+        where: {
+            status: 'SCHEDULED',
+            datetime: {
+                [Op.lte]: oneHourPrior
+            }
+        }
+    }).then(rides => {
+        const rideIds = rides.map(r => r.id);
+
+        for(const rid of rideIds) {
+            cancelRide({tripId: rid}).then(() => {
+                // Alert staff to make sure passengers have been handled
+            });
+        }
+    }).catch(err => {
+        console.log("[FAIL] FAILED TO RUN CRON JOB\nReason: ", err);
+    });
+
+    // Find rides that are 10 minutes late also and alert staff
 });
 
 
