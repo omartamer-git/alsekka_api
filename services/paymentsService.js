@@ -37,7 +37,7 @@ async function createInvoice(uid, seats, paymentMethod, ride, voucher, passenger
             }, { transaction: t });
         }
     } else {
-        if(paymentMethod === 'CARD') {
+        if (paymentMethod === 'CARD') {
 
         } else {
             await Invoice.update({
@@ -58,7 +58,7 @@ async function createInvoice(uid, seats, paymentMethod, ride, voucher, passenger
     }
 }
 
-async function cancelPassengerInvoice(passenger, ride, t) {
+async function cancelPassengerInvoice(passenger, ride, driver, t) {
     const passengerId = passenger.id;
     const invoice = await Invoice.findOne({
         where: {
@@ -69,7 +69,6 @@ async function cancelPassengerInvoice(passenger, ride, t) {
     const currDate = new Date().getTime();
     const tripDate = new Date(ride.datetime).getTime();
     const timeToTrip = tripDate - currDate;
-    const driver = await ride.getDriver();
 
     if (timeToTrip < 1000 * 60 * 60 * 24) {
         // late cancel
