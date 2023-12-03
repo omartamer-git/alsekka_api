@@ -16,8 +16,7 @@ router.get("/accountavailable", async (req, res, next) => {
 
     const available = userService.accountAvailable(phone, email).then(
         available => {
-            const success = available ? 1 : 0;
-            res.json({ success: success });
+            res.json({ phone: available[0], email: available[1] });
         }
     ).catch(next);
 });
@@ -70,7 +69,7 @@ router.get("/login", async (req, res, next) => {
 router.post("/linkdevice", authenticateToken, async (req, res, next) => {
     const { deviceToken } = req.body;
 
-    if(!deviceToken) { return next(new BadRequestError()) }
+    if (!deviceToken) { return next(new BadRequestError()) }
     userService.linkUserDevice(req.user.userId, req.body).then(() => {
         res.status(200).send();
     }).catch(next);
