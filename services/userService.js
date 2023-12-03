@@ -21,7 +21,22 @@ async function accountAvailable(phone, email) {
             }
         }, attributes: ['id']
     });
-    return (userAccount === null);
+
+    if(userAccount === null) {
+        return [true, true];
+    } else {
+        let phone = true;
+        let email = true;
+        if(userAccount.phone == phone) {
+            phone = false;
+        }
+
+        if(userAccount.email == email) {
+            email = false;
+        }
+
+        return [phone, email];
+    }
 }
 
 async function createUser({ fname, lname, phone, email, password, gender }) {
@@ -38,14 +53,10 @@ async function createUser({ fname, lname, phone, email, password, gender }) {
 
     email = email.toLowerCase();
 
-    const emailAvailable = await accountAvailable(undefined, email);
-    if (!emailAvailable) {
-        throw new ConflictError("Email is already in use");
-    }
-
-    const phoneAvailable = await accountAvailable(phone, undefined);
-    if (!phoneAvailable) {
-        throw new ConflictError("Phone number is already in use")
+    const accAvailable = await accountAvailable(phone, email);
+    if (!accAvailable[0] || !accAvailable[1]) {
+        // Email or phone already in use
+        throw new ConflictError();
     }
 
     try {
