@@ -1,7 +1,7 @@
 const { Op } = require("sequelize");
 const { User, License, sequelize, Card, BankAccount, MobileWallet, Referral, Withdrawal, Device } = require("../models");
 const bcrypt = require("bcrypt");
-const { getCardDetails, checkCardNumber, generateOtp, addMinutes, uploadImage, uploadLicenseImage } = require("../helper");
+const { getCardDetails, checkCardNumber, generateOtp, addMinutes, uploadImage, uploadLicenseImage, capitalizeFirstLetter } = require("../helper");
 const { UnauthorizedError, NotFoundError, ConflictError, InternalServerError, NotAcceptableError, BadRequestError } = require("../errors/Errors");
 const { default: axios } = require("axios");
 const config = require("../config");
@@ -45,11 +45,9 @@ async function createUser({ fname, lname, phone, email, password, gender }) {
             throw new BadRequestError("Phone number is not verified");
         }
     }
-    fname = fname.charAt(0).toUpperCase() + fname.slice(1);
-    fname = fname.trim();
+    fname = capitalizeFirstLetter(fname);
 
-    lname = lname.charAt(0).toUpperCase() + lname.slice(1);
-    lname = lname.trim();
+    lname = capitalizeFirstLetter(lname);
 
     email = email.toLowerCase();
 
@@ -129,19 +127,6 @@ async function loginUser({ phone, email, password, deviceToken }) {
             }
         });
 
-        // if (deviceToken) {
-        //     const device = await Device.findOne({
-        //         where: {
-        //             deviceToken: deviceToken
-        //         }
-        //     });
-
-        //     if (deviceToken && device.id !== userAccount.DeviceId) {
-        //         userAccount.DeviceId = device.id;
-        //         await userAccount.save();
-        //     }
-        // }
-
 
         userAccount.password = undefined;
 
@@ -176,19 +161,6 @@ async function userInfo({ deviceToken }, uid) {
             expiryDate: { [Op.gt]: today }
         }
     });
-
-    // if (deviceToken) {
-    //     const device = await Device.findOne({
-    //         where: {
-    //             deviceToken: deviceToken
-    //         }
-    //     });
-
-    //     if (deviceToken && device.id !== userAccount.DeviceId) {
-    //         userAccount.DeviceId = device.id;
-    //         await userAccount.save();
-    //     }
-    // }
 
     return {
         ...userAccount.dataValues,
@@ -236,7 +208,7 @@ async function getOtp(phone) {
             "username": "25496940dd23fdaa990ac1d54adefa05cd43607bb47b7d41c2f9016edb98039e",
             "password": "67bd7d7edba830e85934671b5515e84a1150348fb14c020ad058490d2e1f13f8",
             "reference": phone,
-            "message": "Welcome to Seaats! We have verified your account. Please head back to the app to continue the sign up process."
+            "message": "Welcome to Seaats! We have verified your account. Please head back to the app to continue the sign up process.\nمرحبا بكم في سيتس! لقد قمنا بالتحقق من حسابك. يرجى العودة إلى التطبيق لمواصلة عملية التسجيل."
         }
 
 
@@ -468,8 +440,8 @@ async function addNewCard({ uid, cardNumber, cardExpiry, cardholderName }) {
 async function updateName({ uid, firstName, lastName }) {
     try {
         const user = await User.findByPk(uid);
-        user.firstName = firstName;
-        user.lastName = lastName;
+        user.firstName = capitalizeFirstLetter(firstName);
+        user.lastName = capitalizeFirstLetter(lastName);
         await user.save();
         return user;
     } catch (err) {
@@ -479,6 +451,7 @@ async function updateName({ uid, firstName, lastName }) {
 }
 
 async function updateEmail({ uid, email }) {
+    email = email.toLowerCase();
     const emailAvailable = await accountAvailable(null, email);
     if (!emailAvailable[1]) {
         throw new ConflictError("Email already in use");
