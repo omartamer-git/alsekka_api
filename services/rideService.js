@@ -230,16 +230,16 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
             await createInvoice(uid, seats, paymentMethod, ride, voucher, newPassenger.id, t);
         } else {
             oldPassenger = prevPassenger[0];
-            if(oldPassenger.seats > seats) {
+            if (oldPassenger.seats > seats) {
                 throw new BadRequestError();
             }
 
-            if(oldPassenger.VoucherId) {
+            if (oldPassenger.VoucherId) {
                 voucher = await Voucher.findByPk(oldPassenger.VoucherId);
             }
 
             oldPassenger.seats = seats;
-            oldPassenger.save({transaction: t});
+            oldPassenger.save({ transaction: t });
 
             await createInvoice(uid, seats, paymentMethod, ride, voucher, oldPassenger.id, t, true);
         }
@@ -494,8 +494,9 @@ async function cancelPassenger({ tripId }, userId) {
 
     if (ride.status === "SCHEDULED") {
         const t = await sequelize.transaction();
+        const driver = await ride.getDriver();
 
-        await cancelPassengerInvoice(passenger, ride, t);
+        await cancelPassengerInvoice(passenger, ride, driver, t);
 
 
         passenger.status = "CANCELLED";
