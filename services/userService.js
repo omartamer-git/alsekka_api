@@ -19,23 +19,23 @@ async function accountAvailable(phone, email) {
                 phone: phone,
                 email: email
             }
-        }, attributes: ['id']
+        }, attributes: ['id', 'phone', 'email']
     });
 
     if(userAccount === null) {
         return [true, true];
     } else {
-        let phone = true;
-        let email = true;
+        let p = true;
+        let e = true;
         if(userAccount.phone == phone) {
-            phone = false;
+            p = false;
         }
 
         if(userAccount.email == email) {
-            email = false;
+            e = false;
         }
 
-        return [phone, email];
+        return [p, e];
     }
 }
 
@@ -208,7 +208,7 @@ async function getOtp(phone) {
             "username": "25496940dd23fdaa990ac1d54adefa05cd43607bb47b7d41c2f9016edb98039e",
             "password": "67bd7d7edba830e85934671b5515e84a1150348fb14c020ad058490d2e1f13f8",
             "reference": phone,
-            "message": "Welcome to Seaats! We have verified your account. Please head back to the app to continue the sign up process.\nمرحبا بكم في سيتس! لقد قمنا بالتحقق من حسابك. يرجى العودة إلى التطبيق لمواصلة عملية التسجيل."
+            "message": "Welcome to Seaats! We have verified your account. Please head back to the app to continue the sign up process.\n\nمرحبا بكم في سيتس! لقد قمنا بالتحقق من حسابك. يرجى العودة إلى التطبيق لمواصلة عملية التسجيل."
         }
 
 
