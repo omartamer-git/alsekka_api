@@ -495,7 +495,7 @@ async function cancelPassenger({ tripId }, userId) {
     if (ride.status === "SCHEDULED") {
         const t = await sequelize.transaction();
 
-        await cancelPassengerInvoice(passenger.id, ride, t);
+        await cancelPassengerInvoice(passenger, ride, t);
 
 
         passenger.status = "CANCELLED";
