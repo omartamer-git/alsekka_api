@@ -69,6 +69,17 @@ function checkCardNumber(value) {
     return sum % 10 === 0;
 }
 
+function capitalizeFirstLetter(inputString) {
+    // Check if the input is a valid string
+    if (typeof inputString !== 'string' || inputString.length === 0) {
+        return inputString; // Return input as is if it's not a valid string
+    }
+
+    // Capitalize the first letter and concatenate with the rest of the string
+    return (inputString.charAt(0).toUpperCase() + inputString.slice(1)).trim();
+}
+
+
 function generateOtp() {
     // Generate a random number between 0 and 9999 (inclusive)
     const randomNumber = Math.floor(Math.random() * 10000);
@@ -121,5 +132,6 @@ module.exports = {
     addMinutes,
     uploadImage,
     uploadLicenseImage,
-    subtractDates
+    subtractDates,
+    capitalizeFirstLetter
 };
