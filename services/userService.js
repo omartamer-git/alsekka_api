@@ -479,8 +479,8 @@ async function updateName({ uid, firstName, lastName }) {
 }
 
 async function updateEmail({ uid, email }) {
-    const emailAvailable = await accountAvailable(undefined, email);
-    if (!emailAvailable) {
+    const emailAvailable = await accountAvailable(null, email);
+    if (!emailAvailable[1]) {
         throw new ConflictError("Email already in use");
     }
     try {
@@ -494,8 +494,8 @@ async function updateEmail({ uid, email }) {
 }
 
 async function updatePhone({ uid, phone }) {
-    const phoneAvailable = await accountAvailable(phone, undefined);
-    if (!phoneAvailable) {
+    const phoneAvailable = await accountAvailable(phone, null);
+    if (!phoneAvailable[0]) {
         throw new ConflictError("Phone number already in use");
     }
     try {
