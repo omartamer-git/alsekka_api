@@ -18,11 +18,13 @@ router.get("/cars", authenticateToken, async (req, res, next) => {
 });
 
 router.post("/newcar", authenticateToken, async (req, res, next) => {
-    const { brand, year, model, color, licensePlateLetters, licensePlateNumbers, license_front, license_back } = req.body;
+    const { brand, year, model, color, licensePlateLetters, licensePlateNumbers } = req.body;
     const uid = req.user.userId;
+    const license_front = req.files[0];
+    const license_back = req.files[1];
 
     if (!uid || !brand || !year || !model || !color || !licensePlateLetters ||
-        !licensePlateNumbers || !license_front || !license_back) {
+        !licensePlateNumbers || !front || !back) {
         return next(new BadRequestError());
     }
 
