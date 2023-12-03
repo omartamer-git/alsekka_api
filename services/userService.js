@@ -13,12 +13,14 @@ const { DRIVER_FEE, PASSENGER_FEE, CARDS_ENABLED, VERIFICATIONS_DISABLED, REFERR
 let otpCodes = {};
 
 async function accountAvailable(phone, email) {
-    let userAccount;
-    if (phone) {
-        userAccount = await User.findOne({ where: { phone: phone }, attributes: ['id'] });
-    } else if (email) {
-        userAccount = await User.findOne({ where: { email: email }, attributes: ['id'] });
-    }
+    const userAccount = await User.findOne({
+        where: {
+            [Op.or]: {
+                phone: phone,
+                email: email
+            }
+        }, attributes: ['id']
+    });
     return (userAccount === null);
 }
 
@@ -77,7 +79,7 @@ async function deleteUser(id, { password }) {
 async function linkUserDevice(id, { deviceToken }) {
     const user = await User.findByPk(id);
     const device = await Device.findOne({ where: { deviceToken: deviceToken } });
-    if(device && user.DeviceId !== device.id) {
+    if (device && user.DeviceId !== device.id) {
         user.DeviceId = device.id;
         await user.save();
     }

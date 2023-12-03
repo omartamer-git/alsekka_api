@@ -10,7 +10,7 @@ const { REFERRALS_DISABLED } = require('../../config/seaats.config');
 
 router.get("/accountavailable", async (req, res, next) => {
     const { phone, email } = req.query;
-    if (!phone && !email) {
+    if (!phone || !email) {
         return next(new BadRequestError());
     }
 
