@@ -2,6 +2,7 @@ const { Op, Sequelize } = require("sequelize");
 const { Community, User, Ride, sequelize, RideCommunity, CommunityMember } = require("../models");
 const { BadRequestError, NotAcceptableError, NotFoundError, ConflictError, UnauthorizedError } = require("../errors/Errors");
 const { uploadImage } = require("../helper");
+const { sendNotificationToUser } = require("./appService");
 
 async function createCommunity({ name, description, private, joinQuestion }, picture, uid) {
     const duplicateCommunity = await Community.findOne({
@@ -304,6 +305,9 @@ async function joinCommunity({ uid, communityId, answer }) {
             CommunityId: communityId
         });
         return member;
+
+        const ownerId = community.OwnerId;
+        sendNotificationToUser("Community Join Request", `A new user has requested to join ${community.name}`, ownerId).catch(e => console.log(e));
     } else {
         const joinRequest = await CommunityMember.create({
             UserId: uid,
