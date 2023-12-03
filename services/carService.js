@@ -15,8 +15,8 @@ async function getCars({uid, approved}) {
 }
 
 async function newCar({uid, brand, year, model, color, licensePlateLetters, licensePlateNumbers, license_front, license_back}) {
-    const frontUrl = await uploadLicenseImage(frontSide);
-    const backUrl = await uploadLicenseImage(backSide);
+    const frontUrl = await uploadLicenseImage(license_front);
+    const backUrl = await uploadLicenseImage(license_back);
 
     const newCar = await Car.create({
         UserId: uid,
