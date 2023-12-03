@@ -24,7 +24,7 @@ router.post("/newcar", authenticateToken, async (req, res, next) => {
     const license_back = req.files[1];
 
     if (!uid || !brand || !year || !model || !color || !licensePlateLetters ||
-        !licensePlateNumbers || !front || !back) {
+        !licensePlateNumbers || !license_front || !license_back) {
         return next(new BadRequestError());
     }
 
