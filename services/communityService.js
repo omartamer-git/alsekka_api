@@ -108,17 +108,29 @@ async function getCommunities({ uid, page }) {
 }
 
 async function getUserCommunities({ uid }) {
-    const communitiesResult = await User.findByPk(uid, {
-        attributes: [],
-        include: [
-            {
-                model: Community,
-                as: 'Communities',
-                attributes: ['id', 'picture', 'name']
-            }
-        ]
+    // const communitiesResult = await User.findByPk(uid, {
+    //     attributes: [],
+    //     include: [
+    //         {
+    //             model: Community,
+    //             as: 'Communities',
+    //             attributes: ['id', 'picture', 'name']
+    //         }
+    //     ]
+    // });
+
+    const communityMembers = await CommunityMember.findAll({
+        where: {
+            UserId: uid,
+            joinStatus: 'APPROVED'
+        }
     });
-    return communitiesResult;
+
+    const communities = await communityMembers.getCommunities({
+        attributes: ['id', 'picture', 'name']
+    });
+
+    return { Communities: communities };
 }
 
 async function getCommunityDetails({ communityId, uid }) {
