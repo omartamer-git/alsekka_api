@@ -126,9 +126,16 @@ async function getUserCommunities({ uid }) {
         }
     });
 
-    const communities = await communityMembers.getCommunities({
+    const communityIds = communityMembers.map(mem => mem.CommunityId);
+
+    const communities = await Community.findAll({
+        where: {
+            id: {
+                [Op.in]: communityIds
+            }
+        },
         attributes: ['id', 'picture', 'name']
-    });
+    })
 
     return { Communities: communities };
 }
