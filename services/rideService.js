@@ -9,6 +9,7 @@ const { subtractDates } = require('../helper');
 
 const { sendNotificationToUser, sendNotificationToRide } = require('./appService');
 const { createInvoice, cancelPassengerInvoice, checkOutRide, cancelRideInvoices } = require('./paymentsService');
+const { checkUserInCommunity } = require('./communityService');
 
 const sns = new SNSClient({ region: 'eu-central-1' })
 
@@ -261,6 +262,11 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
 
 async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, mainTextTo, pricePerSeat, driver, datetime, car, community, gender, seatsAvailable, pickupEnabled, pickupPrice }) {
     try {
+        if(community) {
+            const userInCommunity = await checkUserInCommunity(driver, community);
+            if(!userInCommunity) throw new UnauthorizedError();
+        }
+
         const { polyline, duration } = await getDirections(fromLatitude, fromLongitude, toLatitude, toLongitude);
         const SRID = 4326;
 
