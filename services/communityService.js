@@ -108,17 +108,6 @@ async function getCommunities({ uid, page }) {
 }
 
 async function getUserCommunities({ uid }) {
-    // const communitiesResult = await User.findByPk(uid, {
-    //     attributes: [],
-    //     include: [
-    //         {
-    //             model: Community,
-    //             as: 'Communities',
-    //             attributes: ['id', 'picture', 'name']
-    //         }
-    //     ]
-    // });
-
     const communityMembers = await CommunityMember.findAll({
         where: {
             UserId: uid,
@@ -293,6 +282,18 @@ async function rejectCommunityMember({ memberId }, uid) {
     member.save();
 }
 
+async function checkUserInCommunity(UserId, CommunityId) {
+    const cm = await CommunityMember.findOne({
+        where: {
+            UserId: UserId,
+            CommunityId: CommunityId,
+            joinStatus: 'APPROVED'
+        }
+    });
+
+    return cm !== null;
+}
+
 
 async function searchCommunities({ name, page }) {
     const communities = await Community.findAll({
@@ -349,5 +350,6 @@ module.exports = {
     leaveCommunity,
     getCommunityMembers,
     acceptCommunityMember,
-    rejectCommunityMember
+    rejectCommunityMember,
+    checkUserInCommunity
 };
