@@ -29,7 +29,7 @@ async function getPredictions(text, lat, lng) {
     }
 
     return {
-        sessiontoken: sessiontoken
+        sessiontoken: sessiontoken,
         data: pred
     };
 };
