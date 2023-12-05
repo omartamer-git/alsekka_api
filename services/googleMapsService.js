@@ -45,11 +45,12 @@ async function geocode(latitude, longitude) {
     return data.results[0];
 };
 
-async function getLocationFromPlaceId(place_id) {
+async function getLocationFromPlaceId(place_id, sessiontoken) {
     const url = 'https://maps.googleapis.com/maps/api/place/details/json';
     const params = {
         place_id: place_id,
-        key: googleKey
+        key: googleKey,
+        sessiontoken: sessiontoken
     };
     const result = await axios.get(url, { params });
     const data = result.data;
