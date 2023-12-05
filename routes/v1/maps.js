@@ -5,13 +5,15 @@ const router = express.Router();
 const mapService = require("../../services/googleMapsService");
 
 router.get("/getPredictions", authenticateToken, async (req, res, next) => {
-    const { text } = req.query;
+    const text = req.query.text;
+    const lat = req.query.lat;
+    const lng = req.query.lng;
 
     if (!text) {
         return next(new BadRequestError());
     }
 
-    mapService.getPredictions(text).then(result => {
+    mapService.getPredictions(text, lat, lng).then(result => {
         return res.json(result);
     }).catch(next);
 });

@@ -5,7 +5,12 @@ const { calculateDistance, findOptimalPath } = require("../util/util");
 
 // const googleKey = "AIzaSyDUNz5SYhR1nrdfk9TW4gh3CDpLcDMKwuw";
 const googleKey = "AIzaSyDgtya731fBmhzsGJGmcJq9fVwkUQ45e1c";
-async function getPredictions(text) {
+async function getPredictions(text, lat, lng) {
+    // cairo LATLNG: 30.059482,31.2172648
+    if(!lat || !lng) {
+        lat = 30.059482;
+        lng = 31.2172648;
+    }
     let pred = [];
     const url = 'https://maps.googleapis.com/maps/api/place/autocomplete/json';
     const params = {
@@ -13,7 +18,7 @@ async function getPredictions(text) {
         key: googleKey,
         region: 'eg',
         language: 'en',
-        locationbias: 'ipbias'
+        locationbias: `circle:100000@${lat},${lng}`
     };
     const result = await axios.get(url, { params });
     const data = result.data;
