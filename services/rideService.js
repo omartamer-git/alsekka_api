@@ -393,7 +393,7 @@ async function getPastRides({ uid, limit, page }, upcoming = false, cancelled = 
     const upcomingRides = await Ride.findAll({
         where: whereClauseRide,
         attributes: rideAttributeList,
-        order: [['status', 'DESC'], ['datetime', 'ASC']],
+        order: [['datetime', 'DESC']],
         ...(limit && { limit: limit }),
         ...(offset && { offset: offset })
     });
