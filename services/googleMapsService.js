@@ -2,15 +2,27 @@ const { default: axios } = require("axios");
 const { Ride, Passenger } = require("../models");
 const { NotFoundError, UnauthorizedError } = require("../errors/Errors");
 const { calculateDistance, findOptimalPath } = require("../util/util");
+const redis = require('ioredis');
 
 // const googleKey = "AIzaSyDUNz5SYhR1nrdfk9TW4gh3CDpLcDMKwuw";
 const googleKey = "AIzaSyDgtya731fBmhzsGJGmcJq9fVwkUQ45e1c";
+const redisClient = new redis();
+
 async function getPredictions(text, lat, lng) {
     // cairo LATLNG: 30.059482,31.2172648
-    if(!lat || !lng) {
+    if (!lat || !lng) {
         lat = 30.059482;
         lng = 31.2172648;
     }
+
+    const cachedData = await redisClient.get(`pred:${text}`);
+
+    if (cachedData) {
+        return {
+            data: JSON.parse(cachedData)
+        }
+    }
+
     let pred = [];
     const url = 'https://maps.googleapis.com/maps/api/place/autocomplete/json';
     const params = {
@@ -26,12 +38,21 @@ async function getPredictions(text, lat, lng) {
         pred.push([data.predictions[i].description, data.predictions[i].place_id]);
     }
 
+    // cache for 1hr
+    redisClient.set(`pred:${text}`, JSON.stringify(pred), 'EX', 60 * 60)
+
     return {
         data: pred
     };
 };
 
 async function geocode(latitude, longitude) {
+    const cachedData = await redisClient.get(`geocode:${latitude},${longitude}`);
+
+    if (cachedData) {
+        return JSON.parse(cachedData);
+    }
+
     const url = 'https://maps.googleapis.com/maps/api/geocode/json';
     const params = {
         latlng: `${latitude},${longitude}`,
@@ -39,10 +60,21 @@ async function geocode(latitude, longitude) {
     };
     const result = await axios.get(url, { params });
     const data = result.data;
-    return data.results[0];
+    const returnResult = data.results[0];
+
+    // cache for 2 weeks
+    redisClient.set(`geocode:${latitude},${longitude}`, JSON.stringify(returnResult), 'EX', 14 * 60 * 60 * 24)
+
+    return returnResult;
 };
 
 async function getLocationFromPlaceId(place_id) {
+    const cachedData = await redisClient.get(`placeid:${place_id}`);
+
+    if(cachedData) {
+        return JSON.parse(cachedData);
+    }
+
     const url = 'https://maps.googleapis.com/maps/api/place/details/json';
     const params = {
         place_id: place_id,
@@ -50,7 +82,12 @@ async function getLocationFromPlaceId(place_id) {
     };
     const result = await axios.get(url, { params });
     const data = result.data;
-    return data.result.geometry.location;
+    const returnResult = data.result.geometry.location;
+
+    // cache for 2 weeks
+    redisClient.set(`placeid:${place_id}`, JSON.stringify(returnResult), 'EX', 14 * 60 * 60 * 24)
+
+    return returnResult;
 };
 
 async function getOptimalPath({ tripId }, uid) {
@@ -100,6 +137,13 @@ async function getOptimalPath({ tripId }, uid) {
 }
 
 async function getDirections(startLat, startLng, endLat, endLng) {
+    const cachedData = await redisClient.get(`directions:${startLat},${startLng},${endLat},${endLng}`);
+
+    if(cachedData) {
+        return JSON.parse(cachedData);
+    }
+    
+
     const url = 'https://maps.googleapis.com/maps/api/directions/json';
     const params = {
         origin: `${startLat},${startLng}`,
@@ -107,13 +151,17 @@ async function getDirections(startLat, startLng, endLat, endLng) {
         key: googleKey
     }
 
-    const result = await axios.get(url, {params});
+    const result = await axios.get(url, { params });
     const data = result.data;
 
     const polyline = data.routes[0]["overview_polyline"].points;
     const duration = data.routes[0].legs[0].duration.value;
-    
-    return {polyline, duration};
+
+    const returnResult = { polyline, duration };
+
+    redisClient.set(`directions:${startLat},${startLng},${endLat},${endLng}`, JSON.stringify(returnResult), 'EX', 6 * 60 * 60 * 24);
+
+    return returnResult;
 }
 
 
