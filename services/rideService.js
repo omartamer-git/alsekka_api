@@ -326,7 +326,7 @@ function getSuggestedPrice({ fromLatitude, fromLongitude, toLatitude, toLongitud
 
     return (
         Math.ceil(
-            (((dist * costPerKilometer) * (1 + driverFee)) / riders) / 5
+            (((dist * costPerKilometer) * (1 + DRIVER_FEE)) / riders) / 5
         ) * 5
     );
 }
