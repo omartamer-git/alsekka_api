@@ -68,13 +68,11 @@ router.post("/postride", authenticateToken, async (req, res, next) => {
     // check that driver doesn't already have a ride scheduled within 1-2 (?) hours/duration of this ride
     // mainTextFrom/mainTextTo probably needs to be fetched from google api instead to prevent malicious use
     const { fromLatitude, fromLongitude, toLatitude,
-        toLongitude, mainTextFrom,
-        mainTextTo, pricePerSeat, pickupEnabled, pickupPrice,
-        datetime, car, community, gender, seatsAvailable } = req.body;
+        toLongitude, pricePerSeat, pickupEnabled, pickupPrice,
+        datetime, car, community, gender, seatsAvailable, placeIdFrom, placeIdTo } = req.body;
     const driver = req.user.userId;
 
-    if (!fromLatitude || !fromLongitude || !toLatitude || !toLongitude ||
-        !mainTextFrom || !mainTextTo || !pricePerSeat || !driver || !car ||
+    if (!fromLatitude || !fromLongitude || !toLatitude || !toLongitude || !pricePerSeat || !driver || !car ||
         !datetime || !gender || !seatsAvailable
     ) {
         return next(new BadRequestError());
@@ -82,9 +80,8 @@ router.post("/postride", authenticateToken, async (req, res, next) => {
 
     rideService.postRide({
         fromLatitude, fromLongitude, toLatitude,
-        toLongitude, mainTextFrom, pickupPrice, pickupEnabled,
-        mainTextTo, pricePerSeat,
-        driver, datetime, car, community, gender, seatsAvailable
+        toLongitude, pickupPrice, pickupEnabled, pricePerSeat,
+        driver, datetime, car, community, gender, seatsAvailable, placeIdFrom, placeIdTo
     }).then(ride => {
         res.json(ride);
     }).catch(next);

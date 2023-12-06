@@ -3,7 +3,7 @@ const { Ride, Passenger, User, sequelize, License, Car, Voucher, Invoice } = req
 const { NotFoundError, InternalServerError, BadRequestError, UnauthorizedError, GoneError } = require("../errors/Errors");
 const { DRIVER_FEE, PASSENGER_FEE } = require('../config/seaats.config');
 const { SNS, SNSClient, CreateTopicCommand } = require("@aws-sdk/client-sns");
-const { getDirections } = require('./googleMapsService');
+const { getDirections, geocode, getLocationFromPlaceId } = require('./googleMapsService');
 const { isFloat } = require('../util/util');
 const { subtractDates } = require('../helper');
 const geolib = require('geolib');
@@ -261,7 +261,7 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
 
 }
 
-async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, mainTextTo, pricePerSeat, driver, datetime, car, community, gender, seatsAvailable, pickupEnabled, pickupPrice }) {
+async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, placeIdFrom, placeIdTo, pricePerSeat, driver, datetime, car, community, gender, seatsAvailable, pickupEnabled, pickupPrice }) {
     try {
         if (community) {
             const userInCommunity = await checkUserInCommunity(driver, community);
@@ -278,8 +278,23 @@ async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, 
 
         const topicCommand = new CreateTopicCommand(params);
         const topicData = await sns.send(topicCommand);
-
         const topicArn = topicData.TopicArn;
+
+        let mainTextFrom;
+        let mainTextTo;
+
+        if (placeIdFrom) {
+            mainTextFrom = (await getLocationFromPlaceId(placeIdFrom)).name;
+        } else {
+            mainTextFrom = (await geocode(fromLatitude, fromLongitude)).formatted_address.split(',')[0];
+        }
+
+        if (placeIdTo) {
+            mainTextTo = (await getLocationFromPlaceId(placeIdTo)).name;
+        } else {
+            mainTextTo = (await geocode(toLatitude, toLongitude)).formatted_address.split(',')[0];
+        }
+
 
         const newRide = await Ride.create({
             fromLocation: sequelize.fn('ST_GeomFromText', `POINT(${fromLatitude} ${fromLongitude})`, SRID),
