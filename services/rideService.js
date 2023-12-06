@@ -6,6 +6,7 @@ const { SNS, SNSClient, CreateTopicCommand } = require("@aws-sdk/client-sns");
 const { getDirections } = require('./googleMapsService');
 const { isFloat } = require('../util/util');
 const { subtractDates } = require('../helper');
+const geolib = require('geolib');
 
 const { sendNotificationToUser, sendNotificationToRide } = require('./appService');
 const { createInvoice, cancelPassengerInvoice, checkOutRide, cancelRideInvoices } = require('./paymentsService');
@@ -262,9 +263,9 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
 
 async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, mainTextFrom, mainTextTo, pricePerSeat, driver, datetime, car, community, gender, seatsAvailable, pickupEnabled, pickupPrice }) {
     try {
-        if(community) {
+        if (community) {
             const userInCommunity = await checkUserInCommunity(driver, community);
-            if(!userInCommunity) throw new UnauthorizedError();
+            if (!userInCommunity) throw new UnauthorizedError();
         }
 
         const { polyline, duration } = await getDirections(fromLatitude, fromLongitude, toLatitude, toLongitude);
@@ -304,6 +305,30 @@ async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, 
     } catch (err) {
         throw new BadRequestError();
     }
+}
+
+function getSuggestedPrice({ fromLatitude, fromLongitude, toLatitude, toLongitude }) {
+    const dist = geolib.getDistance(
+        { latitude: fromLatitude, longitude: fromLongitude },
+        { latitude: toLatitude, longitude: toLongitude }
+    ) / 1000;
+    let costPerKilometer = 4;
+    if (dist < 50) {
+        costPerKilometer = 4.25;
+    } else if (dist < 100) {
+        costPerKilometer = 4;
+    } else if (dist < 200) {
+        costPerKilometer = 3.75;
+    } else {
+        costPerKilometer = 2.85;
+    }
+    const riders = 4;
+
+    return (
+        Math.ceil(
+            (((dist * costPerKilometer) * (1 + driverFee)) / riders) / 5
+        ) * 5
+    );
 }
 
 async function getUpcomingRides({ uid, limit }) {
@@ -711,6 +736,7 @@ module.exports = {
     bookRide,
     postRide,
     getUpcomingRides,
+    getSuggestedPrice,
     getPastRides,
     getDriverRides,
     getTripDetails,

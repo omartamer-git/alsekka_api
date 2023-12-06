@@ -32,6 +32,18 @@ router.get("/ridedetails", authenticateToken, async (req, res, next) => {
     ).catch(next);
 });
 
+router.get("/suggestedprice", authenticateToken, async(req, res, next) => {
+    const {fromLatitude, fromLongitude, toLatitude, toLongitude} = req.query;
+
+    if(!fromLatitude || !fromLongitude || !toLatitude || !toLongitude) {
+        return next(new BadRequestError());
+    }
+
+    const suggestedPrice = rideService.getSuggestedPrice(req.query);
+
+    res.json({suggestedPrice: suggestedPrice});
+});
+
 router.get("/bookride", authenticateToken, async (req, res, next) => {
     const { rideId, paymentMethod, seats, cardId, voucherId, pickupLocationLat, pickupLocationLng } = req.query;
     const uid = req.user.userId;
