@@ -32,13 +32,12 @@ router.get("/geocode", authenticateToken, async (req, res, next) => {
 
 router.get("/getLocationFromPlaceId", authenticateToken, async (req, res, next) => {
     const { place_id } = req.query;
-    const sessiontoken = req.query.sessiontoken;
 
     if (!place_id) {
         return next(new BadRequestError());
     }
 
-    mapService.getLocationFromPlaceId(place_id, sessiontoken).then(result => {
+    mapService.getLocationFromPlaceId(place_id).then(result => {
         return res.json(result);
     }).catch(next);
 });

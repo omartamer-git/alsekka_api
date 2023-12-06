@@ -11,7 +11,6 @@ async function getPredictions(text, lat, lng) {
         lat = 30.059482;
         lng = 31.2172648;
     }
-    const sessiontoken = crypto.randomUUID();
     let pred = [];
     const url = 'https://maps.googleapis.com/maps/api/place/autocomplete/json';
     const params = {
@@ -20,7 +19,6 @@ async function getPredictions(text, lat, lng) {
         region: 'eg',
         language: 'en',
         locationbias: `circle:100000@${lat},${lng}`,
-        sessiontoken: sessiontoken
     };
     const result = await axios.get(url, { params });
     const data = result.data;
@@ -29,7 +27,6 @@ async function getPredictions(text, lat, lng) {
     }
 
     return {
-        sessiontoken: sessiontoken,
         data: pred
     };
 };
@@ -45,12 +42,11 @@ async function geocode(latitude, longitude) {
     return data.results[0];
 };
 
-async function getLocationFromPlaceId(place_id, sessiontoken) {
+async function getLocationFromPlaceId(place_id) {
     const url = 'https://maps.googleapis.com/maps/api/place/details/json';
     const params = {
         place_id: place_id,
         key: googleKey,
-        sessiontoken: sessiontoken
     };
     const result = await axios.get(url, { params });
     const data = result.data;
