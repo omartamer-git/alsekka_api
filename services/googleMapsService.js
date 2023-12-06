@@ -82,7 +82,10 @@ async function getLocationFromPlaceId(place_id) {
     };
     const result = await axios.get(url, { params });
     const data = result.data;
-    const returnResult = data.result.geometry.location;
+
+    const locationData = data.result.geometry.location;
+
+    const returnResult = { ...locationData, name: data.result.name };
 
     // cache for 2 weeks
     redisClient.set(`placeid:${place_id}`, JSON.stringify(returnResult), 'EX', 14 * 60 * 60 * 24)
