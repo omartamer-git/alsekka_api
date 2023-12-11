@@ -167,9 +167,7 @@ cron.schedule('*/5 * * * *', () => {
         const rideIds = rides.map(r => r.id);
 
         for(const rid of rideIds) {
-            cancelRide({tripId: rid}).then(() => {
-                // Alert staff to make sure passengers have been handled
-            });
+            await cancelRide({tripId: rid});
         }
     }).catch(err => {
         console.log("[FAIL] FAILED TO RUN CRON JOB\nReason: ", err);
