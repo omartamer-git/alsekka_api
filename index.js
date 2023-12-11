@@ -163,7 +163,7 @@ cron.schedule('*/5 * * * *', () => {
                 [Op.lte]: oneHourPrior
             }
         }
-    }).then(rides => {
+    }).then(async rides => {
         const rideIds = rides.map(r => r.id);
 
         for(const rid of rideIds) {
