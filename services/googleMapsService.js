@@ -56,7 +56,8 @@ async function geocode(latitude, longitude) {
     const url = 'https://maps.googleapis.com/maps/api/geocode/json';
     const params = {
         latlng: `${latitude},${longitude}`,
-        key: googleKey
+        key: googleKey,
+        location_type: 'ROOFTOP'
     };
     const result = await axios.get(url, { params });
     const data = result.data;
