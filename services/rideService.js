@@ -286,7 +286,12 @@ async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, 
         if (placeIdFrom) {
             mainTextFrom = (await getLocationFromPlaceId(placeIdFrom)).name;
         } else {
-            mainTextFrom = (await geocode(fromLatitude, fromLongitude)).formatted_address.split(',')[1];
+            const formattedAddress = (await geocode(fromLatitude, fromLongitude)).formatted_address.split(',');
+            if(formattedAddress.length >= 2) {
+                mainTextFrom = formattedAddress[1].trim();
+            } else {
+                mainTextFrom = formattedAddress[0].trim();
+            }
         }
 
         if (placeIdTo) {
