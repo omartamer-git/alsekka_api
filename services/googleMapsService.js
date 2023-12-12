@@ -57,7 +57,8 @@ async function geocode(latitude, longitude) {
     const params = {
         latlng: `${latitude},${longitude}`,
         key: googleKey,
-        location_type: 'ROOFTOP'
+        location_type: 'ROOFTOP',
+        result_type: 'street_address|route|intersection|political|colloquial_area|neighborhood|premise|subpremise|airport|park|point_of_interest'
     };
     const result = await axios.get(url, { params });
     const data = result.data;
