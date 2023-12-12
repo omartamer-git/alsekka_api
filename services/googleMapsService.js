@@ -57,7 +57,7 @@ async function geocode(latitude, longitude) {
     const params = {
         latlng: `${latitude},${longitude}`,
         key: googleKey,
-        result_type: 'street_address|route|intersection|political|colloquial_area|neighborhood|premise|subpremise|airport|park|point_of_interest'
+        result_type: 'street_address|route|colloquial_area|neighborhood|premise|airport|park|point_of_interest'
     };
     const result = await axios.get(url, { params });
     const data = result.data;
@@ -80,6 +80,7 @@ async function getLocationFromPlaceId(place_id) {
     const params = {
         place_id: `${place_id}`,
         key: googleKey,
+        result_type: 'street_address|route|colloquial_area|neighborhood|premise|airport|park|point_of_interest'
     };
     const result = await axios.get(url, { params });
     const data = result.data;
