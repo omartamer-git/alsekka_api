@@ -117,7 +117,6 @@ async function getLocationFromPlaceId(place_id) {
     const params = {
         place_id: `${place_id}`,
         key: googleKey,
-        result_type: 'street_address|route|colloquial_area|neighborhood|airport|point_of_interest|park|intersection',
         componentRestrictions: {
             country: 'EG'
         }
