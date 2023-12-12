@@ -47,6 +47,37 @@ async function getPredictions(text, lat, lng) {
     };
 };
 
+function getProperResultName(resultArr, j=0) {
+    let goodAddress;
+    let i = 0;
+    if(resultArr.length-1 < j) {
+        return resultArr[0].formatted_address.split(',')[0];
+    }
+    
+    const returnResult = resultArr[j];
+    for(let addressComponent of returnResult.address_components) {
+        const types = addressComponent.types;
+        if('plus_code' in types) {
+            i++;
+            continue;
+        }
+
+        if('street_number' in types) {
+            goodAddress = addressComponent.long_name;
+            goodAddress += ' ' + returnResult.address_components[i+1];
+            break;
+        } else if('route' in types) {
+            goodAddress = addressComponent.long_name;
+            break;
+        } else {
+            return getProperResultName(resultArr, j+1);
+        }
+        i++;
+    }
+
+    return goodAddress;
+}
+
 async function geocode(latitude, longitude) {
     const cachedData = await redisClient.get(`geocode:${latitude},${longitude}`);
 
@@ -65,13 +96,15 @@ async function geocode(latitude, longitude) {
     };
     const result = await axios.get(url, { params });
     const data = result.data;
-    const returnResult = data.results[0];
+    const returnResult = data.results;
 
     // cache for 2 weeks
-    redisClient.set(`geocode:${latitude},${longitude}`, JSON.stringify(returnResult), 'EX', 14 * 60 * 60 * 24)
+    redisClient.set(`geocode:${latitude},${longitude}`, JSON.stringify(returnResult[0]), 'EX', 14 * 60 * 60 * 24)
 
-    return returnResult;
+    return returnResult[0];
 };
+
+
 
 async function getLocationFromPlaceId(place_id) {
     const cachedData = await redisClient.get(`placeid:${place_id}`);
@@ -91,10 +124,11 @@ async function getLocationFromPlaceId(place_id) {
     };
     const result = await axios.get(url, { params });
     const data = result.data;
-    const returnResult = data.results[0];
+    const returnResult = data.results;
 
-    const locationData = returnResult.geometry.location;
-    const returnRes = { ...locationData, name: returnResult.formatted_address.split(',')[0] };
+
+    const locationData = returnResult[0].geometry.location;
+    const returnRes = { ...locationData, name: getProperResultName(returnResult) };
 
     // cache for 2 weeks
     redisClient.set(`placeid:${place_id}`, JSON.stringify(returnRes), 'EX', 14 * 60 * 60 * 24)
