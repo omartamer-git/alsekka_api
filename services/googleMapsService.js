@@ -3,9 +3,10 @@ const { Ride, Passenger } = require("../models");
 const { NotFoundError, UnauthorizedError } = require("../errors/Errors");
 const { calculateDistance, findOptimalPath } = require("../util/util");
 const redis = require('ioredis');
+const { GOOGLE_KEY } = require("../config/seaats.config");
 
 // const googleKey = "AIzaSyDUNz5SYhR1nrdfk9TW4gh3CDpLcDMKwuw";
-const googleKey = "AIzaSyDgtya731fBmhzsGJGmcJq9fVwkUQ45e1c";
+const googleKey = GOOGLE_KEY;
 const redisClient = new redis();
 
 async function getPredictions(text, lat, lng) {
@@ -57,7 +58,10 @@ async function geocode(latitude, longitude) {
     const params = {
         latlng: `${latitude},${longitude}`,
         key: googleKey,
-        result_type: 'street_address|route|colloquial_area|neighborhood|premise|airport|park|point_of_interest'
+        result_type: 'street_address',
+        componentRestrictions: {
+            country: 'EG'
+        }
     };
     const result = await axios.get(url, { params });
     const data = result.data;
@@ -80,7 +84,10 @@ async function getLocationFromPlaceId(place_id) {
     const params = {
         place_id: `${place_id}`,
         key: googleKey,
-        result_type: 'street_address|route|colloquial_area|neighborhood|premise|airport|park|point_of_interest'
+        result_type: 'street_address',
+        componentRestrictions: {
+            country: 'EG'
+        }
     };
     const result = await axios.get(url, { params });
     const data = result.data;
