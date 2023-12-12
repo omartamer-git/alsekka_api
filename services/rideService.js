@@ -286,7 +286,7 @@ async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, 
         if (placeIdFrom) {
             mainTextFrom = (await getLocationFromPlaceId(placeIdFrom)).name;
         } else {
-            mainTextFrom = (await geocode(fromLatitude, fromLongitude)).formatted_address.split(',')[0];
+            mainTextFrom = (await geocode(fromLatitude, fromLongitude)).formatted_address.split(',')[1];
         }
 
         if (placeIdTo) {
