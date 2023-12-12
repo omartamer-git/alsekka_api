@@ -86,12 +86,12 @@ async function getLocationFromPlaceId(place_id) {
     const returnResult = data.results[0];
 
     const locationData = returnResult.geometry.location;
-    const returnResult = { ...locationData, name: returnResult.formatted_address.split(',')[0] };
+    const returnRes = { ...locationData, name: returnRes.formatted_address.split(',')[0] };
 
     // cache for 2 weeks
-    redisClient.set(`placeid:${place_id}`, JSON.stringify(returnResult), 'EX', 14 * 60 * 60 * 24)
+    redisClient.set(`placeid:${place_id}`, JSON.stringify(returnRes), 'EX', 14 * 60 * 60 * 24)
 
-    return returnResult;
+    return returnRes;
 
 };
 
