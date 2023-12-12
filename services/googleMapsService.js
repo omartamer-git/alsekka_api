@@ -72,26 +72,27 @@ async function geocode(latitude, longitude) {
 async function getLocationFromPlaceId(place_id) {
     const cachedData = await redisClient.get(`placeid:${place_id}`);
 
-    if(cachedData) {
+    if (cachedData) {
         return JSON.parse(cachedData);
     }
 
-    const url = 'https://maps.googleapis.com/maps/api/place/details/json';
+    const url = 'https://maps.googleapis.com/maps/api/geocode/json';
     const params = {
-        place_id: place_id,
+        place_id: `${place_id}`,
         key: googleKey,
     };
     const result = await axios.get(url, { params });
     const data = result.data;
+    const returnResult = data.results[0];
 
-    const locationData = data.result.geometry.location;
-
-    const returnResult = { ...locationData, name: data.result.name };
+    const locationData = returnResult.geometry.location;
+    const returnResult = { ...locationData, name: returnResult.formatted_address.split(',')[0] };
 
     // cache for 2 weeks
     redisClient.set(`placeid:${place_id}`, JSON.stringify(returnResult), 'EX', 14 * 60 * 60 * 24)
 
     return returnResult;
+
 };
 
 async function getOptimalPath({ tripId }, uid) {

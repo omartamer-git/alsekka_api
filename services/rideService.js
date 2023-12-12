@@ -300,7 +300,15 @@ async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, 
         if (placeIdTo) {
             mainTextTo = (await getLocationFromPlaceId(placeIdTo)).name;
         } else {
-            mainTextTo = (await geocode(toLatitude, toLongitude)).formatted_address.split(',')[0];
+            const geocodeResult = await geocode(toLatitude, toLongitude);
+            for(const addressComponent of geocodeResult.addressComponents) {
+                if(!addressComponent.types.includes("plus_code")) {
+                    mainTextTo = addressComponent.long_name;
+                    break;
+                } else {
+                    mainTextTo = addressComponent.short_name;
+                }
+            }
         }
 
 
