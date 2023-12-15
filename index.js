@@ -110,6 +110,18 @@ app.post("/driverenrollment", async (req, res, next) => {
     }).catch(next);
 });
 
+app.get("/waitinglist", async(req, res, next) => {
+    const {email} = req.query;
+
+    if(!email) {
+        return next(new BadRequestError());
+    }
+
+    appService.addToMailingList(req.query).then(() => {
+        return res.status(200).send();
+    }).catch(next);
+})
+
 app.get("/allowedemails", async (req, res, next) => {
     res.status(200).send(ALLOWED_EMAILS);
 });

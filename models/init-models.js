@@ -18,6 +18,7 @@ let _vouchers = require("./vouchers");
 let _customerservicechats = require("./customerservicechats");
 let _customerserviceconversations = require("./customerserviceconversations");
 let _driverenrollments = require("./driverenrollments");
+let _mailinglists = require("./mailinglist");
 let _invoices = require("./invoices");
 let _devices = require("./devices");
 let _driverinvoices = require("./driverinvoices");
@@ -42,6 +43,7 @@ function initModels(sequelize) {
   let CustomerServiceChat = _customerservicechats(sequelize, DataTypes);
   let CustomerServiceConversation = _customerserviceconversations(sequelize, DataTypes);
   let DriverEnrollment = _driverenrollments(sequelize, DataTypes);
+  let MailingList = _mailinglists(sequelize, DataTypes);
   let Invoice = _invoices(sequelize, DataTypes);
   let DriverInvoice = _driverinvoices(sequelize, DataTypes);
   let Device = _devices(sequelize, DataTypes);
@@ -157,6 +159,7 @@ function initModels(sequelize) {
     CustomerServiceConversation,
     DriverEnrollment,
     DriverInvoice,
+    MailingList,
     Invoice,
     Device,
     sequelize,

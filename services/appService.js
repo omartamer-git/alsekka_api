@@ -1,4 +1,4 @@
-const { Announcement, DriverEnrollment, Device, User, Ride } = require("../models")
+const { Announcement, DriverEnrollment, Device, User, Ride, MailingList } = require("../models")
 const { NotFoundError } = require("../errors/Errors")
 
 
@@ -74,6 +74,11 @@ async function addEnrolledDriver({ fullName, phoneNumber, carDescription }) {
     return true;
 }
 
+async function addToMailingList({email}) {
+    await MailingList.create({email});
+    return true;
+}
+
 async function sendNotificationToUser(title, message, userId = null, targetArn = null, deviceId = null) {
     let targetArn_ = targetArn;
     if (!targetArn_ && !deviceId) {
@@ -130,6 +135,7 @@ module.exports = {
     getAnnouncements,
     addEnrolledDriver,
     registerDevice,
+    addToMailingList,
     sendNotificationToUser,
     sendNotificationToRide
 }
