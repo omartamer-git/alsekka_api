@@ -1,12 +1,12 @@
 const { PASSENGER_FEE } = require("../config/seaats.config");
 const { User, Invoice, DriverInvoice, Passenger } = require("../models");
 
-async function createInvoice(uid, seats, paymentMethod, ride, voucher, passengerId, t, update = false) {
+async function createInvoice(uid, seats, paymentMethod, ride, voucher, passengerId, pickupAddition, t, update = false) {
     const user = await User.findByPk(uid, {
         attributes: ['balance']
     });
 
-    const totalAmount = seats * ride.pricePerSeat;
+    const totalAmount = (seats * ride.pricePerSeat) + pickupAddition;
     const driverFeeTotal = ride.driverFee * totalAmount;
     const passengerFeeTotal = PASSENGER_FEE * totalAmount;
     const balanceDue = -1 * user.balance;
