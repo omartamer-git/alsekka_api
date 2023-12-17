@@ -182,11 +182,7 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
         const prevPassenger = passengers.filter(p => p.UserId === uid);
 
         let voucher;
-        let pickupAddition;
-
-        if(pickupLocationLat && pickupLocationLng) {
-            pickupAddition = ride.pickupFee;
-        }
+        let pickupAddition = 0;
 
         if (prevPassenger.length === 0 && voucherId) {
             voucher = await Voucher.findByPk(voucherId);
@@ -218,6 +214,11 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
             throw new BadRequestError();
         }
 
+        if(pickupLocationLat && pickupLocationLng) {
+            pickupAddition = ride.pickupFee;
+        }
+
+
         let newPassenger;
         let oldPassenger;
 
@@ -235,7 +236,7 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
                 pickupLocationLng
             }, { transaction: t });
 
-            await createInvoice(uid, seats, paymentMethod, ride, voucher, newPassenger.id, t);
+            await createInvoice(uid, seats, paymentMethod, ride, voucher, pickupAddition, newPassenger.id, t);
         } else {
             oldPassenger = prevPassenger[0];
             if (oldPassenger.seats > seats) {
