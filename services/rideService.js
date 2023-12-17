@@ -299,7 +299,7 @@ async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, 
             mainTextFrom = (await getLocationFromPlaceId(placeIdFrom)).name;
         } else {
             const geocodeResult = await geocode(fromLatitude, fromLongitude);
-            for(const addressComponent of geocodeResult.addressComponents) {
+            for(const addressComponent of geocodeResult.address_components) {
                 if(!addressComponent.types.includes("plus_code")) {
                     mainTextFrom = addressComponent.long_name;
                     break;
@@ -313,7 +313,7 @@ async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, 
             mainTextTo = (await getLocationFromPlaceId(placeIdTo)).name;
         } else {
             const geocodeResult = await geocode(toLatitude, toLongitude);
-            for(const addressComponent of geocodeResult.addressComponents) {
+            for(const addressComponent of geocodeResult.address_components) {
                 if(!addressComponent.types.includes("plus_code")) {
                     mainTextTo = addressComponent.long_name;
                     break;
