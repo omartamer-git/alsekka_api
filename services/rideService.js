@@ -241,7 +241,12 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
             }
 
             oldPassenger.seats = seats;
-            oldPassenger.save({ transaction: t });
+            if(pickupLocationLat && pickupLocationLng) {
+                oldPassenger.pickupLocationLat = pickupLocationLat;
+                oldPassenger.pickupLocationLng = pickupLocationLng;    
+            }
+
+            await oldPassenger.save({ transaction: t });
 
             await createInvoice(uid, seats, paymentMethod, ride, voucher, oldPassenger.id, t, true);
         }
