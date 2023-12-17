@@ -215,7 +215,7 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
         }
 
         if(pickupLocationLat && pickupLocationLng) {
-            pickupAddition = ride.pickupFee;
+            pickupAddition = ride.pickupPrice;
         }
 
 
@@ -236,7 +236,7 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
                 pickupLocationLng
             }, { transaction: t });
 
-            await createInvoice(uid, seats, paymentMethod, ride, voucher, pickupAddition, newPassenger.id, t);
+            await createInvoice(uid, seats, paymentMethod, ride, voucher, newPassenger.id, pickupAddition, t);
         } else {
             oldPassenger = prevPassenger[0];
             if (oldPassenger.seats > seats) {
