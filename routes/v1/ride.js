@@ -278,4 +278,14 @@ router.get("/verifyvoucher", authenticateToken, async (req, res, next) => {
 });
 
 
+router.get("/driverlocation", authenticateToken, async(req, res, next) => {
+    const {rideId} = req.body;
+    const uid = req.user.userId;
+
+    rideService.getDriverLocation(req.body, uid).then(response => {
+        res.json(response);
+    }).catch(next);
+});
+
+
 module.exports = router;

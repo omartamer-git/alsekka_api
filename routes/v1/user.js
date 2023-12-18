@@ -7,6 +7,8 @@ const { JWT_EXPIRATION, JWT_SECRET } = require('../../config/auth.config');
 const jwt = require('jsonwebtoken');
 const { isValidEmail } = require('../../helper');
 const { REFERRALS_DISABLED } = require('../../config/seaats.config');
+const redis = require('ioredis');
+const redisClient = new redis();
 
 router.get("/accountavailable", async (req, res, next) => {
     const { phone, email } = req.query;
@@ -334,8 +336,14 @@ router.patch("/email", authenticateToken, async (req, res, next) => {
     }).catch(next);
 });
 
+router.post("/updatelocation", authenticateToken, async(req, res, next) => {
+    const {lat, lng, timestamp} = req.body;
+    const uid = req.user.userId;
 
+    redisClient.set(`driverLocation:${uid}`, JSON.stringify(req.body), 'EX', 60 * 60);
 
+    res.status(200).send();
+});
 
 
 

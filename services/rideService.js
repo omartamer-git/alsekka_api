@@ -11,7 +11,8 @@ const geolib = require('geolib');
 const { sendNotificationToUser, sendNotificationToRide } = require('./appService');
 const { createInvoice, cancelPassengerInvoice, checkOutRide, cancelRideInvoices } = require('./paymentsService');
 const { checkUserInCommunity } = require('./communityService');
-
+const redis = require('ioredis');
+const redisClient = new redis();
 const sns = new SNSClient({ region: 'eu-central-1' })
 
 
@@ -214,7 +215,7 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
             throw new BadRequestError();
         }
 
-        if(pickupLocationLat && pickupLocationLng) {
+        if (pickupLocationLat && pickupLocationLng) {
             pickupAddition = ride.pickupPrice;
         }
 
@@ -248,9 +249,9 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
             }
 
             oldPassenger.seats = seats;
-            if(pickupLocationLat && pickupLocationLng) {
+            if (pickupLocationLat && pickupLocationLng) {
                 oldPassenger.pickupLocationLat = pickupLocationLat;
-                oldPassenger.pickupLocationLng = pickupLocationLng;    
+                oldPassenger.pickupLocationLng = pickupLocationLng;
             }
 
             await oldPassenger.save({ transaction: t });
@@ -299,8 +300,8 @@ async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, 
             mainTextFrom = (await getLocationFromPlaceId(placeIdFrom)).name;
         } else {
             const geocodeResult = await geocode(fromLatitude, fromLongitude);
-            for(const addressComponent of geocodeResult.address_components) {
-                if(!addressComponent.types.includes("plus_code")) {
+            for (const addressComponent of geocodeResult.address_components) {
+                if (!addressComponent.types.includes("plus_code")) {
                     mainTextFrom = addressComponent.long_name;
                     break;
                 } else {
@@ -313,8 +314,8 @@ async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, 
             mainTextTo = (await getLocationFromPlaceId(placeIdTo)).name;
         } else {
             const geocodeResult = await geocode(toLatitude, toLongitude);
-            for(const addressComponent of geocodeResult.address_components) {
-                if(!addressComponent.types.includes("plus_code")) {
+            for (const addressComponent of geocodeResult.address_components) {
+                if (!addressComponent.types.includes("plus_code")) {
                     mainTextTo = addressComponent.long_name;
                     break;
                 } else {
@@ -545,6 +546,34 @@ async function cancelRide({ tripId }) {
         return true;
     } else {
         throw new BadRequestError();
+    }
+}
+
+async function getDriverLocation({ rideId }, userId) {
+    const ride = await Ride.findByPk(rideId, {
+        attributes: ["id", "DriverId"]
+    });
+    if (!ride) throw new NotFoundError();
+
+    const passenger = await Passenger.findOne({
+        attributes: ["id"],
+        where: {
+            UserId: userId,
+            RideId: rideId,
+            status: {
+                [Op.or]: ["CONFIRMED", "ENROUTE"]
+            }
+        }
+    });
+
+    if (!passenger) throw new UnauthorizedError();
+
+    const cachedData = await redisClient.get(`driverLocation:${ride.DriverId}`);
+
+    if (cachedData) {
+        return cachedData;
+    } else {
+        return { lat: 0, lng: 0, timestamp: 0 };
     }
 }
 
@@ -792,5 +821,6 @@ module.exports = {
     noShow,
     getPassengerDetails,
     verifyVoucher,
-    submitDriverRatings
+    submitDriverRatings,
+    getDriverLocation
 };
