@@ -550,8 +550,6 @@ async function cancelRide({ tripId }) {
 }
 
 async function getDriverLocation({ rideId }, userId) {
-    console.log(rideId);
-    console.log(userId);
     const ride = await Ride.findByPk(rideId, {
         attributes: ["id", "DriverId"]
     });
