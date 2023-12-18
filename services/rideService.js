@@ -550,6 +550,8 @@ async function cancelRide({ tripId }) {
 }
 
 async function getDriverLocation({ rideId }, userId) {
+    console.log(rideId);
+    console.log(userId);
     const ride = await Ride.findByPk(rideId, {
         attributes: ["id", "DriverId"]
     });
@@ -571,7 +573,7 @@ async function getDriverLocation({ rideId }, userId) {
     const cachedData = await redisClient.get(`driverLocation:${ride.DriverId}`);
 
     if (cachedData) {
-        return cachedData;
+        return JSON.parse(cachedData);
     } else {
         return { lat: 0, lng: 0, timestamp: 0 };
     }
