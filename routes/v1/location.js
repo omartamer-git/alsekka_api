@@ -10,10 +10,10 @@ const redisClient = new redis();
 router.post("/updatelocation", authenticateToken, async (req, res, next) => {
     const { lat, lng, timestamp } = req.body;
     const uid = req.user.userId;
-    const driverLocLatest = await redisClient.get(`driverLocation:${uid}`);
+    const driverLocLatest = JSON.parse(await redisClient.get(`driverLocation:${uid}`));
 
  
-    if ((JSON.parse(driverLocLatest)).stop) {
+    if (driverLocLatest && driverLocLatest.stop) {
         return res.status(200).json({'stop': 1});
     }
 
