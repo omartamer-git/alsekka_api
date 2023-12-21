@@ -573,7 +573,7 @@ async function getDriverLocation({ rideId }, userId) {
     if (cachedData) {
         return JSON.parse(cachedData);
     } else {
-        return { lat: 0, lng: 0, timestamp: 0 };
+        return { "stop": 1 };
     }
 }
 
@@ -725,6 +725,8 @@ async function checkOut({ tripId, uid }) {
 
     await t.commit();
 
+    
+    redisClient.set(`driverLocation:${ride.DriverId}`, JSON.stringify({"stop":1}), 'EX', 60 * 60);
     sendNotificationToRide("Farewell!", `Thank you for using Seaats! Feel free to leave a rating for this ride within the app!`, null, ride.topicArn).catch(e => console.log(e));
 }
 

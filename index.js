@@ -47,6 +47,7 @@ const mapsRoutes = require('./routes/v1/maps');
 const rideRoutes = require('./routes/v1/ride');
 const staffRoutes = require('./routes/v1/staff');
 const userRoutes = require('./routes/v1/user');
+const locationRoutes = require('./routes/v1/location');
 const { default: rateLimit } = require("express-rate-limit");
 const { Ride } = require("./models");
 const { subtractDates } = require("./helper");
@@ -60,8 +61,6 @@ const limiter = rateLimit({
     legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 
-app.use(limiter);
-
 // v1 API
 app.use('/v1/car', carRoutes);
 app.use('/v1/chat', chatRoutes);
@@ -70,6 +69,7 @@ app.use('/v1/map', mapsRoutes);
 app.use('/v1/ride', rideRoutes);
 app.use('/v1/staff', staffRoutes);
 app.use('/v1/user', userRoutes);
+app.use('/v1/location', locationRoutes);
 
 app.get("/version", async (req, res, next) => {
     res.json({

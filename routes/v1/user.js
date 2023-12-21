@@ -7,8 +7,15 @@ const { JWT_EXPIRATION, JWT_SECRET } = require('../../config/auth.config');
 const jwt = require('jsonwebtoken');
 const { isValidEmail } = require('../../helper');
 const { REFERRALS_DISABLED } = require('../../config/seaats.config');
-const redis = require('ioredis');
-const redisClient = new redis();
+const { default: rateLimit } = require('express-rate-limit');
+const limiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 6015 minutes
+    max: 450, // Limit each IP to 450 requests per `window` (here, per 60 minutes)
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+
+router.use(limiter);
 
 router.get("/accountavailable", async (req, res, next) => {
     const { phone, email } = req.query;
@@ -336,14 +343,14 @@ router.patch("/email", authenticateToken, async (req, res, next) => {
     }).catch(next);
 });
 
-router.post("/updatelocation", authenticateToken, async(req, res, next) => {
-    const {lat, lng, timestamp} = req.body;
-    const uid = req.user.userId;
+// router.post("/updatelocation", authenticateToken, async(req, res, next) => {
+//     const {lat, lng, timestamp} = req.body;
+//     const uid = req.user.userId;
 
-    redisClient.set(`driverLocation:${uid}`, JSON.stringify(req.body), 'EX', 60 * 60);
+//     redisClient.set(`driverLocation:${uid}`, JSON.stringify(req.body), 'EX', 60 * 60);
 
-    res.status(200).send();
-});
+//     res.status(200).send();
+// });
 
 
 
