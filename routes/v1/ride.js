@@ -3,6 +3,15 @@ const { authenticateToken } = require('../../middleware/authenticateToken');
 const { BadRequestError, NotAcceptableError } = require('../../errors/Errors');
 const router = express.Router();
 const rideService = require("../../services/rideService");
+const { default: rateLimit } = require('express-rate-limit');
+const limiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 6015 minutes
+    max: 450, // Limit each IP to 450 requests per `window` (here, per 60 minutes)
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+
+router.use(limiter);
 
 router.get("/nearbyrides", authenticateToken, async (req, res, next) => {
     const maxDistance = 20000;
@@ -278,18 +287,6 @@ router.get("/verifyvoucher", authenticateToken, async (req, res, next) => {
 });
 
 
-router.get("/driverlocation", authenticateToken, async(req, res, next) => {
-    const {rideId} = req.query;
-    const uid = req.user.userId;
-
-    if(!rideId) {
-        return next(new BadRequestError());
-    }
-
-    rideService.getDriverLocation(req.query, uid).then(response => {
-        res.json(response);
-    }).catch(next);
-});
 
 
 module.exports = router;
