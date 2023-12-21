@@ -13,7 +13,7 @@ router.post("/updatelocation", authenticateToken, async (req, res, next) => {
     const driverLocLatest = await redisClient.get(`driverLocation:${uid}`);
 
  
-    if (!driverLocLatest || (JSON.parse(driverLocLatest)).stop) {
+    if ((JSON.parse(driverLocLatest)).stop) {
         return res.status(200).json({'stop': 1});
     }
 
