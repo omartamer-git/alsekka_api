@@ -19,6 +19,11 @@ module.exports = function (sequelize, DataTypes) {
             type: DataTypes.INTEGER,
             allowNull: false
         },
+        pickupAddition: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
         balanceDue: {
             type: DataTypes.INTEGER,
             allowNull: false,
