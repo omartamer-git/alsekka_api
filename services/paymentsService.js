@@ -103,17 +103,27 @@ async function checkOutRide(ride, passengers, t) {
     for (let passenger of passengers) {
 
         // invoicing
-
+        const user = await User.findByPk(passenger.UserId);
         const invoice = passenger.Invoice;
 
         if (!invoice) {
             throw new InternalServerError();
         }
 
+        user.balance += invoice.grandTotal;
+        user.balance -= invoice.totalAmount;
+        user.balance -= invoice.pickupAddition;
+        user.balance -= invoice.passengerFeeTotal;
+
+        await user.save({ transaction: t });
+
         if (invoice.paymentMethod === 'CARD') {
-            driver.balance = driver.balance + invoice.totalAmount - invoice.driverFeeTotal;
+            driver.balance = driver.balance + invoice.totalAmount + invoice.pickupAddition - invoice.driverFeeTotal;
         } else {
-            driver.balance = driver.balance - invoice.grandTotal + (invoice.totalAmount - invoice.driverFeeTotal);
+            driver.balance -= invoice.grandTotal;
+            driver.balance += invoice.totalAmount; // Price/Seat * Number of Seats
+            driver.balance -= invoice.driverFeeTotal;
+            driver.balance += invoice.pickupAddition;
         }
 
         // removing due balance from other rides

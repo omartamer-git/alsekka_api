@@ -158,6 +158,8 @@ async function verifyVoucher({ code }, uid) {
 }
 
 async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, pickupLocationLat, pickupLocationLng }) {
+    const t = await sequelize.transaction();
+
     try {
         const passengers = await Passenger.findAll({
             where: {
@@ -208,8 +210,6 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
                 throw new GoneError("Voucher is no longer valid or has expired");
             }
         }
-
-        const t = await sequelize.transaction();
 
         if ((pickupLocationLat || pickupLocationLng) && ride.pickupEnabled == 0) {
             throw new BadRequestError();
@@ -268,6 +268,7 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
 
         return newPassenger ? newPassenger : oldPassenger;
     } catch (err) {
+        await t.rollback();
         console.error(err);
         throw new NotFoundError("Ride not found");
     }
@@ -532,18 +533,22 @@ async function cancelRide({ tripId }) {
     }
     if (ride.status === "SCHEDULED") {
         const t = await sequelize.transaction();
+        try {
+            await cancelRideInvoices(ride, t);
 
-        await cancelRideInvoices(ride, t);
-
-        ride.status = "CANCELLED";
-        await ride.save({ transaction: t });
-        await t.commit();
-        sendNotificationToRide("Ride Cancelled", "Your ride to " + ride.mainTextTo + " has been cancelled by the driver. We apologize for the inconvenience.", null, ride.topicArn).then(() => {
-            // notification sent
-        }).catch((e) => {
-            console.log(e);
-        });
-        return true;
+            ride.status = "CANCELLED";
+            await ride.save({ transaction: t });
+            await t.commit();
+            sendNotificationToRide("Ride Cancelled", "Your ride to " + ride.mainTextTo + " has been cancelled by the driver. We apologize for the inconvenience.", null, ride.topicArn).then(() => {
+                // notification sent
+            }).catch((e) => {
+                console.log(e);
+            });
+            return true;
+        } catch (e) {
+            await t.rollback();
+            throw new InternalServerError();
+        }
     } else {
         throw new BadRequestError();
     }
@@ -597,22 +602,27 @@ async function cancelPassenger({ tripId }, userId) {
 
     if (ride.status === "SCHEDULED") {
         const t = await sequelize.transaction();
-        const driver = await ride.getDriver();
+        try {
+            const driver = await ride.getDriver();
 
-        await cancelPassengerInvoice(passenger, ride, driver, t);
+            await cancelPassengerInvoice(passenger, ride, driver, t);
 
 
-        passenger.status = "CANCELLED";
-        await passenger.save({ transaction: t });
-        await t.commit();
+            passenger.status = "CANCELLED";
+            await passenger.save({ transaction: t });
+            await t.commit();
 
-        sendNotificationToUser("Passenger Cancelled", `One of the passengers in your trip to ${ride.mainTextTo} has cancelled their seat, you will be compensated if they cancelled outside of the free cancellation window. We apologize for the inconvenience.`, null, null, driver.DeviceId).then(() => {
-            // notification sent
-        }).catch((e) => {
-            console.log(e);
-        })
+            sendNotificationToUser("Passenger Cancelled", `One of the passengers in your trip to ${ride.mainTextTo} has cancelled their seat, you will be compensated if they cancelled outside of the free cancellation window. We apologize for the inconvenience.`, null, null, driver.DeviceId).then(() => {
+                // notification sent
+            }).catch((e) => {
+                console.log(e);
+            })
 
-        return true;
+            return true;
+        } catch (e) {
+            await t.rollback();
+            throw new InternalServerError();
+        }
     } else {
         throw new BadRequestError();
     }
@@ -695,39 +705,42 @@ async function checkOut({ tripId, uid }) {
     }
 
     const t = await sequelize.transaction();
-
-    const passengers = await Passenger.findAll({
-        where: {
-            status: 'ENROUTE',
-            RideId: tripId
-        },
-        include: [{
-            model: Invoice
-        }]
-    });
-
-    // First, gather the UserIds of all passengers
-    const passengerIds = passengers.map(passenger => passenger.id);
-
-    // Update all passengers' status in a bulk update
-    await Passenger.update({ status: 'ARRIVED' }, {
-        where: {
-            id: { [Op.in]: passengerIds },
-        },
-        transaction: t,
-    });
-
-    await checkOutRide(ride, passengers, t);
-
-    ride.status = 'COMPLETED';
-
-    await ride.save({ transaction: t });
-
-    await t.commit();
-
+    try {
+        const passengers = await Passenger.findAll({
+            where: {
+                status: 'ENROUTE',
+                RideId: tripId
+            },
+            include: [{
+                model: Invoice
+            }]
+        });
     
-    redisClient.set(`driverLocation:${ride.DriverId}`, JSON.stringify({"stop":1}), 'EX', 60 * 60);
-    sendNotificationToRide("Farewell!", `Thank you for using Seaats! Feel free to leave a rating for this ride within the app!`, null, ride.topicArn).catch(e => console.log(e));
+        // First, gather the UserIds of all passengers
+        const passengerIds = passengers.map(passenger => passenger.id);
+    
+        // Update all passengers' status in a bulk update
+        await Passenger.update({ status: 'ARRIVED' }, {
+            where: {
+                id: { [Op.in]: passengerIds },
+            },
+            transaction: t,
+        });
+    
+        await checkOutRide(ride, passengers, t);
+    
+        ride.status = 'COMPLETED';
+    
+        await ride.save({ transaction: t });
+    
+        await t.commit();
+        
+        redisClient.set(`driverLocation:${ride.DriverId}`, JSON.stringify({ "stop": 1 }), 'EX', 60 * 60);
+        sendNotificationToRide("Farewell!", `Thank you for using Seaats! Feel free to leave a rating for this ride within the app!`, null, ride.topicArn).catch(e => console.log(e));    
+    } catch(e) {
+        await t.rollback();
+        throw new InternalServerError();
+    }
 }
 
 async function submitDriverRatings({ tripId, ratings }, uid) {
