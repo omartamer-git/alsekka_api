@@ -6,7 +6,7 @@ async function createInvoice(uid, seats, paymentMethod, ride, voucher, passenger
         attributes: ['balance']
     });
 
-    const totalAmount = (seats * ride.pricePerSeat) + pickupAddition;
+    const totalAmount = (seats * ride.pricePerSeat);
     const driverFeeTotal = ride.driverFee * totalAmount;
     const passengerFeeTotal = PASSENGER_FEE * totalAmount;
     const balanceDue = -1 * user.balance;
@@ -15,7 +15,7 @@ async function createInvoice(uid, seats, paymentMethod, ride, voucher, passenger
         const discount = voucher.type === 'PERCENTAGE' ? ((voucher.value / 100) * totalAmount) : voucher.value
         discountAmount = Math.min(voucher.maxValue, discount);
     }
-    const grandTotal = totalAmount + driverFeeTotal + passengerFeeTotal + balanceDue - discountAmount;
+    const grandTotal = totalAmount + pickupAddition + driverFeeTotal + passengerFeeTotal + balanceDue - discountAmount;
     const dueDate = ride.datetime;
 
 
@@ -30,6 +30,7 @@ async function createInvoice(uid, seats, paymentMethod, ride, voucher, passenger
                 discountAmount,
                 grandTotal,
                 driverFeeTotal,
+                pickupAddition,
                 passengerFeeTotal,
                 dueDate,
                 paymentMethod,
@@ -45,6 +46,7 @@ async function createInvoice(uid, seats, paymentMethod, ride, voucher, passenger
                 balanceDue,
                 discountAmount,
                 grandTotal,
+                pickupAddition,
                 driverFeeTotal,
                 passengerFeeTotal,
                 dueDate,
