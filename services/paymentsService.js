@@ -111,9 +111,10 @@ async function checkOutRide(ride, passengers, t) {
         }
         let userBalance = parseFloat(user.balance);
 
-        userBalance += invoice.grandTotal; // -100 += 300 = 200
-        userBalance -= invoice.totalAmount; // 200 -= 200 = 0
-        userBalance -= invoice.pickupAddition; // 0 -=  0 = 0
+        userBalance += invoice.grandTotal;
+        userBalance -= invoice.totalAmount;
+        userBalance += invoice.discountAmount;
+        userBalance -= invoice.pickupAddition;
         userBalance -= invoice.passengerFeeTotal;
 
         user.balance = userBalance;
