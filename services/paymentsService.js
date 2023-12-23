@@ -109,22 +109,32 @@ async function checkOutRide(ride, passengers, t) {
         if (!invoice) {
             throw new InternalServerError();
         }
+        let userBalance = parseFloat(user.balance);
 
-        user.balance += invoice.grandTotal;
-        user.balance -= invoice.totalAmount;
-        user.balance -= invoice.pickupAddition;
-        user.balance -= invoice.passengerFeeTotal;
+        userBalance += invoice.grandTotal; // -100 += 300 = 200
+        userBalance -= invoice.totalAmount; // 200 -= 200 = 0
+        userBalance -= invoice.pickupAddition; // 0 -=  0 = 0
+        userBalance -= invoice.passengerFeeTotal;
+
+        user.balance = userBalance;
 
         await user.save({ transaction: t });
 
         if (invoice.paymentMethod === 'CARD') {
-            driver.balance = driver.balance + invoice.totalAmount + invoice.pickupAddition - invoice.driverFeeTotal;
+            driver.balance = parseFloat(driver.balance) + invoice.totalAmount + invoice.pickupAddition - invoice.driverFeeTotal;
         } else {
-            driver.balance -= invoice.grandTotal;
-            driver.balance += invoice.totalAmount; // Price/Seat * Number of Seats
-            driver.balance -= invoice.driverFeeTotal;
-            driver.balance += invoice.pickupAddition;
+            let driverBalance = parseFloat(driver.balance);
+
+            driverBalance -= invoice.grandTotal;
+            driverBalance += invoice.totalAmount; // Price/Seat * Number of Seats
+            driverBalance -= invoice.driverFeeTotal;
+            driverBalance += invoice.pickupAddition;
+
+            driver.balance = driverBalance;
         }
+        
+        invoice.paymentStatus = 'PAID';
+        await invoice.save({transaction: t});
 
         // removing due balance from other rides
 
