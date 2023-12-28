@@ -134,7 +134,6 @@ async function getCommunityDetails({ communityId, uid }) {
         where: {
             id: communityId
         },
-        attributes: ['OwnerId', 'joinQuestion'],
         include: [
             {
                 model: User,
