@@ -1,5 +1,6 @@
 const { PASSENGER_FEE } = require("../config/seaats.config");
 const { User, Invoice, DriverInvoice, Passenger } = require("../models");
+const { sendNotificationToRide } = require("./appService");
 
 async function createInvoice(uid, seats, paymentMethod, ride, voucher, passengerId, pickupAddition, t, update = false) {
     const user = await User.findByPk(uid, {
@@ -178,7 +179,10 @@ async function cancelRideInvoices(ride, t) {
         const driver = await User.findByPk(ride.DriverId);
 
         // charge driver to re-allocate passengers
-        const deduction = -1.0 * (ride.pricePerSeat * passengers.length);
+        let deduction = 0;
+        if(passengers.length > 0) {
+            deduction = -100;
+        }
         driver.balance = (1 * driver.balance) + (1 * deduction);
         await DriverInvoice.create({
             amount: deduction,
@@ -201,6 +205,10 @@ async function cancelRideInvoices(ride, t) {
         await passenger.Invoice.save({ transaction: t });
         await passenger.save({ transaction: t });
     }
+
+    sendNotificationToRide("Ride Cancelled", `We regret to inform you that your ride to ${ride.mainTextTo} has been cancelled. Rest assured, we are actively working to find you a replacement ride and will be in contact with you shortly!`, ride.topicArn).catch(err => {
+
+    })
 }
 
 module.exports = {
