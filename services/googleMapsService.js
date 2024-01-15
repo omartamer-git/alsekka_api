@@ -3,7 +3,7 @@ const { Ride, Passenger } = require("../models");
 const { NotFoundError, UnauthorizedError } = require("../errors/Errors");
 const { calculateDistance, findOptimalPath } = require("../util/util");
 const redis = require('ioredis');
-const { GOOGLE_KEY } = require("../config/seaats.config");
+const { GOOGLE_KEY, CITIES } = require("../config/seaats.config");
 
 // const googleKey = "AIzaSyDUNz5SYhR1nrdfk9TW4gh3CDpLcDMKwuw";
 const googleKey = GOOGLE_KEY;
@@ -24,24 +24,18 @@ async function getPredictions(text, lat, lng, city) {
         }
     }
 
-    let cityCenter = null;
-    let radius = 0;
-    if (city === "alexandria") {
-        cityCenter = "31.2001,29.9187";
-        radius = 25000;
-    } else if (city === "cairo") {
-        cityCenter = "30.0444,31.2357";
-        radius = 65000;
-    }
+
+    let cityCenter = `${CITIES[city].longitude},${CITIES[city].latitude}`;
+    let radius = CITIES[city].radius;
 
     let pred = [];
     const url = 'https://maps.googleapis.com/maps/api/place/autocomplete/json';
     const params = {
         input: text,
         key: googleKey,
-        region: 'eg',
+        //region: 'eg',
         language: 'en',
-        locationbias: `circle:1000@${lat},${lng}`,
+        //locationbias: `circle:1000@${lat},${lng}`,
         location: cityCenter,
         radius: radius,
         strictbounds: 'true',
