@@ -9,7 +9,7 @@ const { GOOGLE_KEY } = require("../config/seaats.config");
 const googleKey = GOOGLE_KEY;
 const redisClient = new redis();
 
-async function getPredictions(text, lat, lng) {
+async function getPredictions(text, lat, lng, city) {
     // cairo LATLNG: 30.059482,31.2172648
     if (!lat || !lng) {
         lat = 30.059482;
@@ -24,6 +24,16 @@ async function getPredictions(text, lat, lng) {
         }
     }
 
+    let cityCenter = null;
+    let radius = 0;
+    if (city === "alexandria") {
+        cityCenter = "31.2001,29.9187";
+        radius = 25000;
+    } else if (city === "cairo") {
+        cityCenter = "30.0444,31.2357";
+        radius = 65000;
+    }
+
     let pred = [];
     const url = 'https://maps.googleapis.com/maps/api/place/autocomplete/json';
     const params = {
@@ -31,7 +41,11 @@ async function getPredictions(text, lat, lng) {
         key: googleKey,
         region: 'eg',
         language: 'en',
-        locationbias: `circle:100000@${lat},${lng}`,
+        locationbias: `circle:1000@${lat},${lng}`,
+        location: cityCenter,
+        radius: radius,
+        strictbounds: 'true',
+        components: 'country:eg'
     };
     const result = await axios.get(url, { params });
     const data = result.data;
@@ -47,30 +61,30 @@ async function getPredictions(text, lat, lng) {
     };
 };
 
-function getProperResultName(resultArr, j=0) {
+function getProperResultName(resultArr, j = 0) {
     let goodAddress;
     let i = 0;
-    if(resultArr.length-1 < j) {
+    if (resultArr.length - 1 < j) {
         return resultArr[0].formatted_address.split(',')[0];
     }
-    
+
     const returnResult = resultArr[j];
-    for(let addressComponent of returnResult.address_components) {
+    for (let addressComponent of returnResult.address_components) {
         const types = addressComponent.types;
-        if('plus_code' in types) {
+        if ('plus_code' in types) {
             i++;
             continue;
         }
 
-        if('street_number' in types) {
+        if ('street_number' in types) {
             goodAddress = addressComponent.long_name;
-            goodAddress += ' ' + returnResult.address_components[i+1];
+            goodAddress += ' ' + returnResult.address_components[i + 1];
             break;
-        } else if('route' in types) {
+        } else if ('route' in types) {
             goodAddress = addressComponent.long_name;
             break;
         } else {
-            return getProperResultName(resultArr, j+1);
+            return getProperResultName(resultArr, j + 1);
         }
         i++;
     }
@@ -185,10 +199,10 @@ async function getOptimalPath({ tripId }, uid) {
 async function getDirections(startLat, startLng, endLat, endLng) {
     const cachedData = await redisClient.get(`directions:${startLat},${startLng},${endLat},${endLng}`);
 
-    if(cachedData) {
+    if (cachedData) {
         return JSON.parse(cachedData);
     }
-    
+
 
     const url = 'https://maps.googleapis.com/maps/api/directions/json';
     const params = {

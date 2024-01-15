@@ -17,12 +17,13 @@ router.get("/getPredictions", authenticateToken, async (req, res, next) => {
     const text = req.query.text;
     const lat = req.query.lat;
     const lng = req.query.lng;
+    const city = req.query.city;
 
     if (!text) {
         return next(new BadRequestError());
     }
 
-    mapService.getPredictions(text, lat, lng).then(result => {
+    mapService.getPredictions(text, lat, lng, city).then(result => {
         return res.json(result);
     }).catch(next);
 });
