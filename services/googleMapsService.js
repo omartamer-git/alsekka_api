@@ -16,7 +16,7 @@ async function getPredictions(text, lat, lng, city) {
         lng = 31.2172648;
     }
 
-    const cachedData = await redisClient.get(`pred:${text}`);
+    const cachedData = await redisClient.get(`pred:${city}:${text}`);
 
     if (cachedData) {
         return {
@@ -45,7 +45,6 @@ async function getPredictions(text, lat, lng, city) {
         location: cityCenter,
         radius: radius,
         strictbounds: 'true',
-        components: 'country:eg'
     };
     const result = await axios.get(url, { params });
     const data = result.data;
@@ -53,8 +52,8 @@ async function getPredictions(text, lat, lng, city) {
         pred.push([data.predictions[i].description, data.predictions[i].place_id]);
     }
 
-    // cache for 1hr
-    redisClient.set(`pred:${text}`, JSON.stringify(pred), 'EX', 60 * 60)
+    // cache for 2d
+    redisClient.set(`pred:${city}:${text}`, JSON.stringify(pred), 'EX', 60 * 60 * 48)
 
     return {
         data: pred
