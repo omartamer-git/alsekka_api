@@ -355,11 +355,11 @@ async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, 
 function getSuggestedPrice({ fromLatitude, fromLongitude, toLatitude, toLongitude }) {
     // dist is the distance in kilometers / 100
     // warning: straight line distance, actual distance is inflated
-    //          which is why the factor of 1.3 is added
+    //          which is why the factor of 1.5 is added
     const dist = geolib.getDistance(
         { latitude: fromLatitude, longitude: fromLongitude },
         { latitude: toLatitude, longitude: toLongitude }
-    ) / (1000 * 100) * 1.3;
+    ) / (1000 * 100) * 1.5;
 
     const litrePer100km = 10;
 
@@ -499,7 +499,10 @@ async function getTripDetails({ uid, tripId }) {
         const passengersDetails = await Passenger.findAll({
             attributes: ['UserId', 'paymentMethod', 'status', 'pickupLocationLat', 'pickupLocationLng'],
             where: {
-                RideId: tripId
+                RideId: tripId,
+                status: {
+                    [Op.ne]: 'CANCELLED'
+                }
             },
             include: [
                 {
