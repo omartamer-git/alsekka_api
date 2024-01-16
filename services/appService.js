@@ -26,7 +26,7 @@ async function getAnnouncements(active) {
 }
 
 async function registerDevice({ token, platform }) {
-    let PlatformApplicationArn = platform === 'ios' ? IOS_ARN, ANDROID_ARN
+    let PlatformApplicationArn = platform === 'ios' ? IOS_ARN : ANDROID_ARN
 
     const paramsEndpoint = {
         PlatformApplicationArn: PlatformApplicationArn,
