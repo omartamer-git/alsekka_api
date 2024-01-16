@@ -353,27 +353,30 @@ async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, 
 }
 
 function getSuggestedPrice({ fromLatitude, fromLongitude, toLatitude, toLongitude }) {
+    // dist is the distance in kilometers / 100
+    // warning: straight line distance, actual distance is inflated
+    //          which is why the factor of 1.3 is added
     const dist = geolib.getDistance(
         { latitude: fromLatitude, longitude: fromLongitude },
         { latitude: toLatitude, longitude: toLongitude }
-    ) / 1000;
-    let costPerKilometer = 4;
-    if (dist < 50) {
-        costPerKilometer = 4.25;
-    } else if (dist < 100) {
-        costPerKilometer = 4;
-    } else if (dist < 200) {
-        costPerKilometer = 3.75;
-    } else {
-        costPerKilometer = 2.85;
-    }
-    const riders = 4;
+    ) / (1000 * 100) * 1.3;
+
+    const litrePer100km = 10;
+
+    // Price of fuel
+    const pricePerLitre = 12.5;
+
+    // return (
+    //     Math.ceil(
+    //         (((dist * costPerKilometer) * (1 + DRIVER_FEE)) / riders) / 5
+    //     ) * 5
+    // );
 
     return (
         Math.ceil(
-            (((dist * costPerKilometer) * (1 + DRIVER_FEE)) / riders) / 5
-        ) * 5
-    );
+            ((dist * litrePer100km * pricePerLitre * (1 + DRIVER_FEE)) / 4)
+        )
+    )
 }
 
 async function getUpcomingRides({ uid, limit }) {
