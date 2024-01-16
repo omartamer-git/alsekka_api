@@ -3,6 +3,7 @@ const { NotFoundError } = require("../errors/Errors")
 
 
 const { SNSClient, CreatePlatformEndpointCommand, SubscribeCommand, PublishCommand } = require("@aws-sdk/client-sns");
+const { IOS_ARN, ANDROID_ARN } = require("../config/seaats.config");
 
 const sns = new SNSClient({ region: 'eu-central-1' })
 
@@ -25,7 +26,7 @@ async function getAnnouncements(active) {
 }
 
 async function registerDevice({ token, platform }) {
-    let PlatformApplicationArn = platform === 'ios' ? 'arn:aws:sns:eu-central-1:872912343417:app/APNS_SANDBOX/seaats-app-dev' : 'arn:aws:sns:eu-central-1:872912343417:app/GCM/android-seaats';
+    let PlatformApplicationArn = platform === 'ios' ? IOS_ARN, ANDROID_ARN
 
     const paramsEndpoint = {
         PlatformApplicationArn: PlatformApplicationArn,
