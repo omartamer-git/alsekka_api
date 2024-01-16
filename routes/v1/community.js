@@ -43,14 +43,7 @@ router.patch("/updatecommunity", authenticateToken, async (req, res, next) => {
 });
 
 router.get("/communities", authenticateToken, async (req, res, next) => {
-    let { page } = req.query;
-    if (!page) {
-        req.query.page = 1;
-    }
-
-    const uid = req.user.userId;
-
-    communityService.getCommunities({ uid, ...req.query }).then(communities => {
+    communityService.getCommunities().then(communities => {
         res.json(communities);
     }).catch(next);
 });

@@ -70,36 +70,53 @@ async function updateCommunity({ communityId, description, private, joinQuestion
 
     return community;
 }
+const redis = require('ioredis');
+const redisClient = new redis();
 
-async function getCommunities({ uid, page }) {
-    const userId = uid;
+async function findTrending(date) {
+    const trendingMembers = await CommunityMember.findAll({
+        attributes: ['CommunityId'],
+        where: {
+            createdAt: {
+                [Sequelize.Op.gte]: date
+            }
+        },
+        order: [[Sequelize.literal('COUNT(id)'), 'DESC']],
+        group: ['CommunityId'],
+        limit: 3
+    });
+
+    const ids = trendingMembers.map(c => c.CommunityId);
+
+    const coms = await Community.findAll({
+        where: {
+            id: {
+                [Op.in]: ids
+            }
+        }
+    });
+
+    return coms;
+}
+
+async function getCommunities() {
     try {
+        const cachedData = await redisClient.get(`communities:trending`);
+        if (cachedData) {
+            return JSON.parse(cachedData);
+        }
+
         const weekAgo = new Date();
         const limit = 3;
         weekAgo.setDate(weekAgo.getDate() - 21);
 
-        const trendingMembers = await CommunityMember.findAll({
-            attributes: ['CommunityId'],
-            where: {
-                createdAt: {
-                    [Sequelize.Op.gte]: weekAgo
-                }
-            },
-            order: [[Sequelize.literal('COUNT(id)'), 'DESC']],
-            group: ['CommunityId'],
-            limit: 3
-        });
+        let coms = await findTrending(weekAgo);
 
-        const ids = trendingMembers.map(c => c.CommunityId);
+        if (coms.length < 3) {
+            coms = await findTrending(new Date(2023, 1, 1));
+        }
 
-        const coms = await Community.findAll({
-            where: {
-                id: {
-                    [Op.in]: ids
-                }
-            }
-        });
-
+        redisClient.set('communities:trending', JSON.stringify(coms), 'EX', 60 * 60 * 24);
         return coms;
     } catch (error) {
         console.error('Error getting recommended communities:', error);
