@@ -16,7 +16,7 @@ async function createInvoice(uid, seats, paymentMethod, ride, voucher, passenger
         const discount = voucher.type === 'PERCENTAGE' ? ((voucher.value / 100) * totalAmount) : voucher.value
         discountAmount = Math.min(voucher.maxValue, discount);
     }
-    const grandTotal = totalAmount + pickupAddition + driverFeeTotal + passengerFeeTotal + balanceDue - discountAmount;
+    const grandTotal = totalAmount + pickupAddition + passengerFeeTotal + balanceDue - discountAmount;
     const dueDate = ride.datetime;
 
 
