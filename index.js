@@ -70,6 +70,7 @@ app.use('/v1/ride', rideRoutes);
 app.use('/v1/staff', staffRoutes);
 app.use('/v1/user', userRoutes);
 app.use('/v1/location', locationRoutes);
+app.use('/v1/geojson', express.static('geojsons'));
 
 app.get("/version", async (req, res, next) => {
     res.json({
