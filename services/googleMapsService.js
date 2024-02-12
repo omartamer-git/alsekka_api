@@ -134,7 +134,7 @@ async function getLocationFromPlaceId(place_id) {
 
 
     const locationData = returnResult[0].geometry.location;
-    const returnRes = { ...locationData, name: getProperResultName(returnResult) };
+    const returnRes = { ...locationData, name: returnResult[0].formatted_address };
 
     // cache for 2 weeks
     redisClient.set(`placeid:${place_id}`, JSON.stringify(returnRes), 'EX', 14 * 60 * 60 * 24)
