@@ -13,6 +13,7 @@ const { createInvoice, cancelPassengerInvoice, checkOutRide, cancelRideInvoices 
 const { checkUserInCommunity } = require('./communityService');
 const redis = require('ioredis');
 const { generateKashierOrderHash } = require('./kashierService');
+const { default: axios } = require('axios');
 const redisClient = new redis();
 const sns = new SNSClient({ region: 'eu-central-1' })
 
@@ -256,7 +257,7 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
                 oldPassenger.pickupLocationLng = pickupLocationLng;
             }
 
-            if(oldPassenger.paymentMethod !== 'CASH') {
+            if (oldPassenger.paymentMethod !== 'CASH') {
                 oldPassenger.status = 'AWAITING_PAYMENT';
             }
 
@@ -732,10 +733,10 @@ async function checkOut({ tripId, uid }) {
                 model: Invoice
             }]
         });
-    
+
         // First, gather the UserIds of all passengers
         const passengerIds = passengers.map(passenger => passenger.id);
-    
+
         // Update all passengers' status in a bulk update
         await Passenger.update({ status: 'ARRIVED' }, {
             where: {
@@ -743,18 +744,18 @@ async function checkOut({ tripId, uid }) {
             },
             transaction: t,
         });
-    
+
         await checkOutRide(ride, passengers, t);
-    
+
         ride.status = 'COMPLETED';
-    
+
         await ride.save({ transaction: t });
-    
+
         await t.commit();
-        
+
         redisClient.set(`driverLocation:${ride.DriverId}`, JSON.stringify({ "stop": 1 }), 'EX', 60 * 60);
-        sendNotificationToRide("Farewell!", `Thank you for using Seaats! Feel free to leave a rating for this ride within the app!`, null, ride.topicArn).catch(e => console.log(e));    
-    } catch(e) {
+        sendNotificationToRide("Farewell!", `Thank you for using Seaats! Feel free to leave a rating for this ride within the app!`, null, ride.topicArn).catch(e => console.log(e));
+    } catch (e) {
         await t.rollback();
         throw new InternalServerError();
     }
@@ -834,12 +835,43 @@ async function getPassengerDetails({ tripId, passenger }) {
     };
 }
 
+async function validateBooking(passengerId, reference) {
+    try {
+        const passenger = await Passenger.findByPk(passengerId);
+        const invoice = await Invoice.findOne({
+            where: {
+                PassengerId: passenger.id
+            }
+        });
+
+        passenger.status = 'CONFIRMED';
+        invoice.status = 'PAID';
+        invoice.reference = reference;
+
+        const t = await sequelize.transaction();
+        await Promise.all([passenger.save({ transaction: t }), invoice.save({ transaction: t })])
+        await t.commit();
+    } catch (err) {
+        // TODO: Properly handle refund
+        const body = {
+            "apiOperation": "REFUND",
+            "reason": "Customer booking failed to process due to server error",
+            "transaction": {
+                "amount": 3,
+            }
+        }
+        axios.put(`${process.env.KASHIER_REFUNDURL}/${reference.kashierOrderId}`, body);
+        await t.rollback();
+    }
+}
+
 module.exports = {
     getNearbyRides,
     getRideDetails,
     bookRide,
     postRide,
     getUpcomingRides,
+    validateBooking,
     getSuggestedPrice,
     getPastRides,
     getDriverRides,
