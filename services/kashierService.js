@@ -5,7 +5,7 @@ function generateKashierOrderHash(passengerId, userId, grandTotal) {
     console.log(userId);
     console.log(grandTotal);
     const secret = process.env.KASHIERAPIKEY;
-    const path = `/?payment=${process.env.KASHIER_ID}.${passengerId}.${grandTotal}.EGP`;
+    const path = `/?payment=${process.env.KASHIER_ID}.${passengerId}.${grandTotal}.EGP${userId ? ('.' + userId) : null}`;
 
     const hash = crypto.createHmac('sha256', secret).update(path).digest('hex');
     return hash;
