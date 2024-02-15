@@ -278,8 +278,9 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
             invoice: invoice.toJSON()
         }
     } catch (err) {
-        await t.rollback();
         console.error(err);
+
+        await t.rollback();
         throw new NotFoundError("Ride not found");
     }
 
