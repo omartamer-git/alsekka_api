@@ -12,6 +12,7 @@ const { sendNotificationToUser, sendNotificationToRide } = require('./appService
 const { createInvoice, cancelPassengerInvoice, checkOutRide, cancelRideInvoices } = require('./paymentsService');
 const { checkUserInCommunity } = require('./communityService');
 const redis = require('ioredis');
+const { generateKashierOrderHash } = require('./kashierService');
 const redisClient = new redis();
 const sns = new SNSClient({ region: 'eu-central-1' })
 
@@ -164,11 +165,11 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
         const passengers = await Passenger.findAll({
             where: {
                 RideId: rideId,
-                status: "CONFIRMED"
+                status: {
+                    [Op.or]: ["CONFIRMED", "AWAITING_PAYMENT"]
+                }
             }
         });
-
-
 
         const passengerCount = passengers.length;
 
@@ -222,13 +223,14 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
 
         let newPassenger;
         let oldPassenger;
+        let invoice;
 
         if (prevPassenger.length === 0) {
             newPassenger = await Passenger.create({
                 UserId: uid,
                 RideId: rideId,
                 paymentMethod: paymentMethod,
-                status: 'CONFIRMED',
+                status: paymentMethod === 'CASH' ? 'CONFIRMED' : 'AWAITING_PAYMENT',
                 seats: seats || 1,
                 CardId: cardId || null,
                 VoucherId: voucherId || null,
@@ -237,7 +239,7 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
                 pickupLocationLng
             }, { transaction: t });
 
-            await createInvoice(uid, seats, paymentMethod, ride, voucher, newPassenger.id, pickupAddition, t);
+            invoice = await createInvoice(uid, seats, paymentMethod, ride, voucher, newPassenger.id, pickupAddition, t);
         } else {
             oldPassenger = prevPassenger[0];
             if (oldPassenger.seats > seats) {
@@ -254,9 +256,13 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
                 oldPassenger.pickupLocationLng = pickupLocationLng;
             }
 
+            if(oldPassenger.paymentMethod !== 'CASH') {
+                oldPassenger.status = 'AWAITING_PAYMENT';
+            }
+
             await oldPassenger.save({ transaction: t });
 
-            await createInvoice(uid, seats, paymentMethod, ride, voucher, oldPassenger.id, pickupAddition, t, true);
+            invoice = await createInvoice(uid, seats, paymentMethod, ride, voucher, oldPassenger.id, pickupAddition, t, true);
         }
 
         await t.commit();
@@ -265,8 +271,12 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
             console.log(e);
         });
 
-
-        return newPassenger ? newPassenger : oldPassenger;
+        let passengerJSON = newPassenger ? newPassenger.toJSON() : oldPassenger.toJSON();
+        passengerJSON.hash = generateKashierOrderHash(passengerJSON.id, uid, invoice.grandTotal);
+        return {
+            passenger: passengerJSON,
+            invoice: invoice.toJSON()
+        }
     } catch (err) {
         await t.rollback();
         console.error(err);

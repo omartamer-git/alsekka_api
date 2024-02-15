@@ -10,6 +10,7 @@ const { BadRequestError, NotAcceptableError, InternalServerError } = require("./
 const { default: axios } = require("axios");
 const { REFERRALS_DISABLED, ALLOWED_EMAILS, LATEST_APP_VERSION, MINIMUM_APP_VERSION } = require("./config/seaats.config");
 const cron = require('node-cron');
+require('dotenv').config()
 
 process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled Rejection at:', promise, 'reason:', reason);
@@ -49,7 +50,7 @@ const staffRoutes = require('./routes/v1/staff');
 const userRoutes = require('./routes/v1/user');
 const locationRoutes = require('./routes/v1/location');
 const { default: rateLimit } = require("express-rate-limit");
-const { Ride } = require("./models");
+const { Ride, Passenger } = require("./models");
 const { subtractDates } = require("./helper");
 const { Op } = require("sequelize");
 const { cancelRide } = require("./services/rideService");
@@ -111,10 +112,10 @@ app.post("/driverenrollment", async (req, res, next) => {
     }).catch(next);
 });
 
-app.get("/waitinglist", async(req, res, next) => {
-    const {email} = req.query;
+app.get("/waitinglist", async (req, res, next) => {
+    const { email } = req.query;
 
-    if(!email) {
+    if (!email) {
         return next(new BadRequestError());
     }
 
@@ -179,9 +180,30 @@ cron.schedule('*/5 * * * *', () => {
     }).then(async rides => {
         const rideIds = rides.map(r => r.id);
 
-        for(const rid of rideIds) {
-            await cancelRide({tripId: rid});
+        for (const rid of rideIds) {
+            await cancelRide({ tripId: rid });
         }
+    }).catch(err => {
+        console.log("[FAIL] FAILED TO RUN CRON JOB\nReason: ", err);
+    });
+
+    // Find rides that are 10 minutes late also and alert staff
+});
+
+cron.schedule('*/15 * * * *', () => {
+    const fifteenMinutesPrior = subtractDates(new Date(), 0.25);
+    Passenger.findAll({
+        where: {
+            status: 'AWAITING_PAYMENT',
+            updatedAt: {
+                [Op.lte]: fifteenMinutesPrior
+            }
+        }
+    }).then(async passengers => {
+        const passengerIds = passengers.map(r => r.id);
+
+        // Need to rollback passenger to previous state instead of cancelling in case of update
+        await Passenger.update({ status: 'PAYMENT_FAILED' }, { where: { id: passengerIds } });
     }).catch(err => {
         console.log("[FAIL] FAILED TO RUN CRON JOB\nReason: ", err);
     });
