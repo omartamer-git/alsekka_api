@@ -67,7 +67,7 @@ router.get("/bookride", authenticateToken, async (req, res, next) => {
 
     rideService.bookRide({ uid, rideId, paymentMethod, seats, cardId, voucherId, pickupLocationLat, pickupLocationLng }).then(
         newPassenger => {
-            return res.json({ id: newPassenger.id })
+            return res.json(newPassenger)
         }
     ).catch(next);
 });
