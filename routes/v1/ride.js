@@ -61,9 +61,9 @@ router.get("/bookride", authenticateToken, async (req, res, next) => {
         return next(new BadRequestError());
     }
 
-    if (paymentMethod === 'CARD' && !cardId) {
-        return next(new BadRequestError());
-    }
+    // if (paymentMethod === 'CARD' && !cardId) {
+    //     return next(new BadRequestError());
+    // }
 
     rideService.bookRide({ uid, rideId, paymentMethod, seats, cardId, voucherId, pickupLocationLat, pickupLocationLng }).then(
         newPassenger => {
