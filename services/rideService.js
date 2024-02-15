@@ -840,7 +840,7 @@ async function validateBooking(passengerId, reference) {
         const passenger = await Passenger.findByPk(passengerId);
         const invoice = await Invoice.findOne({
             where: {
-                PassengerId: passenger.id
+                PassengerId: passengerId
             }
         });
 

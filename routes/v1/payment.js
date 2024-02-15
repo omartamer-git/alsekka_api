@@ -32,7 +32,7 @@ router.post("/webhook", async (req, res, next) => {
     const kashierSignature = req.header('x-kashier-signature');
     if (kashierSignature === signature) {
         // Valid Signature
-        const passengerId = data.metadata.passengerId;
+        const passengerId = data.metaData.passengerId;
         /*
     "kashierOrderId": "efb3d440-e3bf-4c86-b98e-c7bb1cbbcca1",
     "orderReference": "TEST-ORD-33581",
