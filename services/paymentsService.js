@@ -34,7 +34,7 @@ async function createInvoice(uid, seats, paymentMethod, ride, voucher, passenger
         } else {
             await Invoice.create({
                 totalAmount,
-                balanceDue,
+                balanceDue: -1 * userBalance,
                 discountAmount,
                 grandTotal,
                 driverFeeTotal,
@@ -51,7 +51,7 @@ async function createInvoice(uid, seats, paymentMethod, ride, voucher, passenger
         } else {
             await Invoice.update({
                 totalAmount,
-                balanceDue,
+                balanceDue: -1 * userBalance,
                 discountAmount,
                 grandTotal,
                 pickupAddition,
