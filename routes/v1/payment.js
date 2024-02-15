@@ -3,7 +3,7 @@ const router = express.Router();
 const { default: rateLimit } = require('express-rate-limit');
 const _ = require('underscore');
 const crypto = require('crypto');
-const queryString = require('query-string');
+const { stringify } = require('querystring');
 
 const limiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 6015 minutes
@@ -22,7 +22,7 @@ router.post("/webhook", async (req, res, next) => {
     const { data, event } = req.body;
     data.signatureKeys.sort();
     const objectSignaturePayload = _.pick(data, data.signatureKeys);
-    const signaturePayload = queryString.stringify(objectSignaturePayload);
+    const signaturePayload = stringify(objectSignaturePayload);
     const signature = crypto
       .createHmac('sha256', process.env.KASHIERAPIKEY)
       .update(signaturePayload)
