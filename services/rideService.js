@@ -847,7 +847,7 @@ async function validateBooking(passengerId, reference) {
         });
 
         passenger.status = 'CONFIRMED';
-        invoice.status = 'PAID';
+        invoice.paymentStatus = 'PAID';
         invoice.reference = reference;
 
         await Promise.all([passenger.save({ transaction: t }), invoice.save({ transaction: t })])
