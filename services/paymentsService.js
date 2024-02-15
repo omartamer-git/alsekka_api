@@ -26,46 +26,40 @@ async function createInvoice(uid, seats, paymentMethod, ride, voucher, passenger
     // const grandTotal = totalAmount + pickupAddition + passengerFeeTotal + balanceDue - discountAmount;
     const dueDate = ride.datetime;
 
+    let invoice;
 
     if (!update) {
-        if (paymentMethod === 'CARD') {
-            // card handling logic here
-            // Take grandTotal from card
-        } else {
-            await Invoice.create({
-                totalAmount,
-                balanceDue: -1 * userBalance,
-                discountAmount,
-                grandTotal,
-                driverFeeTotal,
-                pickupAddition,
-                passengerFeeTotal,
-                dueDate,
-                paymentMethod,
-                PassengerId: passengerId,
-            }, { transaction: t });
-        }
+        invoice = await Invoice.create({
+            totalAmount,
+            balanceDue: -1 * userBalance,
+            discountAmount,
+            grandTotal,
+            driverFeeTotal,
+            pickupAddition,
+            passengerFeeTotal,
+            dueDate,
+            paymentMethod,
+            PassengerId: passengerId,
+        }, { transaction: t });
     } else {
-        if (paymentMethod === 'CARD') {
-
-        } else {
-            await Invoice.update({
-                totalAmount,
-                balanceDue: -1 * userBalance,
-                discountAmount,
-                grandTotal,
-                pickupAddition,
-                driverFeeTotal,
-                passengerFeeTotal,
-                dueDate,
-            }, {
-                where: {
-                    PassengerId: passengerId
-                },
-                transaction: t
-            })
-        }
+        invoice = await Invoice.update({
+            totalAmount,
+            balanceDue: -1 * userBalance,
+            discountAmount,
+            grandTotal,
+            pickupAddition,
+            driverFeeTotal,
+            passengerFeeTotal,
+            dueDate,
+        }, {
+            where: {
+                PassengerId: passengerId
+            },
+            transaction: t
+        })
     }
+
+    return invoice;
 }
 
 async function cancelPassengerInvoice(passenger, ride, driver, t) {
@@ -141,9 +135,9 @@ async function checkOutRide(ride, passengers, t) {
 
             driver.balance = driverBalance;
         }
-        
+
         invoice.paymentStatus = 'PAID';
-        await invoice.save({transaction: t});
+        await invoice.save({ transaction: t });
 
         // removing due balance from other rides
 
@@ -187,7 +181,7 @@ async function cancelRideInvoices(ride, t) {
 
         // charge driver to re-allocate passengers
         let deduction = 0;
-        if(passengers.length > 0) {
+        if (passengers.length > 0) {
             deduction = -100;
         }
         driver.balance = (1 * driver.balance) + (1 * deduction);
