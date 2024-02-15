@@ -8,8 +8,8 @@ async function createInvoice(uid, seats, paymentMethod, ride, voucher, passenger
     });
 
     const totalAmount = (seats * ride.pricePerSeat);
-    const driverFeeTotal = ride.driverFee * totalAmount;
-    const passengerFeeTotal = PASSENGER_FEE * totalAmount;
+    const driverFeeTotal = Math.floor(ride.driverFee * totalAmount);
+    const passengerFeeTotal = Math.floor(PASSENGER_FEE * totalAmount);
 
     const totalServiceProvided = totalAmount + passengerFeeTotal + pickupAddition;
 
@@ -19,6 +19,7 @@ async function createInvoice(uid, seats, paymentMethod, ride, voucher, passenger
     if (voucher) {
         const discount = voucher.type === 'PERCENTAGE' ? ((voucher.value / 100) * totalAmount) : voucher.value
         discountAmount = Math.min(voucher.maxValue, discount);
+        discountAmount = Math.floor(discountAmount);
         discountAmount = Math.min(discountAmount, totalServiceProvided);
     }
 
