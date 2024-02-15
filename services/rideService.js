@@ -836,6 +836,8 @@ async function getPassengerDetails({ tripId, passenger }) {
 }
 
 async function validateBooking(passengerId, reference) {
+    const t = await sequelize.transaction();
+
     try {
         const passenger = await Passenger.findByPk(passengerId);
         const invoice = await Invoice.findOne({
@@ -848,10 +850,10 @@ async function validateBooking(passengerId, reference) {
         invoice.status = 'PAID';
         invoice.reference = reference;
 
-        const t = await sequelize.transaction();
         await Promise.all([passenger.save({ transaction: t }), invoice.save({ transaction: t })])
         await t.commit();
     } catch (err) {
+        console.log(err);
         // TODO: Properly handle refund
         const body = {
             "apiOperation": "REFUND",
