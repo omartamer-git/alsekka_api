@@ -42,7 +42,7 @@ async function accountAvailable(phone, email) {
 async function createUser({ fname, lname, phone, email, password, gender }) {
     if (!VERIFICATIONS_DISABLED) {
         if (!(phone in otpCodes) || !otpCodes[phone].verified) {
-            throw new BadRequestError("Phone number is not verified");
+            throw new BadRequestError("Phone number is not verified, please try again", "لم يتم التحقق من رقم الهاتف. حاول مرة اخرى");
         }
     }
     fname = capitalizeFirstLetter(fname);
@@ -78,7 +78,7 @@ async function createUser({ fname, lname, phone, email, password, gender }) {
 async function deleteUser(id, { password }) {
     const user = await User.scope('auth').findByPk(id);
     const result = await bcrypt.compare(password, user.password);
-    if (!result) throw new UnauthorizedError("Invalid username and/or password");
+    if (!result) throw new UnauthorizedError("Incorrect phone and/or password", "رقم الهاتف أو كلمة المرور غير صحيحة. حاول مرة اخرى.");
     user.deleted = true;
     user.deletedSince = new Date();
     await user.save();
@@ -98,7 +98,7 @@ async function loginUser({ phone, email, password, deviceToken }) {
     let userAccount;
     userAccount = await User.scope('auth').findOne({ where: { phone: phone } });
     if (!userAccount) {
-        throw new UnauthorizedError("Invalid phone and/or password. Please try again.");
+        throw new UnauthorizedError("Incorrect phone and/or password", "رقم الهاتف أو كلمة المرور غير صحيحة. حاول مرة اخرى.");
     }
 
     if (userAccount.deleted) {
@@ -107,7 +107,7 @@ async function loginUser({ phone, email, password, deviceToken }) {
         fourteenDaysAgo.setDate(currentDate.getDate() - 14);
 
         if (userAccount.deletedSince <= fourteenDaysAgo) {
-            throw new UnauthorizedError("Invalid phone and/or password. Please try again.");
+            throw new UnauthorizedError("Incorrect phone and/or password", "رقم الهاتف أو كلمة المرور غير صحيحة. حاول مرة اخرى.");
         }
     }
 
@@ -147,7 +147,7 @@ async function loginUser({ phone, email, password, deviceToken }) {
             cities: CITIES
         };
     } else {
-        throw new UnauthorizedError("Invalid phone and/or password. Please try again.");
+        throw new UnauthorizedError("Incorrect phone and/or password", "رقم الهاتف أو كلمة المرور غير صحيحة. حاول مرة اخرى.");
     }
 }
 
@@ -186,7 +186,6 @@ async function refreshToken({ refreshToken }) {
         // Return the new access token
         return { accessToken };
     } catch (err) {
-        console.error(err);
         throw new UnauthorizedError('Invalid token');
     }
 }
@@ -227,7 +226,7 @@ async function getOtp(phone) {
         if (data.Code == "5500") {
             return { uri: data.Clickable, token: jwtToken };
         } else {
-            throw new InternalServerError("An unknown error occurred");
+            throw new InternalServerError();
         }
     } catch (err) { console.log(err) }
 }
@@ -238,7 +237,7 @@ async function verifyOtp({ phone, otp }) {
 
     const actualOtp = otpCodes[uid];
     if (!actualOtp) {
-        throw new UnauthorizedError("This verification code is no longer valid, please try again");
+        throw new UnauthorizedError("This verification code is no longer valid, please try again", "رمز التحقق هذا لم يعد صالحا، يرجى المحاولة مرة أخرى");
     }
 
     if (actualOtp.otp == otp) {
@@ -302,7 +301,7 @@ async function submitLicense({ uid, frontSide, backSide }) {
         return license;
     } catch (err) {
         console.error(err);
-        throw new NotFoundError("User not found");
+        throw new NotFoundError();
     }
 
 
@@ -338,7 +337,7 @@ async function getWallet({ uid }) {
     }
 
     if (walletDetails === null) {
-        throw new NotFoundError("User not found");
+        throw new NotFoundError();
     }
 
     return cards;
@@ -380,7 +379,7 @@ async function addBank({ uid, fullName, bankName, accNumber, swiftCode }) {
         return bank;
     } catch (err) {
         console.error(err);
-        throw new NotFoundError("User not found");
+        throw new NotFoundError();
     }
 }
 
@@ -403,7 +402,7 @@ async function addMobileWallet({ uid, phone }) {
         });
         return wallet;
     } catch (err) {
-        throw new NotFoundError("User not found");
+        throw new NotFoundError();
     }
 }
 
@@ -420,11 +419,11 @@ async function getMobileWallets({ uid }) {
 
 async function addNewCard({ uid, cardNumber, cardExpiry, cardholderName }) {
     if (cardNumber.length !== 16 || !checkCardNumber(cardNumber)) {
-        throw new NotAcceptableError("Invalid card number");
+        throw new NotAcceptableError("Invalid card number", "رقم البطاقة غير صالحة");
     }
     const expiryRegex = /^(0[1-9]|1[0-2])\/?([0-9]{2})$/;
     if (!expiryRegex.test(cardExpiry)) {
-        throw new NotAcceptableError("Invalid expiry date. Please enter in the form MM/YY");
+        throw new NotAcceptableError("Invalid expiry date. Please enter in the form MM/YY", "تاريخ انتهاء الصلاحية غير صالح. الرجاء إدخال النموذج MM/YY");
     }
     try {
         const card = await Card.create({
@@ -435,7 +434,7 @@ async function addNewCard({ uid, cardNumber, cardExpiry, cardholderName }) {
         });
         return card;
     } catch (err) {
-        throw new NotFoundError("User not found");
+        throw new NotFoundError();
     }
 }
 
@@ -447,7 +446,7 @@ async function updateName({ uid, firstName, lastName }) {
         await user.save();
         return user;
     } catch (err) {
-        throw new NotFoundError("User not found");
+        throw new NotFoundError();
     }
 
 }
@@ -456,7 +455,7 @@ async function updateEmail({ uid, email }) {
     email = email.toLowerCase();
     const emailAvailable = await accountAvailable(null, email);
     if (!emailAvailable[1]) {
-        throw new ConflictError("Email already in use");
+        throw new ConflictError("Email already in use", "البريد الإلكتروني قيد الاستخدام من قبل حساب آخر");
     }
     try {
         const user = await User.findByPk(uid);
@@ -464,14 +463,14 @@ async function updateEmail({ uid, email }) {
         await user.save();
         return user;
     } catch (err) {
-        throw new NotFoundError("User not found");
+        throw new NotFoundError();
     }
 }
 
 async function updatePhone({ uid, phone }) {
     const phoneAvailable = await accountAvailable(phone, null);
     if (!phoneAvailable[0]) {
-        throw new ConflictError("Phone number already in use");
+        throw new ConflictError("Phone number already in use", "رقم الهاتف قيد الاستخدام من قبل حساب آخر");
     }
     try {
         const user = await User.findByPk(uid);
@@ -479,7 +478,7 @@ async function updatePhone({ uid, phone }) {
         await user.save();
         return user;
     } catch (err) {
-        throw new NotFoundError("User not found");
+        throw new NotFoundError();
     }
 }
 
@@ -500,7 +499,7 @@ async function updatePassword(phone, newPassword) {
             throw new InternalServerError();
         }
     } catch (err) {
-        throw new NotFoundError("User not found");
+        throw new NotFoundError();
     }
 }
 

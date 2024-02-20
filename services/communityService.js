@@ -12,7 +12,7 @@ async function createCommunity({ name, description, private, joinQuestion }, pic
     });
 
     if (duplicateCommunity !== null) {
-        throw new ConflictError("Community with this name already exists.");
+        throw new ConflictError("Community with this name already exists", "المجتمع بهذا الاسم موجود مسبقاً");
         return;
     }
 
@@ -164,7 +164,7 @@ async function getCommunityDetails({ communityId, uid }) {
     });
 
     if (communityDetails === null) {
-        throw new NotFoundError("Community not found");
+        throw new NotFoundError("Community not found", "لم يتم العثور على هذا المجتمع");
     }
 
     return communityDetails;

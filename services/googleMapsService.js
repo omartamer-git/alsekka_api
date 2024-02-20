@@ -146,7 +146,7 @@ async function getLocationFromPlaceId(place_id) {
 async function getOptimalPath({ tripId }, uid) {
     const ride = await Ride.findByPk(tripId);
     if (!ride) {
-        throw new NotFoundError("Ride not found");
+        throw new NotFoundError("Ride not found", "لم يتم العثور على هذه الرحلة");
     }
 
     if (ride.DriverId !== uid) {

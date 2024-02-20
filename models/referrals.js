@@ -1,4 +1,5 @@
 const Sequelize = require('sequelize');
+const { BadRequestError } = require('../errors/Errors');
 
 module.exports = function (sequelize, DataTypes) {
   return sequelize.define('Referral', {
@@ -26,7 +27,7 @@ module.exports = function (sequelize, DataTypes) {
       validate: {
         isGreaterThanReferrer(value) {
           if (value <= this.ReferrerID) {
-            throw new Error('RefereeID must be greater than ReferrerID');
+            throw new BadRequestError('Can not refer an account older than yours', 'لا يمكن إحالة حساب أقدم من حسابك.');
           }
         },
       },
