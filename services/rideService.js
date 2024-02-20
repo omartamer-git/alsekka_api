@@ -1,6 +1,6 @@
 const { Sequelize, Op, literal } = require('sequelize');
 const { Ride, Passenger, User, sequelize, License, Car, Voucher, Invoice } = require('../models');
-const { NotFoundError, InternalServerError, BadRequestError, UnauthorizedError, GoneError } = require("../errors/Errors");
+const { NotFoundError, InternalServerError, BadRequestError, UnauthorizedError, GoneError, ForbiddenError } = require("../errors/Errors");
 const { DRIVER_FEE, PASSENGER_FEE } = require('../config/seaats.config');
 const { SNS, SNSClient, CreateTopicCommand } = require("@aws-sdk/client-sns");
 const { getDirections, geocode, getLocationFromPlaceId } = require('./googleMapsService');
@@ -600,6 +600,28 @@ async function getDriverLocation({ rideId }, userId) {
     }
 }
 
+async function forceCancelPassenger(passengerId, userId, invoiceId) {
+    const passengerPromise = Passenger.findByPk(passengerId);
+    const invoicePromise = Invoice.findByPk(invoiceId);
+
+    const [passenger, invoice] = await Promise.all([passengerPromise, invoicePromise]);
+
+    if(passenger.UserId === userId && invoiceId.PassengerId !== passengerId) {
+        throw new ForbiddenError();
+    }
+
+    if(passenger.status !== "AWAITING_PAYMENT") {
+        throw new BadRequestError();
+    }
+
+    passenger.status = "PAYMENT_FAILED";
+    invoice.status = "REVERSED";
+
+    await Promise.all([passenger.save(), invoice.save()]);
+
+    return true;
+}
+
 async function cancelPassenger({ tripId }, userId) {
     const passenger = await Passenger.findOne({
         where: {
@@ -880,6 +902,7 @@ module.exports = {
     getTripDetails,
     cancelRide,
     cancelPassenger,
+    forceCancelPassenger,
     startRide,
     checkIn,
     checkOut,
