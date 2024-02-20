@@ -606,7 +606,7 @@ async function forceCancelPassenger(passengerId, userId, invoiceId) {
 
     const [passenger, invoice] = await Promise.all([passengerPromise, invoicePromise]);
 
-    if(passenger.UserId === userId && invoiceId.PassengerId !== passengerId) {
+    if(passenger.UserId === userId && invoice.PassengerId !== passengerId) {
         throw new ForbiddenError();
     }
 
@@ -614,8 +614,9 @@ async function forceCancelPassenger(passengerId, userId, invoiceId) {
         throw new BadRequestError();
     }
 
-    passenger.status = "PAYMENT_FAILED";
-    invoice.status = "REVERSED";
+    // TODO: Add reason
+    passenger.status = "CANCELLED";
+    invoice.paymentStatus = "REVERSED";
 
     await Promise.all([passenger.save(), invoice.save()]);
 
