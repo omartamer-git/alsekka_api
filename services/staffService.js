@@ -7,14 +7,14 @@ async function staffLogin({ username, password }) {
     let userAccount;
     userAccount = await Staff.scope('auth').findOne({ where: { username: username } });
     if (!userAccount) {
-        throw new UnauthorizedError("Invalid username and/or password. Please try again.");
+        throw new UnauthorizedError("Invalid username and/or password. Please try again.", "اسم مستخدم أو كلمة مرور غير صحيحة. حاول مرة اخرى.");
     }
 
     const result = await bcrypt.compare(password, userAccount.password);
     if (result) {
         return userAccount;
     } else {
-        throw new UnauthorizedError("Invalid username and/or password. Please try again.");
+        throw new UnauthorizedError("Invalid username and/or password. Please try again.", "اسم مستخدم أو كلمة مرور غير صحيحة. حاول مرة اخرى.");
     }
 };
 

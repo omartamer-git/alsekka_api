@@ -1,4 +1,5 @@
 const Sequelize = require('sequelize');
+const { BadRequestError } = require('../errors/Errors');
 module.exports = function(sequelize, DataTypes) {
   return sequelize.define('Card', {
     id: {
@@ -24,7 +25,7 @@ module.exports = function(sequelize, DataTypes) {
       validate: {
         isCardExpiry: function(value) {
           if (!/^([01]\d)\/(\d{2})$/.test(value)) {
-            throw new Error('Invalid card expiry format. Please use MM/YY format.');
+            throw new BadRequestError('Invalid card expiry format. Please use MM/YY format.', 'تنسيق انتهاء صلاحية البطاقة غير صالح. الرجاء استخدام تنسيق MM/YY.');
           }
         },
       }

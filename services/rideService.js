@@ -100,7 +100,7 @@ async function getRideDetails(uid, { rideId }) {
         });
 
     if (ride === null) {
-        throw new NotFoundError("Ride not found");
+        throw new NotFoundError("Ride not found", "لم يتم العثور على هذه الرحلة");
     }
 
     const rideJSON = ride.toJSON();
@@ -133,7 +133,7 @@ async function verifyVoucher({ code }, uid) {
     });
 
     if (voucher === null) {
-        throw new NotFoundError("Voucher code does not exist or may have expired");
+        throw new NotFoundError("Voucher code does not exist or may have expired", "رمز القسيمة غير موجود أو قد تكون انتهت صلاحيته");
     }
 
     if (voucher.maxUses > voucher.currentUses) {
@@ -146,7 +146,7 @@ async function verifyVoucher({ code }, uid) {
             });
 
             if (passengerQuery !== null) {
-                throw new GoneError("This voucher code can only be used once");
+                throw new GoneError("This voucher code can only be used once", "يمكن استخدام رمز القسيمة هذا مرة واحدة فقط");
             }
         }
 
@@ -158,7 +158,7 @@ async function verifyVoucher({ code }, uid) {
             maxValue: voucher.maxValue
         };
     } else {
-        throw new GoneError("Voucher is no longer valid or has expired");
+        throw new GoneError("Voucher is no longer valid or has expired", "رمز القسيمة غير موجود أو قد تكون انتهت صلاحيته");
     }
 }
 
@@ -180,11 +180,11 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
         const ride = await Ride.findByPk(rideId);
 
         if (passengerCount >= ride.seatsAvailable) {
-            throw new GoneError("Ride is full!");
+            throw new GoneError("Ride is full!", "الرحلة ممتلئة");
         }
 
         if (ride.status != "SCHEDULED" || new Date(ride.datetime) < new Date()) {
-            throw new GoneError("Ride no longer available.");
+            throw new GoneError("Ride no longer available", "الرحلة لم تعد متوفرة");
         }
 
         const prevPassenger = passengers.filter(p => p.UserId === uid);
@@ -208,11 +208,11 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
                     });
 
                     if (passengerQuery !== null) {
-                        throw new GoneError("This voucher code can only be used once");
+                        throw new GoneError("This voucher code can only be used once", "يمكن استخدام رمز القسيمة هذا مرة واحدة فقط");
                     }
                 }
             } else {
-                throw new GoneError("Voucher is no longer valid or has expired");
+                throw new GoneError("Voucher is no longer valid or has expired", "رمز القسيمة غير موجود أو ربما انتهت صلاحيته");
             }
         }
 
@@ -285,7 +285,7 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
         console.error(err);
 
         await t.rollback();
-        throw new NotFoundError("Ride not found");
+        throw new NotFoundError("Ride not found", "لم يتم العثور على الرحلة");
     }
 
 }
@@ -507,7 +507,7 @@ async function getTripDetails({ uid, tripId }) {
     });
 
     if (tripDetails === null) {
-        throw new NotFoundError("Ride not found");
+        throw new NotFoundError("Ride not found", "لم يتم العثور على الرحلة");
     }
 
     if (tripDetails.dataValues.isDriver === 1) {
@@ -676,7 +676,7 @@ async function cancelPassenger({ tripId }, userId) {
 async function startRide({ tripId }) {
     const ride = await Ride.findByPk(tripId);
     if (ride === null) {
-        throw new NotFoundError("Ride not found");
+        throw new NotFoundError("Ride not found", "لم يتم العثور على الرحلة");
     }
     if (ride.status === "SCHEDULED") {
         const currDate = new Date().getTime();
@@ -731,7 +731,7 @@ async function checkIn({ tripId, passenger }) {
         }
     });
     if (passengerDetails === null) {
-        throw new NotFoundError("Ride not found");
+        throw new NotFoundError("Ride not found", "لم يتم العثور على الرحلة");
     }
     passengerDetails.status = "ENROUTE";
     passengerDetails.save();
@@ -819,7 +819,7 @@ async function noShow({ tripId, passenger }) {
         }
     });
     if (passengerDetails === null) {
-        throw new NotFoundError("Ride/Passenger not found");
+        throw new NotFoundError("Ride/Passenger not found", "لم يتم العثور على الرحلة");
     }
     passengerDetails.status = "NOSHOW";
     passengerDetails.save();
@@ -846,7 +846,7 @@ async function getPassengerDetails({ tripId, passenger }) {
     });
 
     if (passengerDetails === null) {
-        throw new NotFoundError("Ride/Passenger not found");
+        throw new NotFoundError("Ride/Passenger not found", "لم يتم العثور على الرحلة");
     }
 
     let amountDue = 0;

@@ -133,7 +133,7 @@ app.get("/allowedemails", async (req, res, next) => {
 
 app.get("/otpcallback", async (req, res, next) => {
     if (req.query.Secret !== "13053a5e941fd14089aa0fe0138fddbedefcce22168e1d01f2da199ad09e8d38") {
-        return next(new InternalServerError("Invalid Request"));
+        return next(new InternalServerError());
     }
 
     userService.verifyUser(req.query.Mobile.substring(1));
@@ -218,6 +218,7 @@ app.use((err, req, res, next) => {
     res.status(err.status || 500).json({
         error: {
             message: err.message,
+            message_ar: err.message_ar || "حدث خطأ غير متوقع"
         },
     });
 });
