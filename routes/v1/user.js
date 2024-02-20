@@ -147,7 +147,7 @@ router.patch("/verifysecurity", async (req, res, next) => {
                 res.json({ token: securityToken });
             });
         } else {
-            next(new UnauthorizedError("Invalid verification code. Please try again."));
+            next(new UnauthorizedError("Invalid verification code. Please try again", "رمز التحقق غير صالح. حاول مرة اخرى."));
         }
     }).catch(next);
 });

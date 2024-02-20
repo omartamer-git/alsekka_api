@@ -178,7 +178,7 @@ router.get("/cancelride", authenticateToken, async (req, res, next) => {
 
     rideService.cancelRide({ tripId, ...req.query }).then(cancelStatus => {
         if (!cancelStatus) {
-            return next(new NotAcceptableError("Ride was never cancelled"))
+            return next(new NotAcceptableError())
         }
         return res.json({ success: 1 });
     }).catch(next);
@@ -205,7 +205,7 @@ router.get("/startride", authenticateToken, async (req, res, next) => {
 
     rideService.startRide({ tripId, ...req.query }).then(cancelStatus => {
         if (!cancelStatus) {
-            return next(new NotAcceptableError("Could not start ride."))
+            return next(new NotAcceptableError("Could not start ride", "تعذر بدء الرحلة"))
         }
         return res.json({ success: 1 });
     }).catch(next);
@@ -296,7 +296,7 @@ router.get("/verifyvoucher", authenticateToken, async (req, res, next) => {
     const { code } = req.query;
 
     if (!code) {
-        throw new BadRequestError("Voucher code is required");
+        throw new BadRequestError("Voucher code is required", "رمز القسيمة مطلوب");
     }
 
     const uid = req.user.userId;
