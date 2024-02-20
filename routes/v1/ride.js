@@ -126,7 +126,7 @@ router.get("/pastrides", authenticateToken, async (req, res, next) => {
         .catch(next);
 });
 
-route.post("/forcecancel", authenticateToken, async (req, res, next) => {
+router.post("/forcecancel", authenticateToken, async (req, res, next) => {
     const uid = req.user.userId;
     const { passengerId, invoiceId } = req.body;
 
