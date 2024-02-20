@@ -108,7 +108,10 @@ async function getRideDetails(uid, { rideId }) {
     const prevPassenger = await Passenger.findOne({
         where: {
             RideId: rideId,
-            UserId: uid
+            UserId: uid,
+            status: {
+                [Op.ne]: 'CANCELLED'
+            }
         }
     });
 
