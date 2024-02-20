@@ -1,6 +1,6 @@
 const { Sequelize, Op, literal } = require('sequelize');
 const { Ride, Passenger, User, sequelize, License, Car, Voucher, Invoice } = require('../models');
-const { NotFoundError, InternalServerError, BadRequestError, UnauthorizedError, GoneError } = require("../errors/Errors");
+const { NotFoundError, InternalServerError, BadRequestError, UnauthorizedError, GoneError, ForbiddenError } = require("../errors/Errors");
 const { DRIVER_FEE, PASSENGER_FEE } = require('../config/seaats.config');
 const { SNS, SNSClient, CreateTopicCommand } = require("@aws-sdk/client-sns");
 const { getDirections, geocode, getLocationFromPlaceId } = require('./googleMapsService');
@@ -12,6 +12,8 @@ const { sendNotificationToUser, sendNotificationToRide } = require('./appService
 const { createInvoice, cancelPassengerInvoice, checkOutRide, cancelRideInvoices } = require('./paymentsService');
 const { checkUserInCommunity } = require('./communityService');
 const redis = require('ioredis');
+const { generateKashierOrderHash } = require('./kashierService');
+const { default: axios } = require('axios');
 const redisClient = new redis();
 const sns = new SNSClient({ region: 'eu-central-1' })
 
@@ -106,7 +108,10 @@ async function getRideDetails(uid, { rideId }) {
     const prevPassenger = await Passenger.findOne({
         where: {
             RideId: rideId,
-            UserId: uid
+            UserId: uid,
+            status: {
+                [Op.ne]: 'CANCELLED'
+            }
         }
     });
 
@@ -164,11 +169,11 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
         const passengers = await Passenger.findAll({
             where: {
                 RideId: rideId,
-                status: "CONFIRMED"
+                status: {
+                    [Op.or]: ["CONFIRMED", "AWAITING_PAYMENT"]
+                }
             }
         });
-
-
 
         const passengerCount = passengers.length;
 
@@ -222,13 +227,14 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
 
         let newPassenger;
         let oldPassenger;
+        let invoice;
 
         if (prevPassenger.length === 0) {
             newPassenger = await Passenger.create({
                 UserId: uid,
                 RideId: rideId,
                 paymentMethod: paymentMethod,
-                status: 'CONFIRMED',
+                status: paymentMethod === 'CASH' ? 'CONFIRMED' : 'AWAITING_PAYMENT',
                 seats: seats || 1,
                 CardId: cardId || null,
                 VoucherId: voucherId || null,
@@ -237,7 +243,7 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
                 pickupLocationLng
             }, { transaction: t });
 
-            await createInvoice(uid, seats, paymentMethod, ride, voucher, newPassenger.id, pickupAddition, t);
+            invoice = await createInvoice(uid, seats, paymentMethod, ride, voucher, newPassenger.id, pickupAddition, t);
         } else {
             oldPassenger = prevPassenger[0];
             if (oldPassenger.seats > seats) {
@@ -254,9 +260,13 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
                 oldPassenger.pickupLocationLng = pickupLocationLng;
             }
 
+            if (oldPassenger.paymentMethod !== 'CASH') {
+                oldPassenger.status = 'AWAITING_PAYMENT';
+            }
+
             await oldPassenger.save({ transaction: t });
 
-            await createInvoice(uid, seats, paymentMethod, ride, voucher, oldPassenger.id, pickupAddition, t, true);
+            invoice = await createInvoice(uid, seats, paymentMethod, ride, voucher, oldPassenger.id, pickupAddition, t, true);
         }
 
         await t.commit();
@@ -265,11 +275,16 @@ async function bookRide({ uid, rideId, paymentMethod, cardId, seats, voucherId, 
             console.log(e);
         });
 
-
-        return newPassenger ? newPassenger : oldPassenger;
+        let passengerJSON = newPassenger ? newPassenger.toJSON() : oldPassenger.toJSON();
+        passengerJSON.hash = generateKashierOrderHash(passengerJSON.id, uid, invoice.grandTotal);
+        return {
+            passenger: passengerJSON,
+            invoice: invoice.toJSON()
+        }
     } catch (err) {
-        await t.rollback();
         console.error(err);
+
+        await t.rollback();
         throw new NotFoundError("Ride not found");
     }
 
@@ -517,7 +532,8 @@ async function getTripDetails({ uid, tripId }) {
             where: {
                 UserId: uid,
                 RideId: tripId
-            }
+            },
+            order: Sequelize.literal(`CASE WHEN status != 'CANCELLED' THEN 1 ELSE 2 END, createdAt DESC`)
         });
 
         tripDetails.setDataValue('passenger', passengerDetails);
@@ -586,6 +602,29 @@ async function getDriverLocation({ rideId }, userId) {
     } else {
         return { "stop": 1 };
     }
+}
+
+async function forceCancelPassenger(passengerId, userId, invoiceId) {
+    const passengerPromise = Passenger.findByPk(passengerId);
+    const invoicePromise = Invoice.findByPk(invoiceId);
+
+    const [passenger, invoice] = await Promise.all([passengerPromise, invoicePromise]);
+
+    if (passenger.UserId === userId && invoice.PassengerId !== passengerId) {
+        throw new ForbiddenError();
+    }
+
+    if (passenger.status !== "AWAITING_PAYMENT") {
+        throw new BadRequestError();
+    }
+
+    // TODO: Add reason
+    passenger.status = "CANCELLED";
+    invoice.paymentStatus = "REVERSED";
+
+    await Promise.all([passenger.save(), invoice.save()]);
+
+    return true;
 }
 
 async function cancelPassenger({ tripId }, userId) {
@@ -721,10 +760,10 @@ async function checkOut({ tripId, uid }) {
                 model: Invoice
             }]
         });
-    
+
         // First, gather the UserIds of all passengers
         const passengerIds = passengers.map(passenger => passenger.id);
-    
+
         // Update all passengers' status in a bulk update
         await Passenger.update({ status: 'ARRIVED' }, {
             where: {
@@ -732,18 +771,18 @@ async function checkOut({ tripId, uid }) {
             },
             transaction: t,
         });
-    
+
         await checkOutRide(ride, passengers, t);
-    
+
         ride.status = 'COMPLETED';
-    
+
         await ride.save({ transaction: t });
-    
+
         await t.commit();
-        
+
         redisClient.set(`driverLocation:${ride.DriverId}`, JSON.stringify({ "stop": 1 }), 'EX', 60 * 60);
-        sendNotificationToRide("Farewell!", `Thank you for using Seaats! Feel free to leave a rating for this ride within the app!`, null, ride.topicArn).catch(e => console.log(e));    
-    } catch(e) {
+        sendNotificationToRide("Farewell!", `Thank you for using Seaats! Feel free to leave a rating for this ride within the app!`, null, ride.topicArn).catch(e => console.log(e));
+    } catch (e) {
         await t.rollback();
         throw new InternalServerError();
     }
@@ -823,18 +862,52 @@ async function getPassengerDetails({ tripId, passenger }) {
     };
 }
 
+async function validateBooking(passengerId, reference) {
+    const t = await sequelize.transaction();
+
+    try {
+        const passenger = await Passenger.findByPk(passengerId);
+        const invoice = await Invoice.findOne({
+            where: {
+                PassengerId: passengerId
+            }
+        });
+
+        passenger.status = 'CONFIRMED';
+        invoice.paymentStatus = 'PAID';
+        invoice.reference = reference;
+
+        await Promise.all([passenger.save({ transaction: t }), invoice.save({ transaction: t })])
+        await t.commit();
+    } catch (err) {
+        console.log(err);
+        // TODO: Properly handle refund
+        const body = {
+            "apiOperation": "REFUND",
+            "reason": "Customer booking failed to process due to server error",
+            "transaction": {
+                "amount": 3,
+            }
+        }
+        axios.put(`${process.env.KASHIER_REFUNDURL}/${reference.kashierOrderId}`, body);
+        await t.rollback();
+    }
+}
+
 module.exports = {
     getNearbyRides,
     getRideDetails,
     bookRide,
     postRide,
     getUpcomingRides,
+    validateBooking,
     getSuggestedPrice,
     getPastRides,
     getDriverRides,
     getTripDetails,
     cancelRide,
     cancelPassenger,
+    forceCancelPassenger,
     startRide,
     checkIn,
     checkOut,

@@ -41,16 +41,16 @@ router.get("/ridedetails", authenticateToken, async (req, res, next) => {
     ).catch(next);
 });
 
-router.get("/suggestedprice", authenticateToken, async(req, res, next) => {
-    const {fromLatitude, fromLongitude, toLatitude, toLongitude} = req.query;
+router.get("/suggestedprice", authenticateToken, async (req, res, next) => {
+    const { fromLatitude, fromLongitude, toLatitude, toLongitude } = req.query;
 
-    if(!fromLatitude || !fromLongitude || !toLatitude || !toLongitude) {
+    if (!fromLatitude || !fromLongitude || !toLatitude || !toLongitude) {
         return next(new BadRequestError());
     }
 
     const suggestedPrice = rideService.getSuggestedPrice(req.query);
 
-    res.json({suggestedPrice: suggestedPrice});
+    res.json({ suggestedPrice: suggestedPrice });
 });
 
 router.get("/bookride", authenticateToken, async (req, res, next) => {
@@ -61,13 +61,13 @@ router.get("/bookride", authenticateToken, async (req, res, next) => {
         return next(new BadRequestError());
     }
 
-    if (paymentMethod === 'CARD' && !cardId) {
-        return next(new BadRequestError());
-    }
+    // if (paymentMethod === 'CARD' && !cardId) {
+    //     return next(new BadRequestError());
+    // }
 
     rideService.bookRide({ uid, rideId, paymentMethod, seats, cardId, voucherId, pickupLocationLat, pickupLocationLng }).then(
         newPassenger => {
-            return res.json({ id: newPassenger.id })
+            return res.json(newPassenger)
         }
     ).catch(next);
 });
@@ -125,6 +125,26 @@ router.get("/pastrides", authenticateToken, async (req, res, next) => {
         .then(result => res.json(result))
         .catch(next);
 });
+
+router.post("/forcecancel", authenticateToken, async (req, res, next) => {
+    const uid = req.user.userId;
+    const { passengerId, invoiceId } = req.body;
+
+    if (!passengerId || !invoiceId) {
+        return next(new BadRequestError());
+    }
+
+    rideService.forceCancelPassenger(passengerId, uid, invoiceId).then((result) => {
+        res.json({
+            success: result
+        })
+    }).catch((e) => {
+        console.log(e);
+        res.json({
+            success: false
+        })
+    })
+})
 
 router.get("/driverrides", authenticateToken, async (req, res, next) => {
     const uid = req.user.userId;

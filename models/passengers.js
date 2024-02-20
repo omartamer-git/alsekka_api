@@ -12,7 +12,7 @@ module.exports = function(sequelize, DataTypes) {
       allowNull: false
     },
     status: {
-      type: DataTypes.ENUM('CONFIRMED', 'REJECTED', 'ENROUTE', 'ARRIVED', 'CANCELLED', 'DRIVER_CANCELLED', 'NOSHOW'),
+      type: DataTypes.ENUM('AWAITING_PAYMENT', 'CONFIRMED', 'REJECTED', 'ENROUTE', 'ARRIVED', 'CANCELLED', 'DRIVER_CANCELLED', 'NOSHOW', 'PAYMENT_FAILED'),
       allowNull: false,
       defaultValue: 'CONFIRMED'
     },
