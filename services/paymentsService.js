@@ -198,7 +198,8 @@ async function cancelRideInvoices(ride, t) {
 
     for (const passenger of passengers) {
         passenger.Invoice.paymentStatus = "REVERSED";
-        passenger.status = "DRIVER_CANCELLED";
+        // TODO: Add cancellation reason
+        passenger.status = "CANCELLED";
 
         if (passenger.Invoice.paymentMethod === "CARD") {
             passenger.balance += passenger.Invoice.totalAmount;
