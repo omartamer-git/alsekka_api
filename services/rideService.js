@@ -529,7 +529,8 @@ async function getTripDetails({ uid, tripId }) {
             where: {
                 UserId: uid,
                 RideId: tripId
-            }
+            },
+            order: Sequelize.literal(`CASE WHEN status != 'CANCELLED' THEN 1 ELSE 2 END, createdAt DESC`)
         });
 
         tripDetails.setDataValue('passenger', passengerDetails);
@@ -606,11 +607,11 @@ async function forceCancelPassenger(passengerId, userId, invoiceId) {
 
     const [passenger, invoice] = await Promise.all([passengerPromise, invoicePromise]);
 
-    if(passenger.UserId === userId && invoice.PassengerId !== passengerId) {
+    if (passenger.UserId === userId && invoice.PassengerId !== passengerId) {
         throw new ForbiddenError();
     }
 
-    if(passenger.status !== "AWAITING_PAYMENT") {
+    if (passenger.status !== "AWAITING_PAYMENT") {
         throw new BadRequestError();
     }
 
