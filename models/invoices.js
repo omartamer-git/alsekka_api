@@ -51,8 +51,11 @@ module.exports = function (sequelize, DataTypes) {
         },
         paymentMethod: {
             type: DataTypes.ENUM('CASH', 'CARD')
+        },
+        reference: {
+            type: DataTypes.TEXT,
+            allowNull: true
         }
-        
     }, {
         sequelize,
         timestamps: true,

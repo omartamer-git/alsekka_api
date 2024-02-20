@@ -8,57 +8,59 @@ async function createInvoice(uid, seats, paymentMethod, ride, voucher, passenger
     });
 
     const totalAmount = (seats * ride.pricePerSeat);
-    const driverFeeTotal = ride.driverFee * totalAmount;
-    const passengerFeeTotal = PASSENGER_FEE * totalAmount;
-    const balanceDue = -1 * user.balance;
+    const driverFeeTotal = Math.floor(ride.driverFee * totalAmount);
+    const passengerFeeTotal = Math.floor(PASSENGER_FEE * totalAmount);
+
+    const totalServiceProvided = totalAmount + passengerFeeTotal + pickupAddition;
+
+
+    const userBalance = user.balance;
     let discountAmount = 0;
     if (voucher) {
         const discount = voucher.type === 'PERCENTAGE' ? ((voucher.value / 100) * totalAmount) : voucher.value
         discountAmount = Math.min(voucher.maxValue, discount);
+        discountAmount = Math.floor(discountAmount);
+        discountAmount = Math.min(discountAmount, totalServiceProvided);
     }
-    const grandTotal = totalAmount + pickupAddition + passengerFeeTotal + balanceDue - discountAmount;
+
+    const grandTotal = totalServiceProvided - discountAmount - userBalance;
+    // const grandTotal = totalAmount + pickupAddition + passengerFeeTotal + balanceDue - discountAmount;
     const dueDate = ride.datetime;
 
+    let invoice;
 
     if (!update) {
-        if (paymentMethod === 'CARD') {
-            // card handling logic here
-            // Take grandTotal from card
-        } else {
-            await Invoice.create({
-                totalAmount,
-                balanceDue,
-                discountAmount,
-                grandTotal,
-                driverFeeTotal,
-                pickupAddition,
-                passengerFeeTotal,
-                dueDate,
-                paymentMethod,
-                PassengerId: passengerId,
-            }, { transaction: t });
-        }
+        invoice = await Invoice.create({
+            totalAmount,
+            balanceDue: -1 * userBalance,
+            discountAmount,
+            grandTotal,
+            driverFeeTotal,
+            pickupAddition,
+            passengerFeeTotal,
+            dueDate,
+            paymentMethod,
+            PassengerId: passengerId,
+        }, { transaction: t });
     } else {
-        if (paymentMethod === 'CARD') {
-
-        } else {
-            await Invoice.update({
-                totalAmount,
-                balanceDue,
-                discountAmount,
-                grandTotal,
-                pickupAddition,
-                driverFeeTotal,
-                passengerFeeTotal,
-                dueDate,
-            }, {
-                where: {
-                    PassengerId: passengerId
-                },
-                transaction: t
-            })
-        }
+        invoice = await Invoice.update({
+            totalAmount,
+            balanceDue: -1 * userBalance,
+            discountAmount,
+            grandTotal,
+            pickupAddition,
+            driverFeeTotal,
+            passengerFeeTotal,
+            dueDate,
+        }, {
+            where: {
+                PassengerId: passengerId
+            },
+            transaction: t
+        })
     }
+
+    return invoice;
 }
 
 async function cancelPassengerInvoice(passenger, ride, driver, t) {
@@ -134,9 +136,9 @@ async function checkOutRide(ride, passengers, t) {
 
             driver.balance = driverBalance;
         }
-        
+
         invoice.paymentStatus = 'PAID';
-        await invoice.save({transaction: t});
+        await invoice.save({ transaction: t });
 
         // removing due balance from other rides
 
@@ -180,7 +182,7 @@ async function cancelRideInvoices(ride, t) {
 
         // charge driver to re-allocate passengers
         let deduction = 0;
-        if(passengers.length > 0) {
+        if (passengers.length > 0) {
             deduction = -100;
         }
         driver.balance = (1 * driver.balance) + (1 * deduction);
@@ -196,7 +198,8 @@ async function cancelRideInvoices(ride, t) {
 
     for (const passenger of passengers) {
         passenger.Invoice.paymentStatus = "REVERSED";
-        passenger.status = "DRIVER_CANCELLED";
+        // TODO: Add cancellation reason
+        passenger.status = "CANCELLED";
 
         if (passenger.Invoice.paymentMethod === "CARD") {
             passenger.balance += passenger.Invoice.totalAmount;
