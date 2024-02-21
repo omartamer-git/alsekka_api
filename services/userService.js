@@ -523,6 +523,7 @@ async function settleBalance(uid) {
         await user.save({transaction: t});
         await t.commit();
     } catch(err) {
+        console.log(err);
         // TODO: Refund
         await t.rollback();
         throw new InternalServerError();
