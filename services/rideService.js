@@ -632,7 +632,10 @@ async function cancelPassenger({ tripId }, userId) {
     const passenger = await Passenger.findOne({
         where: {
             RideId: tripId,
-            UserId: userId
+            UserId: userId,
+            status: {
+                [Op.ne]: "CANCELLED"
+            }
         },
         include: [
             {
