@@ -30,6 +30,7 @@ async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, g
         secondGender = user.gender;
     }
 
+    // TODO: Why is the date within 24 hours? It should be that entire day to avoid confusion.
     let values = [uid, date, subtractDates(date, -24), gender];
     let rideQuery = `SELECT R.*, ST_Distance_Sphere(fromLocation, ST_GeomFromText('POINT(${startLat} ${startLng})', 4326) ) as distanceStart, ST_Distance_Sphere(toLocation, ST_GeomFromText( 'POINT(${endLat} ${endLng})', 4326 ) ) as distanceEnd, C.brand, C.model FROM rides AS R, cars AS C  WHERE R.status='SCHEDULED' AND (C.UserId = R.DriverId) AND (CommunityID IN (SELECT CommunityId FROM CommunityMembers WHERE UserId=? AND joinStatus='APPROVED') OR CommunityID IS NULL) AND datetime >= ? AND datetime <= ? AND (gender=? ${!secondGender ? "" : `OR gender='${secondGender}'`}) HAVING distanceStart <= 10000 AND distanceEnd <= 10000 ORDER BY datetime, distanceStart, distanceEnd`;
 
@@ -374,19 +375,13 @@ function getSuggestedPrice({ fromLatitude, fromLongitude, toLatitude, toLongitud
     const dist = geolib.getDistance(
         { latitude: fromLatitude, longitude: fromLongitude },
         { latitude: toLatitude, longitude: toLongitude }
-    ) / (1000 * 100) * 1.5;
+    ) / (1000 * 150);
 
     const litrePer100km = 10;
 
     // Price of fuel
-    const pricePerLitre = 12.5;
-
-    // return (
-    //     Math.ceil(
-    //         (((dist * costPerKilometer) * (1 + DRIVER_FEE)) / riders) / 5
-    //     ) * 5
-    // );
-
+    const pricePerLitre = 1250;
+    
     return (
         Math.ceil(
             ((dist * litrePer100km * pricePerLitre * (1 + DRIVER_FEE)) / 4)
