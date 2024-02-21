@@ -25,7 +25,7 @@ async function getPredictions(text, lat, lng, city) {
     }
 
 
-    let cityCenter = `${CITIES[city].longitude},${CITIES[city].latitude}`;
+    let cityCenter = `${CITIES[city].latitude},${CITIES[city].longitude}`;
     let radius = CITIES[city].radius;
 
     let pred = [];
