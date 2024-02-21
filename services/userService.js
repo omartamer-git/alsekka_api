@@ -508,8 +508,8 @@ async function updatePassword(phone, newPassword) {
 }
 
 async function settleBalance(uid) {
+    const t = await sequelize.transaction();
     try {
-        const t = await sequelize.transaction();
 
         const user = await User.findByPk(uid);
         const transaction = await DriverInvoice.create({
