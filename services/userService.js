@@ -1,5 +1,5 @@
 const { Op } = require("sequelize");
-const { User, License, sequelize, Card, BankAccount, MobileWallet, Referral, Withdrawal, Device } = require("../models");
+const { User, License, sequelize, Card, BankAccount, MobileWallet, Referral, Withdrawal, Device, DriverInvoice } = require("../models");
 const bcrypt = require("bcrypt");
 const { getCardDetails, checkCardNumber, generateOtp, addMinutes, uploadImage, uploadLicenseImage, capitalizeFirstLetter } = require("../helper");
 const { UnauthorizedError, NotFoundError, ConflictError, InternalServerError, NotAcceptableError, BadRequestError } = require("../errors/Errors");
@@ -504,6 +504,28 @@ async function updatePassword(phone, newPassword) {
         }
     } catch (err) {
         throw new NotFoundError();
+    }
+}
+
+async function settleBalance(uid) {
+    try {
+        const t = await sequelize.transaction();
+
+        const user = await User.findByPk(uid);
+        const transaction = await DriverInvoice.create({
+            amount: user.balance * -1,
+            transactionType: 'SETTLEMENT',
+            DriverId: uid,
+            RideId: null
+        }, {transaction: t});
+
+        user.balance = 0;
+        await user.save({transaction: t});
+        await t.commit();
+    } catch(err) {
+        // TODO: Refund
+        await t.rollback();
+        throw new InternalServerError();
     }
 }
 
