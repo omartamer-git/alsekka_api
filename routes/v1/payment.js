@@ -5,6 +5,7 @@ const _ = require('underscore');
 const crypto = require('crypto');
 const { stringify } = require('querystring');
 const { validateBooking } = require('../../services/rideService');
+const { settleBalance } = require('../../services/userService');
 
 const limiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 6015 minutes
@@ -65,20 +66,9 @@ router.post("/settlewebhook", async (req, res, next) => {
     const kashierSignature = req.header('x-kashier-signature');
     if (kashierSignature === signature) {
         // Valid Signature
-        const passengerId = data.metaData.passengerId;
-        /*
-    "kashierOrderId": "efb3d440-e3bf-4c86-b98e-c7bb1cbbcca1",
-    "orderReference": "TEST-ORD-33581",
-    "transactionId": "TX-249893122",
-        */
-        const reference = JSON.stringify({
-            kashierOrderId: data.kashierOrderId,
-            orderReference: data.orderReference,
-            transactionId: data.transactionId,
-            sourceOfFunds: data.sourceOfFunds
-        });
-
-        validateBooking(passengerId, reference);
+        const userId = data.metaData.userId;
+        // TODO: Add payment reference (tx id)
+        settleBalance(userId);
     }
 });
 

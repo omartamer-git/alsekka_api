@@ -558,5 +558,6 @@ module.exports = {
     isVerified,
     uploadProfilePicture,
     getUserBalance,
-    submitWithdrawalRequest
+    submitWithdrawalRequest,
+    settleBalance
 }
