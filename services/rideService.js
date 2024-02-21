@@ -455,9 +455,9 @@ async function getDriverRides({ uid, limit }) {
         where: {
             DriverId: uid,
             [Op.or]: {
-                datetime: {
-                    [Op.gte]: new Date()
-                },
+                // datetime: {
+                //     [Op.gte]: new Date()
+                // },
                 status: 'ONGOING',
                 [Op.and]: {
                     datetime: {
