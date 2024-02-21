@@ -8,9 +8,9 @@ function generateKashierOrderHash(passengerId, userId, grandTotal) {
     return hash;
 }
 
-function generateKashierDriverSettlementHash(userId, grandTotal) {
+function generateKashierDriverSettlementHash(userId, settlementId, grandTotal) {
     const secret = process.env.KASHIERAPIKEY;
-    const path = `/?payment=${process.env.KASHIER_ID}.${userId}.${Math.ceil(grandTotal/100)}.EGP${userId ? ('.' + userId) : null}`;
+    const path = `/?payment=${process.env.KASHIER_ID}.${settlementId}.${Math.ceil(grandTotal/100)}.EGP${userId ? ('.' + userId) : null}`;
 
     const hash = crypto.createHmac('sha256', secret).update(path).digest('hex');
     return hash;

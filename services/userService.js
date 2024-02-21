@@ -529,12 +529,28 @@ async function settleBalance(uid) {
     }
 }
 
+async function getUserSettlementId(uid) {
+    try {
+        const cnt = await DriverInvoice.count({
+            where: {
+                DriverId: uid
+            }
+        });
+
+        return `${uid}-${cnt}`;
+    } catch(err) {
+        // TODO: Refund
+        throw new InternalServerError();
+    } 
+}
+
 
 
 module.exports = {
     accountAvailable,
     createUser,
     deleteUser,
+    getUserSettlementId,
     loginUser,
     linkUserDevice,
     getOtp,

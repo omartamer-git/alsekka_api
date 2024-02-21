@@ -344,18 +344,29 @@ router.patch("/email", authenticateToken, async (req, res, next) => {
     }).catch(next);
 });
 
+router.get("/settlementId", authenticateToken, async(req, res, next) => {
+    const uid = req.user.userId;
+
+    const settlementId = await userService.getUserSettlementId(uid);
+
+    res.json({
+        settlementId
+    });
+});
+
 router.get("/settle", authenticateToken, async(req, res, next) => {
     const uid = req.user.userId;
+    const settlementId = req.query.settlementId;
 
     const userBalance = await userService.getUserBalance(uid);
     if(userBalance >= 0) {
         return next(new BadRequestError());
     }
-    const hash = generateKashierDriverSettlementHash(uid, userBalance);
+    const hash = generateKashierDriverSettlementHash(uid, settlementId, userBalance);
 
-    return {
+    res.json({
         hash
-    };
+    });
 });
 
 // router.post("/updatelocation", authenticateToken, async(req, res, next) => {
