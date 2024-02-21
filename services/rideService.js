@@ -375,13 +375,19 @@ function getSuggestedPrice({ fromLatitude, fromLongitude, toLatitude, toLongitud
     const dist = geolib.getDistance(
         { latitude: fromLatitude, longitude: fromLongitude },
         { latitude: toLatitude, longitude: toLongitude }
-    ) / (1000 * 150);
+    ) / (666 * 100);
 
     const litrePer100km = 10;
 
     // Price of fuel
     const pricePerLitre = 1250;
-    
+
+    // return (
+    //     Math.ceil(
+    //         (((dist * costPerKilometer) * (1 + DRIVER_FEE)) / riders) / 5
+    //     ) * 5
+    // );
+
     return (
         Math.ceil(
             ((dist * litrePer100km * pricePerLitre * (1 + DRIVER_FEE)) / 4)
