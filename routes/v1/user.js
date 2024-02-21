@@ -8,6 +8,7 @@ const jwt = require('jsonwebtoken');
 const { isValidEmail } = require('../../helper');
 const { REFERRALS_DISABLED } = require('../../config/seaats.config');
 const { default: rateLimit } = require('express-rate-limit');
+const { generateKashierDriverSettlementHash } = require('../../services/kashierService');
 const limiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 6015 minutes
     max: 450, // Limit each IP to 450 requests per `window` (here, per 60 minutes)
@@ -320,7 +321,7 @@ router.patch("/phone", authenticateToken, async (req, res, next) => {
     const { phone } = req.body;
     const uid = req.user.userId;
 
-    if (!uid || !phone) {
+    if (!phone) {
         return next(new BadRequestError());
     }
 
@@ -341,6 +342,20 @@ router.patch("/email", authenticateToken, async (req, res, next) => {
     userService.updateEmail({ uid, email, ...req.body }).then(updateEmailResult => {
         return res.json(updateEmailResult);
     }).catch(next);
+});
+
+router.get("/settle", authenticateToken, async(req, res, next) => {
+    const uid = req.user.userId;
+
+    const userBalance = await userService.getUserBalance(uid);
+    if(userBalance >= 0) {
+        return next(new BadRequestError());
+    }
+    const hash = generateKashierDriverSettlementHash(uid, userBalance);
+
+    return {
+        hash
+    };
 });
 
 // router.post("/updatelocation", authenticateToken, async(req, res, next) => {

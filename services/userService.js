@@ -366,6 +366,11 @@ async function submitWithdrawalRequest({ paymentMethodType, paymentMethodId }, u
     return { balance: newBalance };
 }
 
+async function getUserBalance(uid) {
+    const user = await User.findByPk(uid);
+    return user.balance;
+}
+
 
 async function addBank({ uid, fullName, bankName, accNumber, swiftCode }) {
     try {
@@ -378,7 +383,6 @@ async function addBank({ uid, fullName, bankName, accNumber, swiftCode }) {
         });
         return bank;
     } catch (err) {
-        console.error(err);
         throw new NotFoundError();
     }
 }
@@ -531,5 +535,6 @@ module.exports = {
     addReferral,
     isVerified,
     uploadProfilePicture,
+    getUserBalance,
     submitWithdrawalRequest
 }

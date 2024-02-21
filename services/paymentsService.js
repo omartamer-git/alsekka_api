@@ -188,8 +188,8 @@ async function cancelRideInvoices(ride, t) {
         driver.balance = (1 * driver.balance) + (1 * deduction);
         await DriverInvoice.create({
             amount: deduction,
-            transactionType: 'LATE_CANCELLATION',
-            status: "BALANCE_DEDUCTED",
+            transactionType: 'PENALTY',
+            reason: "LATE_CANCELLATION_NOSHOW",
             DriverId: ride.DriverId,
             RideId: ride.id
         }, { transaction: t });
