@@ -367,7 +367,7 @@ async function submitWithdrawalRequest({ paymentMethodType, paymentMethodId }, u
 }
 
 async function getWithdrawalRequests(uid) {
-    const withdrawals = await Withdrawal.find({
+    const withdrawals = await Withdrawal.findAll({
         where: {
             UserId: uid
         }
