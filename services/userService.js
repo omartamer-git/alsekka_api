@@ -280,6 +280,10 @@ async function addReferral(uid, { referralCode }) {
     try {
         const reffererId = parseInt(referralCode);
 
+        if(reffererId < uid) {
+            throw new BadRequestError();
+        }
+
         const reference = await Referral.create({
             ReferrerID: reffererId,
             RefereeID: uid
@@ -295,9 +299,8 @@ async function addReferral(uid, { referralCode }) {
 
         return reference;
     } catch (err) {
-        console.log(err);
         await t.rollback();
-        throw new BadRequestError("Referral account is newer than your account");
+        throw new BadRequestError(err.message || "Referral account is newer than your account", err.message_ar || "حساب الإحالة أحدث من حسابك");
     }
 }
 
