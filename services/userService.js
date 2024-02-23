@@ -366,6 +366,16 @@ async function submitWithdrawalRequest({ paymentMethodType, paymentMethodId }, u
     return { balance: newBalance };
 }
 
+async function getWithdrawalRequests(uid) {
+    const withdrawals = await Withdrawal.find({
+        where: {
+            UserId: uid
+        }
+    });
+
+    return withdrawals;
+}
+
 async function getUserBalance(uid) {
     const user = await User.findByPk(uid);
     return user.balance;
@@ -576,5 +586,6 @@ module.exports = {
     uploadProfilePicture,
     getUserBalance,
     submitWithdrawalRequest,
+    getWithdrawalRequests,
     settleBalance
 }

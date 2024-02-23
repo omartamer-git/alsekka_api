@@ -265,6 +265,14 @@ router.post("/withdrawalrequest", authenticateToken, async (req, res, next) => {
     }).catch(next);
 });
 
+router.get("/withdrawalrequest", authenticateToken, async (req, res, next) => {
+    const uid = req.user.userId;
+
+    userService.getWithdrawalRequests(uid).then(withdrawals => {
+        res.json(withdrawals)
+    }).catch(next);
+});
+
 router.post("/mobilewallet", authenticateToken, async (req, res, next) => {
     const { phone } = req.body;
     const uid = req.user.userId;
