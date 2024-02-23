@@ -275,10 +275,10 @@ async function uploadProfilePicture(uid, file) {
 }
 
 async function addReferral(uid, { referralCode }) {
+    const t = await sequelize.transaction();
+
     try {
         const reffererId = parseInt(referralCode);
-
-        const t = await sequelize.transaction();
 
         const reference = await Referral.create({
             ReferrerID: reffererId,
@@ -295,6 +295,7 @@ async function addReferral(uid, { referralCode }) {
 
         return reference;
     } catch (err) {
+        console.log(err);
         await t.rollback();
         throw new BadRequestError("Referral account is newer than your account");
     }
