@@ -190,7 +190,7 @@ async function cancelRideInvoices(ride, t) {
         // charge driver to re-allocate passengers
         let deduction = 0;
         if (passengers.length > 0) {
-            deduction = -100;
+            deduction = -10000;
         }
         driver.balance = (1 * driver.balance) + (1 * deduction);
         await DriverInvoice.create({
