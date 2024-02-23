@@ -503,7 +503,8 @@ async function getTripDetails({ uid, tripId }) {
             'gender',
             'DriverId',
             'polyline',
-            'duration'
+            'duration',
+            'createdAt'
         ]
     });
 
