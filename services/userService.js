@@ -22,16 +22,16 @@ async function accountAvailable(phone, email) {
         }, attributes: ['id', 'phone', 'email']
     });
 
-    if(userAccount === null) {
+    if (userAccount === null) {
         return [true, true];
     } else {
         let p = true;
         let e = true;
-        if(userAccount.phone == phone) {
+        if (userAccount.phone == phone) {
             p = false;
         }
 
-        if(userAccount.email == email) {
+        if (userAccount.email == email) {
             e = false;
         }
 
@@ -278,13 +278,24 @@ async function addReferral(uid, { referralCode }) {
     try {
         const reffererId = parseInt(referralCode);
 
+        const t = await sequelize.transaction();
+
         const reference = await Referral.create({
             ReferrerID: reffererId,
             RefereeID: uid
-        });
+        }, { transaction: t });
+
+        const [user1, user2] = await Promise.all([User.findByPk(uid), User.findByPk(reffererId)]);
+        user1.balance = user1.balance + process.env.REFERRAL_SUM;
+        user2.balance = user2.balance + process.env.REFERRAL_SUM;
+        await user1.save({ transaction: t });
+        await user2.save({ transaction: t });
+
+        await t.commit();
 
         return reference;
     } catch (err) {
+        await t.rollback();
         throw new BadRequestError("Referral account is newer than your account");
     }
 }
@@ -527,12 +538,12 @@ async function settleBalance(uid) {
             transactionType: 'SETTLEMENT',
             DriverId: uid,
             RideId: null
-        }, {transaction: t});
+        }, { transaction: t });
 
         user.balance = 0;
-        await user.save({transaction: t});
+        await user.save({ transaction: t });
         await t.commit();
-    } catch(err) {
+    } catch (err) {
         console.log(err);
         // TODO: Refund
         await t.rollback();
@@ -549,10 +560,10 @@ async function getUserSettlementId(uid) {
         });
 
         return `${uid}-${cnt}`;
-    } catch(err) {
+    } catch (err) {
         // TODO: Refund
         throw new InternalServerError();
-    } 
+    }
 }
 
 
