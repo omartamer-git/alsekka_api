@@ -63,7 +63,7 @@ async function updateCommunity({ communityId, description, private, joinQuestion
             }
         });
     }
-    community.joinQuestion = private === 1 ? joinQuestion : null;
+    community.joinQuestion = private == 1 ? joinQuestion : null;
     community.picture = imageUrl;
 
     community.save();
