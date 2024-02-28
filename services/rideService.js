@@ -57,7 +57,7 @@ async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, g
             "duration": ride.duration,
             "model": ride.model,
             "brand": ride.brand,
-            "pickupEnabled": ride.pickupEnabled,
+            "pickupEnabled": ride.pickupEnabled == true ? true : false,
             "gender": ride.gender,
             "seatsOccupied": countSeatsOccupied,
         });
