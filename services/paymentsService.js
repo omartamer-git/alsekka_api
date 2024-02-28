@@ -73,9 +73,13 @@ async function cancelPassengerInvoice(passenger, ride, driver, t) {
 
     const currDate = new Date().getTime();
     const tripDate = new Date(ride.datetime).getTime();
-    const timeToTrip = tripDate - currDate;
+    const creationDate = new Date(passenger.createdAt).getTime();
 
-    if (timeToTrip < 1000 * 60 * 60 * 24) {
+
+    const timeToTrip = tripDate - currDate;
+    const timeFromCreation = currDate - creationDate;
+
+    if (timeToTrip <= 1000 * 60 * 60 * 24 && timeFromCreation >= 1000 * 60 * 15) {
         // late cancel
         if (invoice.paymentMethod === 'CARD') {
             driver.balance = driver.balance + invoice.totalAmount - invoice.driverFeeTotal;
@@ -92,7 +96,8 @@ async function cancelPassengerInvoice(passenger, ride, driver, t) {
         if (invoice.paymentMethod === 'CARD') {
             passenger.User.balance = passenger.User.balance + (invoice.grandTotal - invoice.balanceDue);
         } else {
-            passenger.User.balance = passenger.User.balance - invoice.balanceDue;
+            // TODO: Check that this is actually wrong, I commented it because it doesn't make sense. The passenger's balance should presumably stay the same after the ride
+            // passenger.User.balance = passenger.User.balance - invoice.balanceDue;
         }
         invoice.paymentStatus = 'REVERSED';
         await invoice.save({ transaction: t });
@@ -176,20 +181,22 @@ async function cancelRideInvoices(ride, t) {
 
     const currDate = new Date().getTime();
     const tripDate = new Date(ride.datetime).getTime();
+    const tripCreatedAt = new Date(ride.createdAt).getTime();
     const timeToTrip = tripDate - currDate;
-    if (timeToTrip <= 1000 * 60 * 60 * 36) {
+    const timeFromCreation = currDate - tripCreatedAt;
+    if (timeToTrip <= 1000 * 60 * 60 * 48 && timeFromCreation >= 1000 * 60 * 30) {
         const driver = await User.findByPk(ride.DriverId);
 
         // charge driver to re-allocate passengers
         let deduction = 0;
         if (passengers.length > 0) {
-            deduction = -100;
+            deduction = -10000;
         }
         driver.balance = (1 * driver.balance) + (1 * deduction);
         await DriverInvoice.create({
             amount: deduction,
-            transactionType: 'LATE_CANCELLATION',
-            status: "BALANCE_DEDUCTED",
+            transactionType: 'PENALTY',
+            reason: "LATE_CANCELLATION_NOSHOW",
             DriverId: ride.DriverId,
             RideId: ride.id
         }, { transaction: t });

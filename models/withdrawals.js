@@ -11,6 +11,11 @@ module.exports = function (sequelize, DataTypes) {
             type: DataTypes.DECIMAL(10, 2),
             allowNull: false,
             defaultValue: 0.00
+        },
+        status: {
+            type: DataTypes.ENUM('PROCESSING', 'COMPLETE'),
+            defaultValue: 'PROCESSING',
+            allowNull: false
         }
     }, {
         sequelize,

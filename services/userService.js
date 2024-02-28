@@ -1,5 +1,5 @@
 const { Op } = require("sequelize");
-const { User, License, sequelize, Card, BankAccount, MobileWallet, Referral, Withdrawal, Device } = require("../models");
+const { User, License, sequelize, Card, BankAccount, MobileWallet, Referral, Withdrawal, Device, DriverInvoice } = require("../models");
 const bcrypt = require("bcrypt");
 const { getCardDetails, checkCardNumber, generateOtp, addMinutes, uploadImage, uploadLicenseImage, capitalizeFirstLetter } = require("../helper");
 const { UnauthorizedError, NotFoundError, ConflictError, InternalServerError, NotAcceptableError, BadRequestError } = require("../errors/Errors");
@@ -22,16 +22,16 @@ async function accountAvailable(phone, email) {
         }, attributes: ['id', 'phone', 'email']
     });
 
-    if(userAccount === null) {
+    if (userAccount === null) {
         return [true, true];
     } else {
         let p = true;
         let e = true;
-        if(userAccount.phone == phone) {
+        if (userAccount.phone == phone) {
             p = false;
         }
 
-        if(userAccount.email == email) {
+        if (userAccount.email == email) {
             e = false;
         }
 
@@ -275,17 +275,32 @@ async function uploadProfilePicture(uid, file) {
 }
 
 async function addReferral(uid, { referralCode }) {
+    const t = await sequelize.transaction();
+
     try {
         const reffererId = parseInt(referralCode);
+
+        if(reffererId < uid) {
+            throw new BadRequestError();
+        }
 
         const reference = await Referral.create({
             ReferrerID: reffererId,
             RefereeID: uid
-        });
+        }, { transaction: t });
+
+        const [user1, user2] = await Promise.all([User.findByPk(uid), User.findByPk(reffererId)]);
+        user1.balance = parseFloat(user1.balance) + parseFloat(process.env.REFERRAL_SUM);
+        user2.balance = parseFloat(user2.balance) + parseFloat(process.env.REFERRAL_SUM);
+        await user1.save({ transaction: t });
+        await user2.save({ transaction: t });
+
+        await t.commit();
 
         return reference;
     } catch (err) {
-        throw new BadRequestError("Referral account is newer than your account");
+        await t.rollback();
+        throw new BadRequestError(err.message || "Referral account is newer than your account", err.message_ar || "حساب الإحالة أحدث من حسابك");
     }
 }
 
@@ -366,6 +381,21 @@ async function submitWithdrawalRequest({ paymentMethodType, paymentMethodId }, u
     return { balance: newBalance };
 }
 
+async function getWithdrawalRequests(uid) {
+    const withdrawals = await Withdrawal.findAll({
+        where: {
+            UserId: uid
+        }
+    });
+
+    return withdrawals;
+}
+
+async function getUserBalance(uid) {
+    const user = await User.findByPk(uid);
+    return user.balance;
+}
+
 
 async function addBank({ uid, fullName, bankName, accNumber, swiftCode }) {
     try {
@@ -378,7 +408,6 @@ async function addBank({ uid, fullName, bankName, accNumber, swiftCode }) {
         });
         return bank;
     } catch (err) {
-        console.error(err);
         throw new NotFoundError();
     }
 }
@@ -503,12 +532,51 @@ async function updatePassword(phone, newPassword) {
     }
 }
 
+async function settleBalance(uid) {
+    const t = await sequelize.transaction();
+    try {
+
+        const user = await User.findByPk(uid);
+        const transaction = await DriverInvoice.create({
+            amount: user.balance * -1,
+            transactionType: 'SETTLEMENT',
+            DriverId: uid,
+            RideId: null
+        }, { transaction: t });
+
+        user.balance = 0;
+        await user.save({ transaction: t });
+        await t.commit();
+    } catch (err) {
+        console.log(err);
+        // TODO: Refund
+        await t.rollback();
+        throw new InternalServerError();
+    }
+}
+
+async function getUserSettlementId(uid) {
+    try {
+        const cnt = await DriverInvoice.count({
+            where: {
+                DriverId: uid
+            }
+        });
+
+        return `${uid}-${cnt}`;
+    } catch (err) {
+        // TODO: Refund
+        throw new InternalServerError();
+    }
+}
+
 
 
 module.exports = {
     accountAvailable,
     createUser,
     deleteUser,
+    getUserSettlementId,
     loginUser,
     linkUserDevice,
     getOtp,
@@ -531,5 +599,8 @@ module.exports = {
     addReferral,
     isVerified,
     uploadProfilePicture,
-    submitWithdrawalRequest
+    getUserBalance,
+    submitWithdrawalRequest,
+    getWithdrawalRequests,
+    settleBalance
 }

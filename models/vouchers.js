@@ -17,11 +17,11 @@ module.exports = function (sequelize, DataTypes) {
         allowNull: false,
     },
     value: {
-        type: DataTypes.DECIMAL(6,2),
+        type: DataTypes.INTEGER,
         allowNull: false
     },
     maxValue: {
-      type: DataTypes.DECIMAL(6, 2),
+      type: DataTypes.INTEGER,
       allowNull: false
     },
     maxUses: {

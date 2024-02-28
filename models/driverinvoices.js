@@ -12,12 +12,12 @@ module.exports = function(sequelize, DataTypes) {
             allowNull: false
         },
         transactionType: {
-            type: DataTypes.ENUM('LATE_CANCELLATION'),
+            type: DataTypes.ENUM('PENALTY', 'BONUS', 'CASH_COLLECTED', 'WITHDRAWAL', 'SETTLEMENT'),
             allowNull: false
         },
-        status: {
-            type: DataTypes.ENUM("CARD_CHARGED", "BALANCE_DEDUCTED"),
-            allowNull: false
+        reason: {
+            type: DataTypes.ENUM('REFERRAL', 'COMPENSATION', 'LATE_CANCELLATION_NOSHOW'),
+            allowNull: true
         }
     }, {
         sequelize,

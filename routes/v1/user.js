@@ -8,6 +8,7 @@ const jwt = require('jsonwebtoken');
 const { isValidEmail } = require('../../helper');
 const { REFERRALS_DISABLED } = require('../../config/seaats.config');
 const { default: rateLimit } = require('express-rate-limit');
+const { generateKashierDriverSettlementHash } = require('../../services/kashierService');
 const limiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 6015 minutes
     max: 450, // Limit each IP to 450 requests per `window` (here, per 60 minutes)
@@ -264,6 +265,14 @@ router.post("/withdrawalrequest", authenticateToken, async (req, res, next) => {
     }).catch(next);
 });
 
+router.get("/withdrawalrequest", authenticateToken, async (req, res, next) => {
+    const uid = req.user.userId;
+
+    userService.getWithdrawalRequests(uid).then(withdrawals => {
+        res.json(withdrawals)
+    }).catch(next);
+});
+
 router.post("/mobilewallet", authenticateToken, async (req, res, next) => {
     const { phone } = req.body;
     const uid = req.user.userId;
@@ -320,7 +329,7 @@ router.patch("/phone", authenticateToken, async (req, res, next) => {
     const { phone } = req.body;
     const uid = req.user.userId;
 
-    if (!uid || !phone) {
+    if (!phone) {
         return next(new BadRequestError());
     }
 
@@ -341,6 +350,31 @@ router.patch("/email", authenticateToken, async (req, res, next) => {
     userService.updateEmail({ uid, email, ...req.body }).then(updateEmailResult => {
         return res.json(updateEmailResult);
     }).catch(next);
+});
+
+router.get("/settlementId", authenticateToken, async(req, res, next) => {
+    const uid = req.user.userId;
+
+    const settlementId = await userService.getUserSettlementId(uid);
+
+    res.json({
+        settlementId
+    });
+});
+
+router.get("/settle", authenticateToken, async(req, res, next) => {
+    const uid = req.user.userId;
+    const settlementId = req.query.settlementId;
+
+    const userBalance = await userService.getUserBalance(uid);
+    if(userBalance >= 0) {
+        return next(new BadRequestError());
+    }
+    const hash = generateKashierDriverSettlementHash(uid, settlementId, userBalance);
+
+    res.json({
+        hash
+    });
 });
 
 // router.post("/updatelocation", authenticateToken, async(req, res, next) => {
