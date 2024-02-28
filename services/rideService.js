@@ -60,7 +60,7 @@ async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, g
             "pickupEnabled": ride.pickupEnabled == true ? true : false,
             "gender": ride.gender,
             "distanceStart": ride.distanceStart,
-            "distanceEnd": distanceEnd,
+            "distanceEnd": ride.distanceEnd,
             "seatsOccupied": countSeatsOccupied,
         });
     }
