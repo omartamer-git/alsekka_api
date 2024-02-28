@@ -30,7 +30,7 @@ module.exports = function(sequelize, DataTypes) {
       defaultValue: null
     },
     passengerFee: {
-      type: DataTypes.DECIMAL(2,2),
+      type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0
     },

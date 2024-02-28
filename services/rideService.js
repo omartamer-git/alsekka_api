@@ -30,9 +30,10 @@ async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, g
         secondGender = user.gender;
     }
 
+    // TODO: Why is the date within 24 hours? It should be that entire day to avoid confusion.
     let values = [uid, date, subtractDates(date, -24), gender];
-    let rideQuery = `SELECT R.*, ST_Distance_Sphere(fromLocation, ST_GeomFromText('POINT(${startLat} ${startLng})', 4326) ) as distanceStart, ST_Distance_Sphere(toLocation, ST_GeomFromText( 'POINT(${endLat} ${endLng})', 4326 ) ) as distanceEnd, C.brand, C.model FROM rides AS R, cars AS C  WHERE R.status='SCHEDULED' AND (C.UserId = R.DriverId) AND (CommunityID IN (SELECT CommunityId FROM CommunityMembers WHERE UserId=? AND joinStatus='APPROVED') OR CommunityID IS NULL) AND datetime >= ? AND datetime <= ? AND (gender=? ${!secondGender ? "" : `OR gender='${secondGender}'`}) HAVING distanceStart <= 10000 AND distanceEnd <= 10000 ORDER BY datetime, distanceStart, distanceEnd`;
-
+    let rideQuery = `SELECT DISTINCT R.*, ST_Distance_Sphere(fromLocation, ST_GeomFromText('POINT(${startLat} ${startLng})', 4326) ) as distanceStart, ST_Distance_Sphere(toLocation, ST_GeomFromText( 'POINT(${endLat} ${endLng})', 4326 ) ) as distanceEnd, C.brand, C.model FROM rides AS R, cars AS C  WHERE R.status='SCHEDULED' AND (C.id = R.CarId) AND (CommunityID IN (SELECT CommunityId FROM CommunityMembers WHERE UserId=? AND joinStatus='APPROVED') OR CommunityID IS NULL OR CommunityID IN (SELECT id as CommunityID FROM Communities WHERE private=0)) AND datetime >= ? AND datetime <= ? AND (gender=? ${!secondGender ? "" : `OR gender='${secondGender}'`}) HAVING distanceStart <= 60000 AND distanceEnd <= 60000 ORDER BY datetime, distanceStart, distanceEnd`;
+    // let rideQuery = `SELECT DISTINCT R.*, ST_Distance_Sphere(fromLocation, ST_GeomFromText('POINT(${startLat} ${startLng})', 4326)) AS distanceStart, ST_Distance_Sphere(toLocation, ST_GeomFromText('POINT(${endLat} ${endLng})', 4326)) AS distanceEnd, C.brand, C.model FROM rides AS R JOIN cars AS C ON C.id = R.CarId LEFT JOIN Community AS Comm ON R.CommunityID = Comm.id WHERE R.status='SCHEDULED' AND (R.CommunityID IN (SELECT CommunityId FROM CommunityMembers WHERE UserId=? AND joinStatus='APPROVED') OR R.CommunityID IS NULL OR Comm.private = 0) AND datetime >= ? AND datetime <= ? AND (gender=? ${!secondGender ? "" : `OR gender='${secondGender}'`}) HAVING distanceStart <= 10000 AND distanceEnd <= 10000 ORDER BY datetime, distanceStart, distanceEnd`
     const rideResult = await sequelize.query(rideQuery, {
         replacements: values,
         type: Sequelize.QueryTypes.SELECT,
@@ -374,12 +375,12 @@ function getSuggestedPrice({ fromLatitude, fromLongitude, toLatitude, toLongitud
     const dist = geolib.getDistance(
         { latitude: fromLatitude, longitude: fromLongitude },
         { latitude: toLatitude, longitude: toLongitude }
-    ) / (1000 * 100) * 1.5;
+    ) / (666 * 100);
 
     const litrePer100km = 10;
 
     // Price of fuel
-    const pricePerLitre = 12.5;
+    const pricePerLitre = 1250;
 
     // return (
     //     Math.ceil(
@@ -454,9 +455,9 @@ async function getDriverRides({ uid, limit }) {
         where: {
             DriverId: uid,
             [Op.or]: {
-                datetime: {
-                    [Op.gte]: new Date()
-                },
+                // datetime: {
+                //     [Op.gte]: new Date()
+                // },
                 status: 'ONGOING',
                 [Op.and]: {
                     datetime: {
@@ -502,7 +503,8 @@ async function getTripDetails({ uid, tripId }) {
             'gender',
             'DriverId',
             'polyline',
-            'duration'
+            'duration',
+            'createdAt'
         ]
     });
 
@@ -631,7 +633,10 @@ async function cancelPassenger({ tripId }, userId) {
     const passenger = await Passenger.findOne({
         where: {
             RideId: tripId,
-            UserId: userId
+            UserId: userId,
+            status: {
+                [Op.ne]: "CANCELLED"
+            }
         },
         include: [
             {
