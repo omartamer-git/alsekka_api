@@ -37,8 +37,8 @@ async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, g
     const rideResult = await sequelize.query(rideQuery, {
         replacements: values,
         type: Sequelize.QueryTypes.SELECT,
-        model: Ride,
-        mapToModel: true,
+        // model: Ride,
+        mapToModel: false,
     });
 
     let result = [];
