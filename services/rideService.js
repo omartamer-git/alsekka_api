@@ -485,7 +485,7 @@ async function getTripDetails({ uid, tripId }) {
             },
             {
                 model: Car
-            }
+            },
         ],
         attributes: [
             [sequelize.literal(`(Ride.driverId=${uid})`), 'isDriver'],
@@ -537,6 +537,11 @@ async function getTripDetails({ uid, tripId }) {
                 UserId: uid,
                 RideId: tripId
             },
+            include: [
+                {
+                    model: Invoice
+                }
+            ]
             order: Sequelize.literal(`CASE WHEN status != 'CANCELLED' THEN 1 ELSE 2 END, createdAt DESC`)
         });
 
