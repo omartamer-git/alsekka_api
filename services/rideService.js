@@ -541,7 +541,7 @@ async function getTripDetails({ uid, tripId }) {
                 {
                     model: Invoice
                 }
-            ]
+            ],
             order: Sequelize.literal(`CASE WHEN status != 'CANCELLED' THEN 1 ELSE 2 END, createdAt DESC`)
         });
 
