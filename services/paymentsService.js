@@ -43,21 +43,31 @@ async function createInvoice(uid, seats, paymentMethod, ride, voucher, passenger
             PassengerId: passengerId,
         }, { transaction: t });
     } else {
-        invoice = await Invoice.update({
-            totalAmount,
-            balanceDue: -1 * userBalance,
-            discountAmount,
-            grandTotal,
-            pickupAddition,
-            driverFeeTotal,
-            passengerFeeTotal,
-            dueDate,
-        }, {
-            where: {
-                PassengerId: passengerId
-            },
-            transaction: t
-        })
+        invoice = await Invoice.findOne({ where: { PassengerId: passengerId } });
+        invoice.totalAmount = totalAmount;
+        invoice.balanceDue = -1 * userBalance;
+        invoice.discountAmount = discountAmount;
+        invoice.grandTotal = grandTotal;
+        invoice.pickupAddition = pickupAddition;
+        invoice.driverFeeTotal = driverFeeTotal;
+        invoice.passengerFeeTotal = passengerFeeTotal;
+        invoice.dueDate = dueDate;
+        await invoice.save({transaction: t});
+        // invoice = await Invoice.update({
+        //     totalAmount,
+        //     balanceDue: -1 * userBalance,
+        //     discountAmount,
+        //     grandTotal,
+        //     pickupAddition,
+        //     driverFeeTotal,
+        //     passengerFeeTotal,
+        //     dueDate,
+        // }, {
+        //     where: {
+        //         PassengerId: passengerId
+        //     },
+        //     transaction: t
+        // })
     }
 
     return invoice;
