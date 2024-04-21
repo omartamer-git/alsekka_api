@@ -161,8 +161,8 @@ app.get("/announcements", authenticateToken, async (req, res, next) => {
 });
 
 app.get("/registerdevice", async (req, res, next) => {
-    const { token, platform } = req.query;
-    if (!token || !platform) {
+    const { token, platform, language } = req.query;
+    if (!token || !platform || !language) {
         return next(new BadRequestError());
     }
 

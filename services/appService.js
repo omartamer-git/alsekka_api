@@ -25,7 +25,7 @@ async function getAnnouncements(active) {
     return announcements;
 }
 
-async function registerDevice({ token, platform }) {
+async function registerDevice({ token, platform, language }) {
     let PlatformApplicationArn = platform === 'ios' ? IOS_ARN : ANDROID_ARN
 
     const paramsEndpoint = {
@@ -57,7 +57,8 @@ async function registerDevice({ token, platform }) {
         await Device.create({
             deviceToken: token,
             platformEndpoint: data.EndpointArn,
-            platform: platform
+            platform: platform,
+            language: language || 'EN'
         });
 
         const subscribeCommand = new SubscribeCommand(paramsSubscribe);
