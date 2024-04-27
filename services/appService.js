@@ -50,7 +50,7 @@ async function registerDevice({ token, platform, language }) {
     sns.send(command).then(async (data) => {
         const paramsSubscribe = {
             Protocol: 'application',
-            TopicArn: 'arn:aws:sns:eu-central-1:872912343417:seaats-marketing',
+            TopicArn: language === 'EN' ? 'arn:aws:sns:eu-central-1:872912343417:seaats-marketing' : 'arn:aws:sns:eu-central-1:872912343417:seaats-marketing-arabic',
             Endpoint: data.EndpointArn
         }
 

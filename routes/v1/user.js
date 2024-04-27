@@ -357,8 +357,10 @@ router.get("/settlementId", authenticateToken, async(req, res, next) => {
 
     const settlementId = await userService.getUserSettlementId(uid);
 
-    res.json({
-        settlementId
+    crypto.randomUUID().then(r => {
+        res.json({
+            settlementId: r
+        });
     });
 });
 

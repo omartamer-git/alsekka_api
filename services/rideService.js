@@ -601,7 +601,7 @@ async function getDriverLocation({ rideId }, userId) {
             }
         }
     });
-
+    
     if (!passenger) throw new UnauthorizedError();
 
     const cachedData = await redisClient.get(`driverLocation:${ride.DriverId}`);
