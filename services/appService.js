@@ -76,8 +76,8 @@ async function addEnrolledDriver({ fullName, phoneNumber, carDescription }) {
     return true;
 }
 
-async function addToMailingList({email}) {
-    await MailingList.create({email});
+async function addToMailingList({ email }) {
+    await MailingList.create({ email });
     return true;
 }
 
@@ -97,8 +97,24 @@ async function sendNotificationToUser(title, message, userId = null, targetArn =
         targetArn_ = device.platformEndpoint;
     }
 
+    // Construct the FCM payload
+    const fcmPayload = JSON.stringify({
+        notification: {
+            title: title,
+            body: message,
+            icon: "ic_notification"  // Ensure this icon name matches the one in your Android drawable resources
+        },
+        data: {
+            // Additional data payload can go here
+        }
+    });
+
+
     const params = {
-        Message: message,
+        Message: JSON.stringify({
+            default: message,
+            GCM: fcmPayload
+        }),
         Subject: title,
         TargetArn: targetArn_
     };
