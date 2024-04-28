@@ -111,6 +111,7 @@ async function sendNotificationToUser(title, message, userId = null, targetArn =
 
 
     const params = {
+        MessageStructure: 'json',
         Message: JSON.stringify({
             default: message,
             GCM: fcmPayload
