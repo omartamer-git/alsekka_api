@@ -18,7 +18,7 @@ module.exports = function (sequelize, DataTypes) {
         gender: {
             type: DataTypes.ENUM('Male', 'Female'),
             allowNull: false,
-            defaultValue: "PENDING"
+            defaultValue: "Male"
         },
         car: {
             type: DataTypes.BOOLEAN,
