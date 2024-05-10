@@ -115,9 +115,9 @@ app.post("/driverenrollment", async (req, res, next) => {
 });
 
 app.get("/waitinglist", async (req, res, next) => {
-    const { email } = req.query;
+    const { name, phone, gender, car } = req.query;
 
-    if (!email) {
+    if (!name || !phone || !gender || !car) {
         return next(new BadRequestError());
     }
 

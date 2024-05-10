@@ -7,13 +7,24 @@ module.exports = function (sequelize, DataTypes) {
             allowNull: false,
             primaryKey: true
         },
-        email: {
+        name: {
             type: DataTypes.STRING(320),
             allowNull: false,
-            validate: {
-                isEmail: true
-            }
         },
+        phone: {
+            type: DataTypes.STRING(14),
+            allowNull: false
+        },
+        gender: {
+            type: DataTypes.ENUM('Male', 'Female'),
+            allowNull: false,
+            defaultValue: "PENDING"
+        },
+        car: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false
+        }
     }, {
         sequelize,
         timestamps: true,
@@ -27,13 +38,12 @@ module.exports = function (sequelize, DataTypes) {
                 ]
             },
             {
-                name: "email_unique",
+                name: "phone_unique",
                 unique: true,
                 fields: [
-                    { name: "email" }
+                    { name: "phone" }
                 ]
-              }
-        
+            }
         ]
     });
 };

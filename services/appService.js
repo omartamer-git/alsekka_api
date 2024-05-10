@@ -76,8 +76,8 @@ async function addEnrolledDriver({ fullName, phoneNumber, carDescription }) {
     return true;
 }
 
-async function addToMailingList({ email }) {
-    await MailingList.create({ email });
+async function addToMailingList({ name, phone, gender, car }) {
+    await MailingList.create({ name, phone, gender, car });
     return true;
 }
 
