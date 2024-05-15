@@ -806,7 +806,7 @@ async function checkOut({ tripId, uid }) {
                 passengerReferral.save({ transaction: t });
 
                 for (const user of users) {
-                    user.balance += 50;
+                    user.balance = parseFloat(user.balance) + 50;
                     await user.save({ transaction: t });
                 }
             }
