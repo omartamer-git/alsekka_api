@@ -1,5 +1,5 @@
 const { PASSENGER_FEE } = require("../config/seaats.config");
-const { User, Invoice, DriverInvoice, Passenger } = require("../models");
+const { User, Invoice, Referral, DriverInvoice, Passenger } = require("../models");
 const { sendNotificationToRide } = require("./appService");
 
 async function createInvoice(uid, seats, paymentMethod, ride, voucher, passengerId, pickupAddition, t, update = false) {
@@ -52,7 +52,7 @@ async function createInvoice(uid, seats, paymentMethod, ride, voucher, passenger
         invoice.driverFeeTotal = driverFeeTotal;
         invoice.passengerFeeTotal = passengerFeeTotal;
         invoice.dueDate = dueDate;
-        await invoice.save({transaction: t});
+        await invoice.save({ transaction: t });
         // invoice = await Invoice.update({
         //     totalAmount,
         //     balanceDue: -1 * userBalance,
@@ -127,7 +127,25 @@ async function checkOutRide(ride, passengers, t) {
         if (!invoice) {
             throw new InternalServerError();
         }
+
         let userBalance = parseFloat(user.balance);
+        const referral = await Referral.findOne({
+            where: {
+                RefereeId: user.id,
+                fulfilled: false
+            }
+        });
+
+        // Fulfill Referrals
+        if (referral) {
+            referral.fulfilled = true;
+            await referral.save({ transaction: t });
+            userBalance += 5000;
+
+            const referrer = await User.findByPk(referral.referrerID);
+            referrer.balance = parseFloat(referrer.balance) + 5000;
+            referrer.save({ transaction: t });
+        }
 
         userBalance += invoice.grandTotal;
         userBalance -= invoice.totalAmount;
