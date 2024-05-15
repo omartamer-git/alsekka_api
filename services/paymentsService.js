@@ -1,6 +1,6 @@
 const { PASSENGER_FEE } = require("../config/seaats.config");
 const { User, Invoice, Referral, DriverInvoice, Passenger } = require("../models");
-const { sendNotificationToRide } = require("./appService");
+const { sendNotificationToRide, sendNotificationToUser } = require("./appService");
 
 async function createInvoice(uid, seats, paymentMethod, ride, voucher, passengerId, pickupAddition, t, update = false) {
     const user = await User.findByPk(uid, {
@@ -142,9 +142,12 @@ async function checkOutRide(ride, passengers, t) {
             await referral.save({ transaction: t });
             userBalance += 5000;
 
-            const referrer = await User.findByPk(referral.referrerID);
+            const referrer = await User.findByPk(referral.ReferrerID);
             referrer.balance = parseFloat(referrer.balance) + 5000;
             referrer.save({ transaction: t });
+
+            sendNotificationToUser("You've Earned Money!", "Thank you for completing your first ride on Seaats! We've added 50 EGP to your wallet as a referral gift.", user.id);
+            sendNotificationToUser("You've Earned Money!", "Thank you for referring someone to Seaats! We've added 50 EGP to your wallet as a referral gift.", referrer.id);
         }
 
         userBalance += invoice.grandTotal;
