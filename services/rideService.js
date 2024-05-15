@@ -788,7 +788,8 @@ async function checkOut({ tripId, uid }) {
             const pId = p.UserId;
             const passengerReferral = await Referral.findOne({
                 where: {
-                    RefereeID: pId
+                    RefereeID: pId,
+                    fulfilled: false
                 }
             });
 
@@ -799,6 +800,9 @@ async function checkOut({ tripId, uid }) {
                     }
                 }
             });
+
+            passengerReferral.fulfilled = true;
+            passengerReferral.save({ transaction: t });
 
             for (const user of users) {
                 user.balance += 50;
