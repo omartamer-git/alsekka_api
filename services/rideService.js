@@ -1,5 +1,5 @@
 const { Sequelize, Op, literal } = require('sequelize');
-const { Ride, Passenger, User, sequelize, License, Car, Voucher, Invoice } = require('../models');
+const { Ride, Passenger, User, sequelize, License, Car, Voucher, Invoice, Referral } = require('../models');
 const { NotFoundError, InternalServerError, BadRequestError, UnauthorizedError, GoneError, ForbiddenError } = require("../errors/Errors");
 const { DRIVER_FEE, PASSENGER_FEE } = require('../config/seaats.config');
 const { SNS, SNSClient, CreateTopicCommand } = require("@aws-sdk/client-sns");
@@ -601,7 +601,7 @@ async function getDriverLocation({ rideId }, userId) {
             }
         }
     });
-    
+
     if (!passenger) throw new UnauthorizedError();
 
     const cachedData = await redisClient.get(`driverLocation:${ride.DriverId}`);
@@ -783,6 +783,28 @@ async function checkOut({ tripId, uid }) {
             },
             transaction: t,
         });
+
+        for (const p of passengers) {
+            const pId = p.UserId;
+            const passengerReferral = await Referral.findOne({
+                where: {
+                    RefereeID: pId
+                }
+            });
+
+            const users = await User.find({
+                where: {
+                    id: {
+                        [Op.in]: [passengerReferral.ReferrerID, passengerReferral.RefereeID]
+                    }
+                }
+            });
+
+            for (const user of users) {
+                user.balance += 50;
+                await user.save({ transaction: t });
+            }
+        }
 
         await checkOutRide(ride, passengers, t);
 

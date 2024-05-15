@@ -289,11 +289,11 @@ async function addReferral(uid, { referralCode }) {
             RefereeID: uid
         }, { transaction: t });
 
-        const [user1, user2] = await Promise.all([User.findByPk(uid), User.findByPk(reffererId)]);
-        user1.balance = parseFloat(user1.balance) + parseFloat(process.env.REFERRAL_SUM);
-        user2.balance = parseFloat(user2.balance) + parseFloat(process.env.REFERRAL_SUM);
-        await user1.save({ transaction: t });
-        await user2.save({ transaction: t });
+        // const [user1, user2] = await Promise.all([User.findByPk(uid), User.findByPk(reffererId)]);
+        // user1.balance = parseFloat(user1.balance) + parseFloat(process.env.REFERRAL_SUM);
+        // user2.balance = parseFloat(user2.balance) + parseFloat(process.env.REFERRAL_SUM);
+        // await user1.save({ transaction: t });
+        // await user2.save({ transaction: t });
 
         await t.commit();
 
