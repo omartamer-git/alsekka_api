@@ -793,20 +793,22 @@ async function checkOut({ tripId, uid }) {
                 }
             });
 
-            const users = await User.findAll({
-                where: {
-                    id: {
-                        [Op.in]: [passengerReferral.ReferrerID, passengerReferral.RefereeID]
+            if (passengerReferral) {
+                const users = await User.findAll({
+                    where: {
+                        id: {
+                            [Op.in]: [passengerReferral.ReferrerID, passengerReferral.RefereeID]
+                        }
                     }
+                });
+
+                passengerReferral.fulfilled = true;
+                passengerReferral.save({ transaction: t });
+
+                for (const user of users) {
+                    user.balance += 50;
+                    await user.save({ transaction: t });
                 }
-            });
-
-            passengerReferral.fulfilled = true;
-            passengerReferral.save({ transaction: t });
-
-            for (const user of users) {
-                user.balance += 50;
-                await user.save({ transaction: t });
             }
         }
 
