@@ -792,7 +792,7 @@ async function checkOut({ tripId, uid }) {
                 }
             });
 
-            const users = await User.find({
+            const users = await User.findAll({
                 where: {
                     id: {
                         [Op.in]: [passengerReferral.ReferrerID, passengerReferral.RefereeID]

@@ -280,7 +280,7 @@ async function addReferral(uid, { referralCode }) {
     try {
         const reffererId = parseInt(referralCode);
 
-        if(reffererId < uid) {
+        if(reffererId > uid) {
             throw new BadRequestError();
         }
 
