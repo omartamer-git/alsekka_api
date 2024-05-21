@@ -18,13 +18,18 @@ async function getChats({ uid }) {
     SELECT t1.SenderId, t1.ReceiverId, t1.createdAt, t1.messageread
     FROM chatmessages t1
     JOIN (
-        SELECT MAX(createdAt) AS latestCreatedAt, SenderId, ReceiverId
+        SELECT MAX(createdAt) AS latestCreatedAt, 
+               LEAST(SenderId, ReceiverId) AS user1, 
+               GREATEST(SenderId, ReceiverId) AS user2
         FROM chatmessages
-        WHERE SenderId = :uid OR ReceiverId = :uid
-        GROUP BY SenderId, ReceiverId
+        WHERE :uid IN (SenderId, ReceiverId)
+        GROUP BY LEAST(SenderId, ReceiverId), GREATEST(SenderId, ReceiverId)
     ) t2
-    ON t1.createdAt = t2.latestCreatedAt AND t1.SenderId = t2.SenderId AND t1.ReceiverId = t2.ReceiverId;
-    `;
+    ON t1.createdAt = t2.latestCreatedAt 
+       AND LEAST(t1.SenderId, t1.ReceiverId) = t2.user1 
+       AND GREATEST(t1.SenderId, t1.ReceiverId) = t2.user2
+    WHERE :uid IN (t1.SenderId, t1.ReceiverId);
+        `;
 
     const chats = await sequelize.query(rawQuery, {
         replacements: { uid },
