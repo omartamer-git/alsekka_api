@@ -140,10 +140,10 @@ async function checkOutRide(ride, passengers, t) {
         if (referral) {
             referral.fulfilled = true;
             await referral.save({ transaction: t });
-            userBalance += 5000;
+            userBalance += 6000;
 
             const referrer = await User.findByPk(referral.ReferrerID);
-            referrer.balance = parseFloat(referrer.balance) + 5000;
+            referrer.balance = parseFloat(referrer.balance) + 6000;
             referrer.save({ transaction: t });
 
             sendNotificationToUser("You've Earned Money!", "Thank you for completing your first ride on Seaats! We've added 50 EGP to your wallet as a referral gift.", user.id);
