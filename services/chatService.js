@@ -14,76 +14,27 @@ async function loadChat({ receiver }) {
 }
 
 async function getChats({ uid }) {
-    const chats = await ChatMessage.findAll({
-        where: {
-            [Op.or]: [
-                { senderId: uid },
-                { receiverId: uid }
-            ]
-        },
-        attributes: [
-            'senderId',
-            'receiverId',
-            'messageread',
-            'createdAt'
-        ],
-        include: [
-            {
-                model: User,
-                as: 'Sender',
-                attributes: ['firstName', 'lastName', 'profilePicture'],
-                required: false,
-                where: {
-                    id: {
-                        [Op.ne]: uid
-                    }
-                }
-            },
-            {
-                model: User,
-                as: 'Receiver',
-                attributes: ['firstName', 'lastName', 'profilePicture'],
-                required: false,
-                where: {
-                    id: {
-                        [Op.ne]: uid
-                    }
-                }
-            }
-        ],
-        order: [['createdAt', 'DESC']]
+    const rawQuery = `
+    SELECT t1.SenderId, t1.ReceiverId, t1.createdAt, t1.messageread
+    FROM chatmessages t1
+    JOIN (
+        SELECT MAX(createdAt) AS latestCreatedAt, SenderId, ReceiverId
+        FROM chatmessages
+        WHERE SenderId = :uid OR ReceiverId = :uid
+        GROUP BY SenderId, ReceiverId
+    ) t2
+    ON t1.createdAt = t2.latestCreatedAt AND t1.SenderId = t2.SenderId AND t1.ReceiverId = t2.ReceiverId;
+    `;
+
+    const chats = await sequelize.query(rawQuery, {
+        replacements: { uid },
+        type: sequelize.QueryTypes.SELECT
     });
 
-    let pairs = new Set();
-    let newChats = [];
 
-    for (let chat of chats) {
-        let pair = [chat.senderId, chat.receiverId].sort().join('-');
-
-        if (!pairs.has(pair)) {
-            // Check if there are any unread messages in the chat
-            let hasUnreadMessages = chats.some(c => 
-                ((c.senderId === chat.senderId && c.receiverId === chat.receiverId) ||
-                (c.senderId === chat.receiverId && c.receiverId === chat.senderId)) &&
-                c.messageread === 0
-            );
-
-            newChats.push({
-                senderId: chat.senderId,
-                receiverId: chat.receiverId,
-                messageread: chat.messageread,
-                createdAt: chat.createdAt,
-                Sender: chat.Sender,
-                Receiver: chat.Receiver,
-                hasUnreadMessages: hasUnreadMessages
-            });
-
-            pairs.add(pair);
-        }
-    }
-
-    return newChats;
+    return chats;
 }
+
 
 
 async function getChatHistory({ uid, receiver, page }) {
@@ -229,7 +180,7 @@ async function sendMessage({ uid, receiver, message }) {
         const user = await User.findByPk(uid);
 
 
-        sendNotificationToUser(user.firstName, `${user.firstName}: ${message.substring(0,30)}${message.length>30?"...":""}`, receiver);
+        sendNotificationToUser(user.firstName, `${user.firstName}: ${message.substring(0, 30)}${message.length > 30 ? "..." : ""}`, receiver);
 
         return newMessage;
     } catch (err) {
