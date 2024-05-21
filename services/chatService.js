@@ -1,4 +1,4 @@
-const { User, ChatMessage, CustomerServiceConversation, CustomerServiceChat } = require("../models");
+const { sequelize, User, ChatMessage, CustomerServiceConversation, CustomerServiceChat } = require("../models");
 const { Sequelize, Op, literal } = require('sequelize');
 const { NotFoundError } = require("../errors/Errors");
 const { sendNotificationToUser } = require("./appService");
