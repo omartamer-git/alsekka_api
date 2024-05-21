@@ -107,7 +107,8 @@ async function getChatHistory({ uid, receiver, page }) {
     const [affectedCount] = await ChatMessage.update({ messageread: 1 }, {
         where: {
             SenderId: receiver,
-            ReceiverId: uid
+            ReceiverId: uid,
+            messageread: 0
         }
     });
 
