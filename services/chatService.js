@@ -82,12 +82,12 @@ async function getChatHistory({ uid, receiver, page }) {
         where: {
             [Op.or]: [
                 {
-                    senderId: uid,
-                    receiverId: receiver
+                    SenderId: uid,
+                    ReceiverId: receiver
                 },
                 {
-                    senderId: receiver,
-                    receiverId: uid
+                    SenderId: receiver,
+                    ReceiverId: uid
                 }
             ]
         },
@@ -97,13 +97,22 @@ async function getChatHistory({ uid, receiver, page }) {
         order: [['createdAt', 'DESC']]
     });
 
-    for (const message of chatHistory) {
-        if (message.messageread !== 1) {
-            message.messageread = 1;
-            message.save();
+    // for (const message of chatHistory) {
+    //     if (message.messageread !== 1) {
+    //         message.messageread = 1;
+    //         message.save();
+    //     }
+    // }
+
+    const [affectedCount] = await ChatMessage.update({ messageread: 1 }, {
+        where: {
+            SenderId: receiver,
+            ReceiverId: uid
         }
-    }
-    return chatHistory;
+    });
+
+
+    return { chat: chatHistory, readCount: affectedCount };
 }
 
 async function getCSChatHistory({ uid, page }) {
