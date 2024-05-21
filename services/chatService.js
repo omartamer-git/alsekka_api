@@ -31,8 +31,42 @@ async function getChats({ uid }) {
         type: sequelize.QueryTypes.SELECT
     });
 
+    let idList = [];
+    for (const chat of chats) {
+        const secondPartyId = chat.SenderId == uid ? chat.ReceiverId : chat.SenderId;
+        idList.push(secondPartyId);
+    }
 
-    return chats;
+    const users = await User.findAll({
+        attributes: ['id', 'firstName', 'lastName', 'profilePicture'],
+        where: {
+            id: {
+                [Op.in]: idList
+            }
+        }
+    });
+
+    // Create a map for quick lookup of user details by user ID
+    const userMap = {};
+    for (const user of users) {
+        userMap[user.id] = user;
+    }
+
+    // Match the user IDs with the chats
+    const result = chats.map(chat => {
+        const secondPartyId = chat.SenderId == uid ? chat.ReceiverId : chat.SenderId;
+        const user = userMap[secondPartyId];
+
+        return {
+            SenderId: chat.SenderId,
+            ReceiverId: chat.ReceiverId,
+            User: user, // Assuming you want the full user details
+            messageread: chat.messageread,
+            createdAt: chat.createdAt
+        };
+    });
+
+    return result;
 }
 
 
