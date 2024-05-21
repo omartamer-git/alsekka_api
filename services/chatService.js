@@ -63,19 +63,25 @@ async function getChats({ uid }) {
         if (!pairs.has(pair)) {
             // Check if there are any unread messages in the chat
             let hasUnreadMessages = chats.some(c => 
-                (c.senderId === chat.senderId && c.receiverId === chat.receiverId) ||
-                (c.senderId === chat.receiverId && c.receiverId === chat.senderId) &&
+                ((c.senderId === chat.senderId && c.receiverId === chat.receiverId) ||
+                (c.senderId === chat.receiverId && c.receiverId === chat.senderId)) &&
                 c.messageread === 0
             );
 
             newChats.push({
-                ...chat,
+                senderId: chat.senderId,
+                receiverId: chat.receiverId,
+                messageread: chat.messageread,
+                createdAt: chat.createdAt,
+                Sender: chat.Sender,
+                Receiver: chat.Receiver,
                 hasUnreadMessages: hasUnreadMessages
             });
 
             pairs.add(pair);
         }
     }
+
     return newChats;
 }
 
