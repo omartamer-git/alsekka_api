@@ -28,7 +28,8 @@ async function getChats({ uid }) {
     ON t1.createdAt = t2.latestCreatedAt 
        AND LEAST(t1.SenderId, t1.ReceiverId) = t2.user1 
        AND GREATEST(t1.SenderId, t1.ReceiverId) = t2.user2
-    WHERE :uid IN (t1.SenderId, t1.ReceiverId);
+    WHERE :uid IN (t1.SenderId, t1.ReceiverId)
+    ORDER BY createdAt DESC;
         `;
 
     const chats = await sequelize.query(rawQuery, {
