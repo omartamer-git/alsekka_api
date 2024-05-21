@@ -14,7 +14,6 @@ async function loadChat({ receiver }) {
 }
 
 async function getChats({ uid }) {
-    // make this query get a distinct list of users
     const chats = await ChatMessage.findAll({
         where: {
             [Op.or]: [
@@ -25,6 +24,8 @@ async function getChats({ uid }) {
         attributes: [
             'senderId',
             'receiverId',
+            'messageread',
+            'createdAt'
         ],
         include: [
             {
@@ -50,20 +51,34 @@ async function getChats({ uid }) {
                 }
             }
         ],
+        order: [['createdAt', 'DESC']]
     });
-    let pairs = [];
-    let newChats = [];
-    for (let chat of chats) {
-        let pair = chat.dataValues.senderId + chat.dataValues.receiverId;
 
-        if (pairs.includes(pair)) {
-            continue;
+    let pairs = new Set();
+    let newChats = [];
+
+    for (let chat of chats) {
+        let pair = [chat.senderId, chat.receiverId].sort().join('-');
+
+        if (!pairs.has(pair)) {
+            // Check if there are any unread messages in the chat
+            let hasUnreadMessages = chats.some(c => 
+                (c.senderId === chat.senderId && c.receiverId === chat.receiverId) ||
+                (c.senderId === chat.receiverId && c.receiverId === chat.senderId) &&
+                c.messageread === 0
+            );
+
+            newChats.push({
+                ...chat,
+                hasUnreadMessages: hasUnreadMessages
+            });
+
+            pairs.add(pair);
         }
-        newChats.push(chat);
-        pairs.push(pair);
     }
     return newChats;
 }
+
 
 async function getChatHistory({ uid, receiver, page }) {
     const chatHistory = await ChatMessage.findAll({
