@@ -398,11 +398,11 @@ function getSuggestedPrice({ fromLatitude, fromLongitude, toLatitude, toLongitud
 }
 
 async function getUpcomingRides({ uid, limit }) {
-    const upcomingRides = await getPastRides({ uid, limit }, true, false);
+    const upcomingRides = await getPastRides({ uid, limit }, true, false, 'ASC');
     return upcomingRides;
 }
 
-async function getPastRides({ uid, limit, page }, upcoming = false, cancelled = true) {
+async function getPastRides({ uid, limit, page }, upcoming = false, cancelled = true, order = 'DESC') {
     const passengerFinderQuery = await Passenger.findAll({
         where: {
             UserId: uid,
@@ -444,7 +444,7 @@ async function getPastRides({ uid, limit, page }, upcoming = false, cancelled = 
     const upcomingRides = await Ride.findAll({
         where: whereClauseRide,
         attributes: rideAttributeList,
-        order: [['datetime', 'DESC']],
+        order: [['datetime', order]],
         ...(limit && { limit: limit }),
         ...(offset && { offset: offset })
     });
