@@ -925,14 +925,16 @@ async function submitPassengerRatings({ tripId, ratings }, uid) {
 
         // ride.driverCompletedRatings = true;
         // ride.save();
-
+        const promises = []
         for (const rating of ratings) {
             const user = await User.findByPk(rating.id);
 
             user.rating = ((user.rating * user.numRatings) + rating.stars) / (user.numRatings + 1);
             user.numRatings = user.numRatings + 1;
-            user.save({ transaction: t });
+            promises.push(user.save({ transaction: t }));
         }
+
+        await Promise.all(promises);
 
         await t.commit();
         return true;
