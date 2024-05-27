@@ -951,11 +951,12 @@ async function submitPassengerRatings({ tripId, ratings }, uid) {
             promises.push(user.save({ transaction: t }));
         }
 
+        promises.push(dismissPassengerRatings(uid, t);)
+
         await Promise.all(promises);
 
         await t.commit();
 
-        await dismissPassengerRatings();
         return true;
     } catch (e) {
         await t.rollback();
