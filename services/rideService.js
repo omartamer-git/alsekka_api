@@ -907,33 +907,40 @@ async function dismissPassengerRatings(uid) {
 
 async function submitPassengerRatings({ tripId, ratings }, uid) {
     const t = await sequelize.transaction();
-    const ride = await Ride.findByPk(tripId);
-    const passengers = await Passenger.findAll({
-        where: {
-            RideId: tripId,
-            status: 'ARRIVED',
+    try {
+        const ride = await Ride.findByPk(tripId);
+        const passengers = await Passenger.findAll({
+            where: {
+                RideId: tripId,
+                status: 'ARRIVED',
+            }
+        });
+
+        const myPassenger = passengers.find((p) => p.UserId == uid);
+        const otherPassengers = passengers.filter((p) => p.UserId != uid);
+
+        if (myPassenger.passengerCompletedRating == 1) {
+            throw new BadRequestError();
         }
-    });
 
-    const myPassenger = passengers.find((p) => p.UserId == uid);
-    const otherPassengers = passengers.filter((p) => p.UserId != uid);
+        // ride.driverCompletedRatings = true;
+        // ride.save();
 
-    if (myPassenger.passengerCompletedRating == 1) {
-        throw new BadRequestError();
+        for (const rating of ratings) {
+            const user = await User.findByPk(rating.id);
+
+            user.rating = ((user.rating * user.numRatings) + rating.stars) / (user.numRatings + 1);
+            user.numRatings = user.numRatings + 1;
+            user.save({ transaction: t });
+        }
+
+        await t.commit();
+        return true;
+    } catch (e) {
+        await t.rollback();
+        throw new InternalServerError();
     }
 
-    // ride.driverCompletedRatings = true;
-    // ride.save();
-
-    for (const rating of ratings) {
-        const user = await User.findByPk(rating.id);
-
-        user.rating = ((user.rating * user.numRatings) + rating.stars) / (user.numRatings + 1);
-        user.numRatings = user.numRatings + 1;
-        user.save({ transaction: t });
-    }
-
-    return true;
 }
 
 async function noShow({ tripId, passenger }) {
