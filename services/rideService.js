@@ -601,7 +601,7 @@ async function getDriverLocation({ rideId }, userId) {
             }
         }
     });
-    
+
     if (!passenger) throw new UnauthorizedError();
 
     const cachedData = await redisClient.get(`driverLocation:${ride.DriverId}`);
@@ -783,7 +783,7 @@ async function checkOut({ tripId, uid }) {
             },
             transaction: t,
         });
-        
+
         await checkOutRide(ride, passengers, t);
 
         ride.status = 'COMPLETED';
@@ -818,6 +818,54 @@ async function submitDriverRatings({ tripId, ratings }, uid) {
         user.rating = ((user.rating * user.numRatings) + rating.stars) / (user.numRatings + 1);
         user.numRatings = user.numRatings + 1;
         user.save();
+    }
+
+    return true;
+}
+
+async function passengerPendingRatings(uid) {
+    const didntComplete = await Passenger.Count({
+        where: {
+            UserId: uid,
+            passengerCompletedRating: false
+        }
+    })
+
+    if(didntComplete > 0) {
+        return true
+    } else {
+        return false
+    }
+}
+
+async function submitPassengerRatings({ tripId, ratings }, uid) {
+    const t = await sequelize.transaction();
+    const ride = await Ride.findByPk(tripId);
+    const passengers = await Passenger.findAll({
+        where: {
+            RideId: tripId,
+        }
+    });
+
+    const myPassenger = passengers.find((p) => p.UserId == uid);
+    const otherPassengers = passengers.filter((p) => p.UserId != uid);
+
+    if (myPassenger.passengerCompletedRating == 1) {
+        throw new BadRequestError();
+    }
+
+    myPassenger.passengerCompletedRating = 1;
+    myPassenger.save({ transaction: t })
+
+    // ride.driverCompletedRatings = true;
+    // ride.save();
+
+    for (const rating of ratings) {
+        const user = await User.findByPk(rating.id);
+
+        user.rating = ((user.rating * user.numRatings) + rating.stars) / (user.numRatings + 1);
+        user.numRatings = user.numRatings + 1;
+        user.save({ transaction: t });
     }
 
     return true;
@@ -927,6 +975,8 @@ module.exports = {
     noShow,
     getPassengerDetails,
     verifyVoucher,
+    submitPassengerRatings,
+    passengerPendingRatings,
     submitDriverRatings,
     getDriverLocation
 };
