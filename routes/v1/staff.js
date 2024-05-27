@@ -25,7 +25,7 @@ router.get("/searchuser", sessionChecker, async (req, res, next) => {
     const { phone } = req.query;
 
     if (!phone) {
-        return next(new BadRequestError());
+        return next(new BadRequestError())
     }
 
     staffService.findUser(req.query).then(user => {
