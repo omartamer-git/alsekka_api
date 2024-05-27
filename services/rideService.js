@@ -824,7 +824,7 @@ async function submitDriverRatings({ tripId, ratings }, uid) {
 }
 
 async function passengerPendingRatings(uid) {
-    const didntComplete = await Passenger.Count({
+    const didntComplete = await Passenger.count({
         where: {
             UserId: uid,
             passengerCompletedRating: false
