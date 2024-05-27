@@ -285,7 +285,17 @@ router.get("/passengerpendingratings", authenticateToken, async (req, res, next)
     rideService.passengerPendingRatings(uid).then((pending) => {
         res.json(pending)
     }).catch(next);
-})
+});
+
+router.get("/dismisspassengerratings", authenticateToken, async(req, res, next) => {
+    const uid = req.user.userId;
+
+    rideService.dismissPassengerRatings(uid);
+
+    res.json({
+        success: true
+    })
+});
 
 router.post("/submitpassengerratings", authenticateToken, async (req, res, next) => {
     const { tripId, ratings } = req.body;

@@ -857,6 +857,10 @@ async function passengerPendingRatings(uid) {
         }
     });
 
+    if(passengers.length == 0) {
+        return []
+    }
+
     // Extract passenger user IDs
     const passengerIds = passengers.map(p => p.UserId);
 
@@ -898,6 +902,8 @@ async function dismissPassengerRatings(uid) {
             UserId: uid
         }
     });
+
+    return true;
 }
 
 async function submitPassengerRatings({ tripId, ratings }, uid) {
@@ -1036,6 +1042,7 @@ module.exports = {
     getPassengerDetails,
     verifyVoucher,
     submitPassengerRatings,
+    dismissPassengerRatings,
     passengerPendingRatings,
     submitDriverRatings,
     getDriverLocation
