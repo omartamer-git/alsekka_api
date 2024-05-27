@@ -883,6 +883,7 @@ async function passengerPendingRatings(uid) {
 
     return {
         ride: {
+            id: ride.id,
             mainTextFrom: ride.mainTextFrom,
             mainTextTo: ride.mainTextTo
         },
