@@ -859,12 +859,6 @@ async function passengerPendingRatings(uid) {
         }
     });
 
-    if(passengers.length == 0) {
-        return {
-            complete: true
-        }
-    }
-
     // Extract passenger user IDs
     const passengerIds = passengers.map(p => p.UserId);
 
