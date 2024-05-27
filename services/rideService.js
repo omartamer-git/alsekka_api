@@ -917,10 +917,6 @@ async function dismissPassengerRatings(uid, t = null) {
 
         return true;
     } catch (error) {
-        // Rollback the transaction if it was created within this function
-        if (transaction && !t) {
-            await transaction.rollback();
-        }
         // Handle the error or rethrow it
         throw error;
     }
