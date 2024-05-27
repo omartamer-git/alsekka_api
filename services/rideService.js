@@ -892,17 +892,38 @@ async function passengerPendingRatings(uid) {
     };
 }
 
-async function dismissPassengerRatings(uid) {
-    await Passenger.update({
-        passengerCompletedRating: true
-    }, {
-        where: {
-            passengerCompletedRating: false,
-            UserId: uid
-        }
-    });
+async function dismissPassengerRatings(uid, t = null) {
+    let transaction;
 
-    return true;
+    try {
+        // Use the provided transaction or create a new one
+        transaction = t || await sequelize.transaction();
+
+        await Passenger.update(
+            { passengerCompletedRating: true },
+            {
+                where: {
+                    passengerCompletedRating: false,
+                    UserId: uid
+                },
+                transaction
+            }
+        );
+
+        // Commit the transaction if it was created within this function
+        if (!t) {
+            await transaction.commit();
+        }
+
+        return true;
+    } catch (error) {
+        // Rollback the transaction if it was created within this function
+        if (transaction && !t) {
+            await transaction.rollback();
+        }
+        // Handle the error or rethrow it
+        throw error;
+    }
 }
 
 async function submitPassengerRatings({ tripId, ratings }, uid) {
@@ -937,6 +958,8 @@ async function submitPassengerRatings({ tripId, ratings }, uid) {
         await Promise.all(promises);
 
         await t.commit();
+
+        await dismissPassengerRatings();
         return true;
     } catch (e) {
         await t.rollback();
