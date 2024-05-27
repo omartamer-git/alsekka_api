@@ -824,18 +824,80 @@ async function submitDriverRatings({ tripId, ratings }, uid) {
 }
 
 async function passengerPendingRatings(uid) {
-    const didntComplete = await Passenger.count({
+    // Find the passenger with a pending rating
+    const pendingRatingPassenger = await Passenger.findOne({
         where: {
             UserId: uid,
-            passengerCompletedRating: false
-        }
-    })
+            passengerCompletedRating: false,
+            status: 'ARRIVED'
+        },
+    });
 
-    if(didntComplete > 0) {
-        return true
-    } else {
-        return false
+    if (!pendingRatingPassenger) {
+        return [];
     }
+
+    // Fetch the ride details
+    const ride = await Ride.findByPk(pendingRatingPassenger.RideId, {
+        attributes: ['id', 'DriverId', 'mainTextFrom', 'mainTextTo']
+    });
+
+    if (!ride) {
+        throw new NotFoundError();
+    }
+
+    // Fetch other passengers in the ride
+    const passengers = await Passenger.findAll({
+        where: {
+            RideId: ride.id,
+            status: 'ARRIVED',
+            UserId: {
+                [Op.ne]: uid
+            }
+        }
+    });
+
+    // Extract passenger user IDs
+    const passengerIds = passengers.map(p => p.UserId);
+
+    // Fetch the driver details
+    const driver = await User.findByPk(ride.DriverId, {
+        attributes: ['id', 'firstName', 'lastName', 'profilePicture'],
+    });
+
+    if (!driver) {
+        throw new Error('Driver not found');
+    }
+
+    // Fetch the passenger details
+    const passengerUsers = await User.findAll({
+        attributes: ['id', 'firstName', 'lastName', 'profilePicture'],
+        where: {
+            id: {
+                [Op.in]: passengerIds
+            }
+        }
+    });
+
+    return {
+        ride: {
+            mainTextFrom: ride.mainTextFrom,
+            mainTextTo: ride.mainTextTo
+        },
+        driver,
+        passengers: passengerUsers
+    };
+}
+
+async function dismissPassengerRatings(uid) {
+    await Passenger.update({
+        passengerCompletedRating: true
+    }, {
+        where: {
+            passengerCompletedRating: false,
+            UserId: uid
+        }
+    });
 }
 
 async function submitPassengerRatings({ tripId, ratings }, uid) {
@@ -844,6 +906,7 @@ async function submitPassengerRatings({ tripId, ratings }, uid) {
     const passengers = await Passenger.findAll({
         where: {
             RideId: tripId,
+            status: 'ARRIVED',
         }
     });
 
@@ -853,9 +916,6 @@ async function submitPassengerRatings({ tripId, ratings }, uid) {
     if (myPassenger.passengerCompletedRating == 1) {
         throw new BadRequestError();
     }
-
-    myPassenger.passengerCompletedRating = 1;
-    myPassenger.save({ transaction: t })
 
     // ride.driverCompletedRatings = true;
     // ride.save();

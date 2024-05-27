@@ -283,9 +283,7 @@ router.get("/passengerpendingratings", authenticateToken, async (req, res, next)
     const uid = req.user.userId;
 
     rideService.passengerPendingRatings(uid).then((pending) => {
-        res.json({
-            pending
-        })
+        res.json(pending)
     }).catch(next);
 })
 
