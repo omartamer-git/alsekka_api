@@ -834,7 +834,9 @@ async function passengerPendingRatings(uid) {
     });
 
     if (!pendingRatingPassenger) {
-        return [];
+        return {
+            complete: true
+        };
     }
 
     // Fetch the ride details
@@ -858,7 +860,9 @@ async function passengerPendingRatings(uid) {
     });
 
     if(passengers.length == 0) {
-        return []
+        return {
+            complete: true
+        }
     }
 
     // Extract passenger user IDs
