@@ -81,8 +81,9 @@ async function addToMailingList({ name, phone, gender, car }) {
     return true;
 }
 
-async function sendNotificationToUser(title, message, userId = null, targetArn = null, deviceId = null) {
+async function sendNotificationToUser(title, message, userId = null, targetArn = null, deviceId = null, message_ar=null) {
     let targetArn_ = targetArn;
+    let device;
     if (!targetArn_ && !deviceId) {
         const user = await User.findByPk(userId, {
             include: [
@@ -91,9 +92,10 @@ async function sendNotificationToUser(title, message, userId = null, targetArn =
                 }
             ]
         });
-        targetArn_ = user.Device.platformEndpoint;
+        device = user.Device;
+        targetArn_ = device.platformEndpoint;
     } else if (!targetArn && deviceId) {
-        const device = await Device.findByPk(deviceId);
+        device = await Device.findByPk(deviceId);
         targetArn_ = device.platformEndpoint;
     }
 
@@ -101,7 +103,7 @@ async function sendNotificationToUser(title, message, userId = null, targetArn =
     const fcmPayload = JSON.stringify({
         notification: {
             title: title,
-            body: message,
+            body: (message_ar && device.language === 'AR') ? message_ar : message,
             icon: "ic_notification"  // Ensure this icon name matches the one in your Android drawable resources
         },
         data: {
