@@ -105,6 +105,10 @@ async function updateCar({ id, brand, year, model, color, issuedate, expirydate,
     car.issuedate = issuedate || car.issuedate;
     car.expirydate = expirydate || car.expirydate;
 
+    if(status === 'APPROVED') {
+        sendNotificationToUser('License Verified', 'Congratulations! Your vehicle license has been successfully verified.', license.UserId, null, null, "مبروك! تم التحقق من رخصة سيارتك بنجاح!")
+    }
+
     car.save();
 
     return car;
