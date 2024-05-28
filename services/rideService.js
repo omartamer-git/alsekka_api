@@ -30,8 +30,8 @@ async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, g
         const user = await User.findByPk(uid);
         secondGender = user.gender;
     }
-    
-    let date = new Date(date);
+
+    date = new Date(date);
 
     // Convert the date to Egypt's local time (considering daylight saving time)
     let egyptTime = moment.tz(date, "Africa/Cairo");
