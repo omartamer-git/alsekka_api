@@ -7,6 +7,7 @@ const { getDirections, geocode, getLocationFromPlaceId } = require('./googleMaps
 const { isFloat } = require('../util/util');
 const { subtractDates } = require('../helper');
 const geolib = require('geolib');
+const moment = require('moment-timezone');
 
 const { sendNotificationToUser, sendNotificationToRide } = require('./appService');
 const { createInvoice, cancelPassengerInvoice, checkOutRide, cancelRideInvoices } = require('./paymentsService');
@@ -29,9 +30,25 @@ async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, g
         const user = await User.findByPk(uid);
         secondGender = user.gender;
     }
+    
+    let date = new Date(date);
 
+    // Convert the date to Egypt's local time (considering daylight saving time)
+    let egyptTime = moment.tz(date, "Africa/Cairo");
+    
+    // Determine start and end of the day in Egypt's local time
+    let startOfDay;
+    if (egyptTime.isSame(moment.tz("Africa/Cairo"), 'day')) {
+        // If the date is today, use the current time in Egypt
+        startOfDay = moment.tz("Africa/Cairo").startOf('hour').utc().format('YYYY-MM-DD HH:mm:ss');
+    } else {
+        // If the date is not today, use the start of the day
+        startOfDay = egyptTime.startOf('day').utc().format('YYYY-MM-DD HH:mm:ss');
+    }
+    let endOfDay = egyptTime.endOf('day').utc().format('YYYY-MM-DD HH:mm:ss');
+    
     // TODO: Why is the date within 24 hours? It should be that entire day to avoid confusion.
-    let values = [uid, date, subtractDates(date, -24), gender];
+    let values = [uid, startOfDay, endOfDay, gender];
     let rideQuery = `SELECT DISTINCT R.*, ST_Distance_Sphere(fromLocation, ST_GeomFromText('POINT(${startLat} ${startLng})', 4326) ) as distanceStart, ST_Distance_Sphere(toLocation, ST_GeomFromText( 'POINT(${endLat} ${endLng})', 4326 ) ) as distanceEnd, C.brand, C.model FROM rides AS R, cars AS C  WHERE R.status='SCHEDULED' AND (C.id = R.CarId) AND (CommunityID IN (SELECT CommunityId FROM CommunityMembers WHERE UserId=? AND joinStatus='APPROVED') OR CommunityID IS NULL OR CommunityID IN (SELECT id as CommunityID FROM Communities WHERE private=0)) AND datetime >= ? AND datetime <= ? AND (gender=? ${!secondGender ? "" : `OR gender='${secondGender}'`}) HAVING distanceStart <= 60000 AND distanceEnd <= 60000 ORDER BY datetime, distanceStart, distanceEnd`;
     // let rideQuery = `SELECT DISTINCT R.*, ST_Distance_Sphere(fromLocation, ST_GeomFromText('POINT(${startLat} ${startLng})', 4326)) AS distanceStart, ST_Distance_Sphere(toLocation, ST_GeomFromText('POINT(${endLat} ${endLng})', 4326)) AS distanceEnd, C.brand, C.model FROM rides AS R JOIN cars AS C ON C.id = R.CarId LEFT JOIN Community AS Comm ON R.CommunityID = Comm.id WHERE R.status='SCHEDULED' AND (R.CommunityID IN (SELECT CommunityId FROM CommunityMembers WHERE UserId=? AND joinStatus='APPROVED') OR R.CommunityID IS NULL OR Comm.private = 0) AND datetime >= ? AND datetime <= ? AND (gender=? ${!secondGender ? "" : `OR gender='${secondGender}'`}) HAVING distanceStart <= 10000 AND distanceEnd <= 10000 ORDER BY datetime, distanceStart, distanceEnd`
     const rideResult = await sequelize.query(rideQuery, {
@@ -392,7 +409,7 @@ function getSuggestedPrice({ fromLatitude, fromLongitude, toLatitude, toLongitud
 
     return (
         Math.ceil(
-            ((dist * litrePer100km * pricePerLitre * (1 + DRIVER_FEE)) / 4) *1.5
+            ((dist * litrePer100km * pricePerLitre * (1 + DRIVER_FEE)) / 4) * 1.5
         )
     )
 }
