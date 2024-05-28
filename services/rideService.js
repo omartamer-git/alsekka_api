@@ -382,7 +382,7 @@ function getSuggestedPrice({ fromLatitude, fromLongitude, toLatitude, toLongitud
     const litrePer100km = 10;
 
     // Price of fuel
-    const pricePerLitre = 1250;
+    const pricePerLitre = 1350;
 
     // return (
     //     Math.ceil(
@@ -392,7 +392,7 @@ function getSuggestedPrice({ fromLatitude, fromLongitude, toLatitude, toLongitud
 
     return (
         Math.ceil(
-            ((dist * litrePer100km * pricePerLitre * (1 + DRIVER_FEE)) / 4)
+            ((dist * litrePer100km * pricePerLitre * (1 + DRIVER_FEE)) / 4) *1.5
         )
     )
 }
