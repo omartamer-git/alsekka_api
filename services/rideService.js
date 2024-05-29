@@ -30,29 +30,32 @@ async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, g
         const user = await User.findByPk(uid);
         secondGender = user.gender;
     }
-    console.log(date);
-    console.log('x');
-    date = new Date(date);
-    console.log(date);
-    console.log('y');
+    // console.log(date);
+    // console.log('x');
+    // date = new Date(date);
+    // console.log(date);
+    // console.log('y');
 
-    // Convert the date to Egypt's local time (considering daylight saving time)
-    let egyptTime = moment.tz(date, "Africa/Cairo");
-    console.log(egyptTime);
+    // // Convert the date to Egypt's local time (considering daylight saving time)
+    // let egyptTime = moment.tz(date, "Africa/Cairo");
+    // console.log(egyptTime);
 
-    // Determine start and end of the day in Egypt's local time
-    let startOfDay;
-    // if (egyptTime.isSame(moment.tz("Africa/Cairo"), 'day')) {
-    //     // If the date is today, use the current time in Egypt
-    //     startOfDay = moment.tz("Africa/Cairo").startOf('hour').utc().format('YYYY-MM-DD HH:mm:ss');
-    // } else {
-    // If the date is not today, use the start of the day
-    startOfDay = egyptTime.startOf('day').utc().format('YYYY-MM-DD HH:mm:ss');
-    // }
-    let endOfDay = egyptTime.endOf('day').utc().format('YYYY-MM-DD HH:mm:ss');
+    // // Determine start and end of the day in Egypt's local time
+    // let startOfDay;
+    // // if (egyptTime.isSame(moment.tz("Africa/Cairo"), 'day')) {
+    // //     // If the date is today, use the current time in Egypt
+    // //     startOfDay = moment.tz("Africa/Cairo").startOf('hour').utc().format('YYYY-MM-DD HH:mm:ss');
+    // // } else {
+    // // If the date is not today, use the start of the day
+    // startOfDay = egyptTime.startOf('day').utc().format('YYYY-MM-DD HH:mm:ss');
+    // // }
+    // let endOfDay = egyptTime.endOf('day').utc().format('YYYY-MM-DD HH:mm:ss');
 
     // TODO: Why is the date within 24 hours? It should be that entire day to avoid confusion.
-    let values = [uid, startOfDay, endOfDay, gender];
+    let date2 = new Date(date);
+    date2.setTime(date.getTime() + (24 * 60 * 60 * 1000)); // Adds 24 hours in milliseconds
+
+    let values = [uid, date, date2.toISOString(), gender];
     let rideQuery = `SELECT DISTINCT R.*, ST_Distance_Sphere(fromLocation, ST_GeomFromText('POINT(${startLat} ${startLng})', 4326) ) as distanceStart, ST_Distance_Sphere(toLocation, ST_GeomFromText( 'POINT(${endLat} ${endLng})', 4326 ) ) as distanceEnd, C.brand, C.model FROM rides AS R, cars AS C  WHERE R.status='SCHEDULED' AND (C.id = R.CarId) AND (CommunityID IN (SELECT CommunityId FROM CommunityMembers WHERE UserId=? AND joinStatus='APPROVED') OR CommunityID IS NULL OR CommunityID IN (SELECT id as CommunityID FROM Communities WHERE private=0)) AND datetime >= ? AND datetime <= ? AND (gender=? ${!secondGender ? "" : `OR gender='${secondGender}'`}) HAVING distanceStart <= 60000 AND distanceEnd <= 60000 ORDER BY datetime, distanceStart, distanceEnd`;
     // let rideQuery = `SELECT DISTINCT R.*, ST_Distance_Sphere(fromLocation, ST_GeomFromText('POINT(${startLat} ${startLng})', 4326)) AS distanceStart, ST_Distance_Sphere(toLocation, ST_GeomFromText('POINT(${endLat} ${endLng})', 4326)) AS distanceEnd, C.brand, C.model FROM rides AS R JOIN cars AS C ON C.id = R.CarId LEFT JOIN Community AS Comm ON R.CommunityID = Comm.id WHERE R.status='SCHEDULED' AND (R.CommunityID IN (SELECT CommunityId FROM CommunityMembers WHERE UserId=? AND joinStatus='APPROVED') OR R.CommunityID IS NULL OR Comm.private = 0) AND datetime >= ? AND datetime <= ? AND (gender=? ${!secondGender ? "" : `OR gender='${secondGender}'`}) HAVING distanceStart <= 10000 AND distanceEnd <= 10000 ORDER BY datetime, distanceStart, distanceEnd`
     const rideResult = await sequelize.query(rideQuery, {
