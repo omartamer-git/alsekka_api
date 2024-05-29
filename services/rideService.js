@@ -30,11 +30,15 @@ async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, g
         const user = await User.findByPk(uid);
         secondGender = user.gender;
     }
-
+    console.log(date);
+    console.log('x');
     date = new Date(date);
+    console.log(date);
+    console.log('y');
 
     // Convert the date to Egypt's local time (considering daylight saving time)
     let egyptTime = moment.tz(date, "Africa/Cairo");
+    console.log(egyptTime);
 
     // Determine start and end of the day in Egypt's local time
     let startOfDay;
