@@ -35,18 +35,18 @@ async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, g
 
     // Convert the date to Egypt's local time (considering daylight saving time)
     let egyptTime = moment.tz(date, "Africa/Cairo");
-    
+
     // Determine start and end of the day in Egypt's local time
     let startOfDay;
-    if (egyptTime.isSame(moment.tz("Africa/Cairo"), 'day')) {
-        // If the date is today, use the current time in Egypt
-        startOfDay = moment.tz("Africa/Cairo").startOf('hour').utc().format('YYYY-MM-DD HH:mm:ss');
-    } else {
-        // If the date is not today, use the start of the day
-        startOfDay = egyptTime.startOf('day').utc().format('YYYY-MM-DD HH:mm:ss');
-    }
+    // if (egyptTime.isSame(moment.tz("Africa/Cairo"), 'day')) {
+    //     // If the date is today, use the current time in Egypt
+    //     startOfDay = moment.tz("Africa/Cairo").startOf('hour').utc().format('YYYY-MM-DD HH:mm:ss');
+    // } else {
+    // If the date is not today, use the start of the day
+    startOfDay = egyptTime.startOf('day').utc().format('YYYY-MM-DD HH:mm:ss');
+    // }
     let endOfDay = egyptTime.endOf('day').utc().format('YYYY-MM-DD HH:mm:ss');
-    
+
     // TODO: Why is the date within 24 hours? It should be that entire day to avoid confusion.
     let values = [uid, startOfDay, endOfDay, gender];
     let rideQuery = `SELECT DISTINCT R.*, ST_Distance_Sphere(fromLocation, ST_GeomFromText('POINT(${startLat} ${startLng})', 4326) ) as distanceStart, ST_Distance_Sphere(toLocation, ST_GeomFromText( 'POINT(${endLat} ${endLng})', 4326 ) ) as distanceEnd, C.brand, C.model FROM rides AS R, cars AS C  WHERE R.status='SCHEDULED' AND (C.id = R.CarId) AND (CommunityID IN (SELECT CommunityId FROM CommunityMembers WHERE UserId=? AND joinStatus='APPROVED') OR CommunityID IS NULL OR CommunityID IN (SELECT id as CommunityID FROM Communities WHERE private=0)) AND datetime >= ? AND datetime <= ? AND (gender=? ${!secondGender ? "" : `OR gender='${secondGender}'`}) HAVING distanceStart <= 60000 AND distanceEnd <= 60000 ORDER BY datetime, distanceStart, distanceEnd`;
