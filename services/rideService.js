@@ -53,7 +53,17 @@ async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, g
 
     // TODO: Why is the date within 24 hours? It should be that entire day to avoid confusion.
     let date2 = new Date(date);
-    date2.setTime(date2.getTime() + (24 * 60 * 60 * 1000)); // Adds 24 hours in milliseconds
+    const today = new Date();
+
+    if(date2.getDate() == today.getDate() && date2.getMonth() == today.getMonth() && date2.getFullYear() == today.getFullYear()) {
+        // Today, instead of adding 24 hours to date2, make date2 EOD
+        date2 = new Date(
+            moment.utc(new Date()).tz("Africa/Cairo").endOf('day').utc().format()
+        )
+    } else {
+        date2.setTime(date2.getTime() + (24 * 60 * 60 * 1000)); // Adds 24 hours in milliseconds
+    }
+
 
     let values = [uid, date, date2.toISOString(), gender];
     let rideQuery = `SELECT DISTINCT R.*, ST_Distance_Sphere(fromLocation, ST_GeomFromText('POINT(${startLat} ${startLng})', 4326) ) as distanceStart, ST_Distance_Sphere(toLocation, ST_GeomFromText( 'POINT(${endLat} ${endLng})', 4326 ) ) as distanceEnd, C.brand, C.model FROM rides AS R, cars AS C  WHERE R.status='SCHEDULED' AND (C.id = R.CarId) AND (CommunityID IN (SELECT CommunityId FROM CommunityMembers WHERE UserId=? AND joinStatus='APPROVED') OR CommunityID IS NULL OR CommunityID IN (SELECT id as CommunityID FROM Communities WHERE private=0)) AND datetime >= ? AND datetime <= ? AND (gender=? ${!secondGender ? "" : `OR gender='${secondGender}'`}) HAVING distanceStart <= 60000 AND distanceEnd <= 60000 ORDER BY datetime, distanceStart, distanceEnd`;
