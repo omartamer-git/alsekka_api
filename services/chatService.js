@@ -1,4 +1,4 @@
-const { User, ChatMessage, CustomerServiceConversation, CustomerServiceChat } = require("../models");
+const { sequelize, User, ChatMessage, CustomerServiceConversation, CustomerServiceChat } = require("../models");
 const { Sequelize, Op, literal } = require('sequelize');
 const { NotFoundError } = require("../errors/Errors");
 const { sendNotificationToUser } = require("./appService");
@@ -14,68 +14,80 @@ async function loadChat({ receiver }) {
 }
 
 async function getChats({ uid }) {
-    // make this query get a distinct list of users
-    const chats = await ChatMessage.findAll({
-        where: {
-            [Op.or]: [
-                { senderId: uid },
-                { receiverId: uid }
-            ]
-        },
-        attributes: [
-            'senderId',
-            'receiverId',
-        ],
-        include: [
-            {
-                model: User,
-                as: 'Sender',
-                attributes: ['firstName', 'lastName', 'profilePicture'],
-                required: false,
-                where: {
-                    id: {
-                        [Op.ne]: uid
-                    }
-                }
-            },
-            {
-                model: User,
-                as: 'Receiver',
-                attributes: ['firstName', 'lastName', 'profilePicture'],
-                required: false,
-                where: {
-                    id: {
-                        [Op.ne]: uid
-                    }
-                }
-            }
-        ],
-    });
-    let pairs = [];
-    let newChats = [];
-    for (let chat of chats) {
-        let pair = chat.dataValues.senderId + chat.dataValues.receiverId;
+    const rawQuery = `
+    SELECT t1.SenderId, t1.ReceiverId, t1.createdAt, t1.messageread
+    FROM chatmessages t1
+    JOIN (
+        SELECT MAX(createdAt) AS latestCreatedAt, 
+               LEAST(SenderId, ReceiverId) AS user1, 
+               GREATEST(SenderId, ReceiverId) AS user2
+        FROM chatmessages
+        WHERE :uid IN (SenderId, ReceiverId)
+        GROUP BY LEAST(SenderId, ReceiverId), GREATEST(SenderId, ReceiverId)
+    ) t2
+    ON t1.createdAt = t2.latestCreatedAt 
+       AND LEAST(t1.SenderId, t1.ReceiverId) = t2.user1 
+       AND GREATEST(t1.SenderId, t1.ReceiverId) = t2.user2
+    WHERE :uid IN (t1.SenderId, t1.ReceiverId)
+    ORDER BY createdAt DESC;
+        `;
 
-        if (pairs.includes(pair)) {
-            continue;
-        }
-        newChats.push(chat);
-        pairs.push(pair);
+    const chats = await sequelize.query(rawQuery, {
+        replacements: { uid },
+        type: sequelize.QueryTypes.SELECT
+    });
+
+    let idList = [];
+    for (const chat of chats) {
+        const secondPartyId = chat.SenderId == uid ? chat.ReceiverId : chat.SenderId;
+        idList.push(secondPartyId);
     }
-    return newChats;
+
+    const users = await User.findAll({
+        attributes: ['id', 'firstName', 'lastName', 'profilePicture'],
+        where: {
+            id: {
+                [Op.in]: idList
+            }
+        }
+    });
+
+    // Create a map for quick lookup of user details by user ID
+    const userMap = {};
+    for (const user of users) {
+        userMap[user.id] = user;
+    }
+
+    // Match the user IDs with the chats
+    const result = chats.map(chat => {
+        const secondPartyId = chat.SenderId == uid ? chat.ReceiverId : chat.SenderId;
+        const user = userMap[secondPartyId];
+
+        return {
+            SenderId: chat.SenderId,
+            ReceiverId: chat.ReceiverId,
+            User: user, // Assuming you want the full user details
+            messageread: chat.messageread,
+            createdAt: chat.createdAt
+        };
+    });
+
+    return result;
 }
+
+
 
 async function getChatHistory({ uid, receiver, page }) {
     const chatHistory = await ChatMessage.findAll({
         where: {
             [Op.or]: [
                 {
-                    senderId: uid,
-                    receiverId: receiver
+                    SenderId: uid,
+                    ReceiverId: receiver
                 },
                 {
-                    senderId: receiver,
-                    receiverId: uid
+                    SenderId: receiver,
+                    ReceiverId: uid
                 }
             ]
         },
@@ -85,13 +97,23 @@ async function getChatHistory({ uid, receiver, page }) {
         order: [['createdAt', 'DESC']]
     });
 
-    for (const message of chatHistory) {
-        if (message.messageread !== 1) {
-            message.messageread = 1;
-            message.save();
+    // for (const message of chatHistory) {
+    //     if (message.messageread !== 1) {
+    //         message.messageread = 1;
+    //         message.save();
+    //     }
+    // }
+
+    const [affectedCount] = await ChatMessage.update({ messageread: 1 }, {
+        where: {
+            SenderId: receiver,
+            ReceiverId: uid,
+            messageread: 0
         }
-    }
-    return chatHistory;
+    });
+
+
+    return { chat: chatHistory, readCount: affectedCount };
 }
 
 async function getCSChatHistory({ uid, page }) {
@@ -208,7 +230,7 @@ async function sendMessage({ uid, receiver, message }) {
         const user = await User.findByPk(uid);
 
 
-        sendNotificationToUser(user.firstName, `${user.firstName}: ${message.substring(0,30)}${message.length>30?"...":""}`, receiver);
+        sendNotificationToUser(user.firstName, `${user.firstName}: ${message.substring(0, 30)}${message.length > 30 ? "..." : ""}`, receiver);
 
         return newMessage;
     } catch (err) {

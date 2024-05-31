@@ -1,6 +1,6 @@
 const { PASSENGER_FEE } = require("../config/seaats.config");
-const { User, Invoice, DriverInvoice, Passenger } = require("../models");
-const { sendNotificationToRide } = require("./appService");
+const { User, Invoice, Referral, DriverInvoice, Passenger } = require("../models");
+const { sendNotificationToRide, sendNotificationToUser } = require("./appService");
 
 async function createInvoice(uid, seats, paymentMethod, ride, voucher, passengerId, pickupAddition, t, update = false) {
     const user = await User.findByPk(uid, {
@@ -43,21 +43,31 @@ async function createInvoice(uid, seats, paymentMethod, ride, voucher, passenger
             PassengerId: passengerId,
         }, { transaction: t });
     } else {
-        invoice = await Invoice.update({
-            totalAmount,
-            balanceDue: -1 * userBalance,
-            discountAmount,
-            grandTotal,
-            pickupAddition,
-            driverFeeTotal,
-            passengerFeeTotal,
-            dueDate,
-        }, {
-            where: {
-                PassengerId: passengerId
-            },
-            transaction: t
-        })
+        invoice = await Invoice.findOne({ where: { PassengerId: passengerId } });
+        invoice.totalAmount = totalAmount;
+        invoice.balanceDue = -1 * userBalance;
+        invoice.discountAmount = discountAmount;
+        invoice.grandTotal = grandTotal;
+        invoice.pickupAddition = pickupAddition;
+        invoice.driverFeeTotal = driverFeeTotal;
+        invoice.passengerFeeTotal = passengerFeeTotal;
+        invoice.dueDate = dueDate;
+        await invoice.save({ transaction: t });
+        // invoice = await Invoice.update({
+        //     totalAmount,
+        //     balanceDue: -1 * userBalance,
+        //     discountAmount,
+        //     grandTotal,
+        //     pickupAddition,
+        //     driverFeeTotal,
+        //     passengerFeeTotal,
+        //     dueDate,
+        // }, {
+        //     where: {
+        //         PassengerId: passengerId
+        //     },
+        //     transaction: t
+        // })
     }
 
     return invoice;
@@ -117,7 +127,28 @@ async function checkOutRide(ride, passengers, t) {
         if (!invoice) {
             throw new InternalServerError();
         }
+
         let userBalance = parseFloat(user.balance);
+        const referral = await Referral.findOne({
+            where: {
+                RefereeId: user.id,
+                fulfilled: false
+            }
+        });
+
+        // Fulfill Referrals
+        if (referral) {
+            referral.fulfilled = true;
+            await referral.save({ transaction: t });
+            userBalance += 6000;
+
+            const referrer = await User.findByPk(referral.ReferrerID);
+            referrer.balance = parseFloat(referrer.balance) + 6000;
+            referrer.save({ transaction: t });
+
+            sendNotificationToUser("You've Earned Money!", "Thank you for completing your first ride on Seaats! We've added 50 EGP to your wallet as a referral gift.", user.id);
+            sendNotificationToUser("You've Earned Money!", "Thank you for referring someone to Seaats! We've added 50 EGP to your wallet as a referral gift.", referrer.id);
+        }
 
         userBalance += invoice.grandTotal;
         userBalance -= invoice.totalAmount;

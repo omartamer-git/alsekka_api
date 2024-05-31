@@ -1,5 +1,5 @@
 const { Sequelize, Op, literal } = require('sequelize');
-const { Ride, Passenger, User, sequelize, License, Car, Voucher, Invoice } = require('../models');
+const { Ride, Passenger, User, sequelize, License, Car, Voucher, Invoice, Referral } = require('../models');
 const { NotFoundError, InternalServerError, BadRequestError, UnauthorizedError, GoneError, ForbiddenError } = require("../errors/Errors");
 const { DRIVER_FEE, PASSENGER_FEE } = require('../config/seaats.config');
 const { SNS, SNSClient, CreateTopicCommand } = require("@aws-sdk/client-sns");
@@ -37,8 +37,8 @@ async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, g
     const rideResult = await sequelize.query(rideQuery, {
         replacements: values,
         type: Sequelize.QueryTypes.SELECT,
-        model: Ride,
-        mapToModel: true,
+        // model: Ride,
+        mapToModel: false,
     });
 
     let result = [];
@@ -57,8 +57,10 @@ async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, g
             "duration": ride.duration,
             "model": ride.model,
             "brand": ride.brand,
-            "pickupEnabled": ride.pickupEnabled,
+            "pickupEnabled": ride.pickupEnabled == true ? true : false,
             "gender": ride.gender,
+            "distanceStart": ride.distanceStart,
+            "distanceEnd": ride.distanceEnd,
             "seatsOccupied": countSeatsOccupied,
         });
     }
@@ -396,11 +398,11 @@ function getSuggestedPrice({ fromLatitude, fromLongitude, toLatitude, toLongitud
 }
 
 async function getUpcomingRides({ uid, limit }) {
-    const upcomingRides = await getPastRides({ uid, limit }, true, false);
+    const upcomingRides = await getPastRides({ uid, limit }, true, false, 'ASC');
     return upcomingRides;
 }
 
-async function getPastRides({ uid, limit, page }, upcoming = false, cancelled = true) {
+async function getPastRides({ uid, limit, page }, upcoming = false, cancelled = true, order = 'DESC') {
     const passengerFinderQuery = await Passenger.findAll({
         where: {
             UserId: uid,
@@ -442,7 +444,7 @@ async function getPastRides({ uid, limit, page }, upcoming = false, cancelled = 
     const upcomingRides = await Ride.findAll({
         where: whereClauseRide,
         attributes: rideAttributeList,
-        order: [['datetime', 'DESC']],
+        order: [['datetime', order]],
         ...(limit && { limit: limit }),
         ...(offset && { offset: offset })
     });
@@ -483,7 +485,7 @@ async function getTripDetails({ uid, tripId }) {
             },
             {
                 model: Car
-            }
+            },
         ],
         attributes: [
             [sequelize.literal(`(Ride.driverId=${uid})`), 'isDriver'],
@@ -535,6 +537,11 @@ async function getTripDetails({ uid, tripId }) {
                 UserId: uid,
                 RideId: tripId
             },
+            include: [
+                {
+                    model: Invoice
+                }
+            ],
             order: Sequelize.literal(`CASE WHEN status != 'CANCELLED' THEN 1 ELSE 2 END, createdAt DESC`)
         });
 
@@ -594,7 +601,7 @@ async function getDriverLocation({ rideId }, userId) {
             }
         }
     });
-
+    
     if (!passenger) throw new UnauthorizedError();
 
     const cachedData = await redisClient.get(`driverLocation:${ride.DriverId}`);
@@ -776,7 +783,7 @@ async function checkOut({ tripId, uid }) {
             },
             transaction: t,
         });
-
+        
         await checkOutRide(ride, passengers, t);
 
         ride.status = 'COMPLETED';

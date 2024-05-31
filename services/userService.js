@@ -1,5 +1,5 @@
 const { Op } = require("sequelize");
-const { User, License, sequelize, Card, BankAccount, MobileWallet, Referral, Withdrawal, Device, DriverInvoice } = require("../models");
+const { User, License, sequelize, Card, BankAccount, MobileWallet, Referral, Withdrawal, Device, DriverInvoice, ChatMessage } = require("../models");
 const bcrypt = require("bcrypt");
 const { getCardDetails, checkCardNumber, generateOtp, addMinutes, uploadImage, uploadLicenseImage, capitalizeFirstLetter } = require("../helper");
 const { UnauthorizedError, NotFoundError, ConflictError, InternalServerError, NotAcceptableError, BadRequestError } = require("../errors/Errors");
@@ -127,6 +127,13 @@ async function loginUser({ phone, email, password, deviceToken }) {
             }
         });
 
+        const chats = await ChatMessage.count({
+            where: {
+                ReceiverId: userAccount.id,
+                messageread: false
+            }
+        });
+
 
         userAccount.password = undefined;
 
@@ -144,7 +151,8 @@ async function loginUser({ phone, email, password, deviceToken }) {
             cardsEnabled: CARDS_ENABLED,
             verificationsDisabled: VERIFICATIONS_DISABLED,
             referralsDisabled: REFERRALS_DISABLED,
-            cities: CITIES
+            cities: CITIES,
+            unreadMessages: chats
         };
     } else {
         throw new UnauthorizedError("Incorrect phone and/or password", "رقم الهاتف أو كلمة المرور غير صحيحة. حاول مرة اخرى.");
@@ -163,6 +171,13 @@ async function userInfo({ deviceToken }, uid) {
         }
     });
 
+    const chats = await ChatMessage.count({
+        where: {
+            ReceiverId: uid,
+            messageread: false
+        }
+    });
+
     return {
         ...userAccount.dataValues,
         driver: !!license,
@@ -171,7 +186,8 @@ async function userInfo({ deviceToken }, uid) {
         cardsEnabled: CARDS_ENABLED,
         verificationsDisabled: VERIFICATIONS_DISABLED,
         referralsDisabled: REFERRALS_DISABLED,
-        cities: CITIES
+        cities: CITIES,
+        unreadMessages: chats
     }
 }
 
@@ -280,7 +296,7 @@ async function addReferral(uid, { referralCode }) {
     try {
         const reffererId = parseInt(referralCode);
 
-        if(reffererId < uid) {
+        if(reffererId > uid) {
             throw new BadRequestError();
         }
 
@@ -289,11 +305,11 @@ async function addReferral(uid, { referralCode }) {
             RefereeID: uid
         }, { transaction: t });
 
-        const [user1, user2] = await Promise.all([User.findByPk(uid), User.findByPk(reffererId)]);
-        user1.balance = parseFloat(user1.balance) + parseFloat(process.env.REFERRAL_SUM);
-        user2.balance = parseFloat(user2.balance) + parseFloat(process.env.REFERRAL_SUM);
-        await user1.save({ transaction: t });
-        await user2.save({ transaction: t });
+        // const [user1, user2] = await Promise.all([User.findByPk(uid), User.findByPk(reffererId)]);
+        // user1.balance = parseFloat(user1.balance) + parseFloat(process.env.REFERRAL_SUM);
+        // user2.balance = parseFloat(user2.balance) + parseFloat(process.env.REFERRAL_SUM);
+        // await user1.save({ transaction: t });
+        // await user2.save({ transaction: t });
 
         await t.commit();
 

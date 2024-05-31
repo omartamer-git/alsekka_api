@@ -10,7 +10,7 @@ router.post("/login", async (req, res, next) => {
         return next(new BadRequestError());
     }
 
-    staffLogin(req.body).then(response => {
+    staffService.staffLogin(req.body).then(response => {
         req.session.profile = { loggedIn: true };
         res.send("{}");
     }).catch(next);
