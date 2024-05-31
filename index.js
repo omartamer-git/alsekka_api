@@ -115,9 +115,9 @@ app.post("/driverenrollment", async (req, res, next) => {
 });
 
 app.get("/waitinglist", async (req, res, next) => {
-    const { email } = req.query;
+    const { name, phone, gender, car } = req.query;
 
-    if (!email) {
+    if (!name || !phone || !gender || !car) {
         return next(new BadRequestError());
     }
 
@@ -161,8 +161,8 @@ app.get("/announcements", authenticateToken, async (req, res, next) => {
 });
 
 app.get("/registerdevice", async (req, res, next) => {
-    const { token, platform } = req.query;
-    if (!token || !platform) {
+    const { token, platform, language } = req.query;
+    if (!token || !platform || !language) {
         return next(new BadRequestError());
     }
 

@@ -31,6 +31,11 @@ module.exports = function (sequelize, DataTypes) {
           }
         },
       },
+    },
+    fulfilled: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false
     }
   }, {
     sequelize,

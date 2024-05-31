@@ -25,7 +25,7 @@ async function getAnnouncements(active) {
     return announcements;
 }
 
-async function registerDevice({ token, platform }) {
+async function registerDevice({ token, platform, language }) {
     let PlatformApplicationArn = platform === 'ios' ? IOS_ARN : ANDROID_ARN
 
     const paramsEndpoint = {
@@ -50,14 +50,15 @@ async function registerDevice({ token, platform }) {
     sns.send(command).then(async (data) => {
         const paramsSubscribe = {
             Protocol: 'application',
-            TopicArn: 'arn:aws:sns:eu-central-1:872912343417:seaats-marketing',
+            TopicArn: language === 'EN' ? 'arn:aws:sns:eu-central-1:872912343417:seaats-marketing' : 'arn:aws:sns:eu-central-1:872912343417:seaats-marketing-arabic',
             Endpoint: data.EndpointArn
         }
 
         await Device.create({
             deviceToken: token,
             platformEndpoint: data.EndpointArn,
-            platform: platform
+            platform: platform,
+            language: language || 'EN'
         });
 
         const subscribeCommand = new SubscribeCommand(paramsSubscribe);
@@ -75,8 +76,8 @@ async function addEnrolledDriver({ fullName, phoneNumber, carDescription }) {
     return true;
 }
 
-async function addToMailingList({email}) {
-    await MailingList.create({email});
+async function addToMailingList({ name, phone, gender, car }) {
+    await MailingList.create({ name, phone, gender, car });
     return true;
 }
 
@@ -96,8 +97,25 @@ async function sendNotificationToUser(title, message, userId = null, targetArn =
         targetArn_ = device.platformEndpoint;
     }
 
+    // Construct the FCM payload
+    const fcmPayload = JSON.stringify({
+        notification: {
+            title: title,
+            body: message,
+            icon: "ic_notification"  // Ensure this icon name matches the one in your Android drawable resources
+        },
+        data: {
+            // Additional data payload can go here
+        }
+    });
+
+
     const params = {
-        Message: message,
+        MessageStructure: 'json',
+        Message: JSON.stringify({
+            default: message,
+            GCM: fcmPayload
+        }),
         Subject: title,
         TargetArn: targetArn_
     };

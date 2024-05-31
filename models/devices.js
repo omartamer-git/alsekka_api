@@ -15,6 +15,11 @@ module.exports = function(sequelize, DataTypes) {
         type: DataTypes.STRING(2048),
         allowNull: false
     },
+    language: {
+      type: DataTypes.ENUM('EN', 'AR'),
+      defaultValue: 'EN',
+      allowNull: false
+    },
     platform: {
         type: DataTypes.ENUM('ios', 'android'),
         allowNull: false
