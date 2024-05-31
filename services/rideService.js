@@ -7,6 +7,7 @@ const { getDirections, geocode, getLocationFromPlaceId } = require('./googleMaps
 const { isFloat } = require('../util/util');
 const { subtractDates } = require('../helper');
 const geolib = require('geolib');
+const moment = require('moment-timezone');
 
 const { sendNotificationToUser, sendNotificationToRide } = require('./appService');
 const { createInvoice, cancelPassengerInvoice, checkOutRide, cancelRideInvoices } = require('./paymentsService');
@@ -29,9 +30,42 @@ async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, g
         const user = await User.findByPk(uid);
         secondGender = user.gender;
     }
+    // console.log(date);
+    // console.log('x');
+    // date = new Date(date);
+    // console.log(date);
+    // console.log('y');
+
+    // // Convert the date to Egypt's local time (considering daylight saving time)
+    // let egyptTime = moment.tz(date, "Africa/Cairo");
+    // console.log(egyptTime);
+
+    // // Determine start and end of the day in Egypt's local time
+    // let startOfDay;
+    // // if (egyptTime.isSame(moment.tz("Africa/Cairo"), 'day')) {
+    // //     // If the date is today, use the current time in Egypt
+    // //     startOfDay = moment.tz("Africa/Cairo").startOf('hour').utc().format('YYYY-MM-DD HH:mm:ss');
+    // // } else {
+    // // If the date is not today, use the start of the day
+    // startOfDay = egyptTime.startOf('day').utc().format('YYYY-MM-DD HH:mm:ss');
+    // // }
+    // let endOfDay = egyptTime.endOf('day').utc().format('YYYY-MM-DD HH:mm:ss');
 
     // TODO: Why is the date within 24 hours? It should be that entire day to avoid confusion.
-    let values = [uid, date, subtractDates(date, -24), gender];
+    let date2 = new Date(date);
+    const today = new Date();
+
+    if(date2.getDate() == today.getDate() && date2.getMonth() == today.getMonth() && date2.getFullYear() == today.getFullYear()) {
+        // Today, instead of adding 24 hours to date2, make date2 EOD
+        date2 = new Date(
+            moment.utc(new Date()).tz("Africa/Cairo").endOf('day').utc().format()
+        )
+    } else {
+        date2.setTime(date2.getTime() + (24 * 60 * 60 * 1000)); // Adds 24 hours in milliseconds
+    }
+
+
+    let values = [uid, date, date2.toISOString(), gender];
     let rideQuery = `SELECT DISTINCT R.*, ST_Distance_Sphere(fromLocation, ST_GeomFromText('POINT(${startLat} ${startLng})', 4326) ) as distanceStart, ST_Distance_Sphere(toLocation, ST_GeomFromText( 'POINT(${endLat} ${endLng})', 4326 ) ) as distanceEnd, C.brand, C.model FROM rides AS R, cars AS C  WHERE R.status='SCHEDULED' AND (C.id = R.CarId) AND (CommunityID IN (SELECT CommunityId FROM CommunityMembers WHERE UserId=? AND joinStatus='APPROVED') OR CommunityID IS NULL OR CommunityID IN (SELECT id as CommunityID FROM Communities WHERE private=0)) AND datetime >= ? AND datetime <= ? AND (gender=? ${!secondGender ? "" : `OR gender='${secondGender}'`}) HAVING distanceStart <= 60000 AND distanceEnd <= 60000 ORDER BY datetime, distanceStart, distanceEnd`;
     // let rideQuery = `SELECT DISTINCT R.*, ST_Distance_Sphere(fromLocation, ST_GeomFromText('POINT(${startLat} ${startLng})', 4326)) AS distanceStart, ST_Distance_Sphere(toLocation, ST_GeomFromText('POINT(${endLat} ${endLng})', 4326)) AS distanceEnd, C.brand, C.model FROM rides AS R JOIN cars AS C ON C.id = R.CarId LEFT JOIN Community AS Comm ON R.CommunityID = Comm.id WHERE R.status='SCHEDULED' AND (R.CommunityID IN (SELECT CommunityId FROM CommunityMembers WHERE UserId=? AND joinStatus='APPROVED') OR R.CommunityID IS NULL OR Comm.private = 0) AND datetime >= ? AND datetime <= ? AND (gender=? ${!secondGender ? "" : `OR gender='${secondGender}'`}) HAVING distanceStart <= 10000 AND distanceEnd <= 10000 ORDER BY datetime, distanceStart, distanceEnd`
     const rideResult = await sequelize.query(rideQuery, {
@@ -382,7 +416,7 @@ function getSuggestedPrice({ fromLatitude, fromLongitude, toLatitude, toLongitud
     const litrePer100km = 10;
 
     // Price of fuel
-    const pricePerLitre = 1250;
+    const pricePerLitre = 1350;
 
     // return (
     //     Math.ceil(
@@ -392,7 +426,7 @@ function getSuggestedPrice({ fromLatitude, fromLongitude, toLatitude, toLongitud
 
     return (
         Math.ceil(
-            ((dist * litrePer100km * pricePerLitre * (1 + DRIVER_FEE)) / 4)
+            ((dist * litrePer100km * pricePerLitre * (1 + DRIVER_FEE)) / 4) * 1.5
         )
     )
 }
@@ -823,6 +857,148 @@ async function submitDriverRatings({ tripId, ratings }, uid) {
     return true;
 }
 
+async function passengerPendingRatings(uid) {
+    // Find the passenger with a pending rating
+    const pendingRatingPassenger = await Passenger.findOne({
+        where: {
+            UserId: uid,
+            passengerCompletedRating: false,
+            status: 'ARRIVED'
+        },
+    });
+
+    if (!pendingRatingPassenger) {
+        return {
+            complete: true
+        };
+    }
+
+    // Fetch the ride details
+    const ride = await Ride.findByPk(pendingRatingPassenger.RideId, {
+        attributes: ['id', 'DriverId', 'mainTextFrom', 'mainTextTo']
+    });
+
+    if (!ride) {
+        throw new NotFoundError();
+    }
+
+    // Fetch other passengers in the ride
+    const passengers = await Passenger.findAll({
+        where: {
+            RideId: ride.id,
+            status: 'ARRIVED',
+            UserId: {
+                [Op.ne]: uid
+            }
+        }
+    });
+
+    // Extract passenger user IDs
+    const passengerIds = passengers.map(p => p.UserId);
+
+    // Fetch the driver details
+    const driver = await User.findByPk(ride.DriverId, {
+        attributes: ['id', 'firstName', 'lastName', 'profilePicture'],
+    });
+
+    if (!driver) {
+        throw new Error('Driver not found');
+    }
+
+    // Fetch the passenger details
+    const passengerUsers = await User.findAll({
+        attributes: ['id', 'firstName', 'lastName', 'profilePicture'],
+        where: {
+            id: {
+                [Op.in]: passengerIds
+            }
+        }
+    });
+
+    return {
+        ride: {
+            id: ride.id,
+            mainTextFrom: ride.mainTextFrom,
+            mainTextTo: ride.mainTextTo
+        },
+        driver,
+        passengers: passengerUsers
+    };
+}
+
+async function dismissPassengerRatings(uid, t = null) {
+    let transaction;
+
+    try {
+        // Use the provided transaction or create a new one
+        transaction = t || await sequelize.transaction();
+
+        await Passenger.update(
+            { passengerCompletedRating: true },
+            {
+                where: {
+                    passengerCompletedRating: false,
+                    UserId: uid
+                },
+                transaction
+            }
+        );
+
+        // Commit the transaction if it was created within this function
+        if (!t) {
+            await transaction.commit();
+        }
+
+        return true;
+    } catch (error) {
+        // Handle the error or rethrow it
+        throw error;
+    }
+}
+
+async function submitPassengerRatings({ tripId, ratings }, uid) {
+    const t = await sequelize.transaction();
+    try {
+        const ride = await Ride.findByPk(tripId);
+        const passengers = await Passenger.findAll({
+            where: {
+                RideId: tripId,
+                status: 'ARRIVED',
+            }
+        });
+
+        const myPassenger = passengers.find((p) => p.UserId == uid);
+        const otherPassengers = passengers.filter((p) => p.UserId != uid);
+
+        if (myPassenger.passengerCompletedRating == 1) {
+            throw new BadRequestError();
+        }
+
+        // ride.driverCompletedRatings = true;
+        // ride.save();
+        const promises = []
+        for (const rating of ratings) {
+            const user = await User.findByPk(rating.id);
+
+            user.rating = ((user.rating * user.numRatings) + rating.stars) / (user.numRatings + 1);
+            user.numRatings = user.numRatings + 1;
+            promises.push(user.save({ transaction: t }));
+        }
+
+        promises.push(dismissPassengerRatings(uid, t));
+
+        await Promise.all(promises);
+
+        await t.commit();
+
+        return true;
+    } catch (e) {
+        await t.rollback();
+        throw new InternalServerError();
+    }
+
+}
+
 async function noShow({ tripId, passenger }) {
     const passengerDetails = await Passenger.findOne({
         where: {
@@ -927,6 +1103,9 @@ module.exports = {
     noShow,
     getPassengerDetails,
     verifyVoucher,
+    submitPassengerRatings,
+    dismissPassengerRatings,
+    passengerPendingRatings,
     submitDriverRatings,
     getDriverLocation
 };

@@ -279,6 +279,38 @@ router.post("/submitdriverratings", authenticateToken, async (req, res, next) =>
     }).catch(next);
 });
 
+router.get("/passengerpendingratings", authenticateToken, async (req, res, next) => {
+    const uid = req.user.userId;
+
+    rideService.passengerPendingRatings(uid).then((pending) => {
+        res.json(pending)
+    }).catch(next);
+});
+
+router.get("/dismisspassengerratings", authenticateToken, async(req, res, next) => {
+    const uid = req.user.userId;
+
+    rideService.dismissPassengerRatings(uid);
+
+    res.json({
+        success: true
+    })
+});
+
+router.post("/submitpassengerratings", authenticateToken, async (req, res, next) => {
+    const { tripId, ratings } = req.body;
+
+    if (!tripId || !ratings) {
+        return next(new BadRequestError());
+    }
+
+    const uid = req.user.userId;
+
+    rideService.submitPassengerRatings(req.body, uid).then(response => {
+        res.json({ success: 1 });
+    }).catch(next);
+});
+
 router.get("/passengerdetails", authenticateToken, async (req, res, next) => {
     const { tripId, passenger } = req.query;
     const uid = req.user.userId;

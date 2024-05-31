@@ -2,6 +2,7 @@ const { Op } = require("sequelize");
 const { UnauthorizedError, NotFoundError, BadRequestError, InternalServerError } = require("../errors/Errors");
 const { Staff, User, License, Car, Announcement, Ride, Community, Passenger } = require("../models");
 const bcrypt = require("bcrypt");
+const { sendNotificationToUser } = require("./appService");
 
 async function staffLogin({ username, password }) {
     let userAccount;
@@ -63,7 +64,6 @@ async function updateLicense({ id, licensenumber, issuedate, expirydate, nationa
     if (!license) {
         throw new NotFoundError();
     }
-    console.log(license);
 
     license.licensenumber = licensenumber || license.licensenumber;
     license.nationalid = nationalid || license.nationalid;
@@ -71,8 +71,10 @@ async function updateLicense({ id, licensenumber, issuedate, expirydate, nationa
     license.issuedate = issuedate || license.issuedate;
     license.expirydate = expirydate || license.expirydate;
 
-    license.save();
-    console.log("updated license");
+    await license.save();
+    if(status === 'APPROVED') {
+        sendNotificationToUser('License Verified', 'Congratulations! Your identity has been successfully verified. You can now host rides on Seaats. Welcome aboard!', license.UserId, null, null, "تهانينا! لقد تم التحقق من هويتك بنجاح. يمكنك الآن استضافة الرحلات على Seaats.")
+    }
     return license;
 }
 
@@ -102,6 +104,10 @@ async function updateCar({ id, brand, year, model, color, issuedate, expirydate,
     car.status = status || car.status;
     car.issuedate = issuedate || car.issuedate;
     car.expirydate = expirydate || car.expirydate;
+
+    if(status === 'APPROVED') {
+        sendNotificationToUser('License Verified', 'Congratulations! Your vehicle license has been successfully verified.', car.UserId, null, null, "مبروك! تم التحقق من رخصة سيارتك بنجاح!")
+    }
 
     car.save();
 

@@ -146,8 +146,8 @@ async function checkOutRide(ride, passengers, t) {
             referrer.balance = parseFloat(referrer.balance) + 6000;
             referrer.save({ transaction: t });
 
-            sendNotificationToUser("You've Earned Money!", "Thank you for completing your first ride on Seaats! We've added 50 EGP to your wallet as a referral gift.", user.id);
-            sendNotificationToUser("You've Earned Money!", "Thank you for referring someone to Seaats! We've added 50 EGP to your wallet as a referral gift.", referrer.id);
+            sendNotificationToUser("You've Earned Money!", "Thank you for completing your first ride on Seaats! We've added 60 EGP to your wallet as a referral gift.", user.id);
+            sendNotificationToUser("You've Earned Money!", "Thank you for referring someone to Seaats! We've added 60 EGP to your wallet as a referral gift.", referrer.id);
         }
 
         userBalance += invoice.grandTotal;

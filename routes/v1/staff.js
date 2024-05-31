@@ -3,6 +3,7 @@ const { authenticateToken, sessionChecker } = require('../../middleware/authenti
 const { BadRequestError } = require('../../errors/Errors');
 const router = express.Router();
 const staffService = require("../../services/staffService");
+const rideService = require("../../services/rideService");
 
 router.post("/login", async (req, res, next) => {
     const { username, password } = req.body;
@@ -24,10 +25,10 @@ router.get("/searchuser", sessionChecker, async (req, res, next) => {
     const { phone } = req.query;
 
     if (!phone) {
-        return next(new BadRequestError());
+        return next(new BadRequestError())
     }
 
-    findUser(req.query).then(user => {
+    staffService.findUser(req.query).then(user => {
         res.json(user);
     }).catch(next);
 });
@@ -56,7 +57,7 @@ router.post("/updateuser", sessionChecker, async (req, res, next) => {
         return next(new BadRequestError());
     }
 
-    updateUser(req.body).then(newUser => res.json(newUser)).catch(next);
+    staffService.updateUser(req.body).then(newUser => res.json(newUser)).catch(next);
 });
 
 router.get("/userlicenses", sessionChecker, async (req, res, next) => {
@@ -64,7 +65,7 @@ router.get("/userlicenses", sessionChecker, async (req, res, next) => {
         return next(new BadRequestError());
     }
 
-    customerLicenses(req.query).then(licenses => {
+    staffService.customerLicenses(req.query).then(licenses => {
         res.json(licenses);
     }).catch(next);
 });
@@ -74,13 +75,13 @@ router.post("/updatelicense", sessionChecker, async (req, res, next) => {
         return next(new BadRequestError());
     }
 
-    updateLicense(req.body).then(license => {
+    staffService.updateLicense(req.body).then(license => {
         res.json(license);
     }).catch(next);
 });
 
 router.get("/pendinglicenses", sessionChecker, async (req, res, next) => {
-    getPendingLicenses().then(licenses => {
+    staffService.getPendingLicenses().then(licenses => {
         res.json(licenses);
     }).catch(next);
 });
@@ -90,19 +91,19 @@ router.post("/updatecar", sessionChecker, async (req, res, next) => {
         return next(new BadRequestError());
     }
 
-    updateCar(req.body).then(car => {
+    staffService.updateCar(req.body).then(car => {
         res.json(car);
     }).catch(next);
 });
 
 router.get("/pendingcars", sessionChecker, async (req, res, next) => {
-    getPendingCars().then(cars => {
+    staffService.getPendingCars().then(cars => {
         res.json(cars);
     }).catch(next);
 });
 
 router.get("/members", sessionChecker, async (req, res, next) => {
-    getMembers().then(members =>
+    staffService.getMembers().then(members =>
         res.json(members)
     ).catch(next);
 });
@@ -113,7 +114,7 @@ router.post("/createuser", sessionChecker, async (req, res, next) => {
         return next(new BadRequestError());
     }
 
-    createStaffMember(req.body).then(() => {
+    staffService.createStaffMember(req.body).then(() => {
         res.json({ success: true });
     }).catch((err) => {
         console.error(err);
@@ -126,7 +127,7 @@ router.get("/memberdetails", sessionChecker, async (req, res, next) => {
         next(new BadRequestError());
     }
 
-    getStaffMember(req.query).then(member => {
+    staffService.getStaffMember(req.query).then(member => {
         res.json(member);
     }).catch(next);
 });
@@ -136,13 +137,13 @@ router.post("/editmember", sessionChecker, async (req, res, next) => {
         return next(new BadRequestError());
     }
 
-    editStaffMember(req.body).then(() => {
+    staffService.editStaffMember(req.body).then(() => {
         res.json({ success: 1 });
     }).catch(next);
 });
 
 router.get("/announcements", sessionChecker, async (req, res, next) => {
-    getAllAnnouncements().then(ann => {
+    staffService.getAllAnnouncements().then(ann => {
         res.json(ann);
     }).catch(next);
 });
@@ -153,7 +154,7 @@ router.post("/updateannouncement", sessionChecker, async (req, res, next) => {
         return next(new BadRequestError());
     }
 
-    updateAnnouncement(req.body).then(() => {
+    staffService.updateAnnouncement(req.body).then(() => {
         res.json({ success: 1 });
     }).catch(next);
 });
@@ -165,7 +166,7 @@ router.post("/createannouncement", sessionChecker, async (req, res, next) => {
         next(new BadRequestError());
     }
 
-    createAnnouncement(req.body).then(() => {
+    staffService.createAnnouncement(req.body).then(() => {
         res.json({ success: 1 });
     }).catch(next);
 });
@@ -175,7 +176,7 @@ router.get("/ride", sessionChecker, async (req, res, next) => {
         return next(new BadRequestError());
     }
 
-    getFullRide(req.query).then(ride => {
+    staffService.getFullRide(req.query).then(ride => {
         res.json(ride);
     }).catch(next);
 });
@@ -186,7 +187,7 @@ router.post("/cancelride", sessionChecker, async (req, res, next) => {
         return next(new BadRequestError());
     }
 
-    cancelRide(req.body).then(() => {
+    staffService.cancelRide(req.body).then(() => {
         res.json({ success: 1 });
     }).catch(next);
 });
