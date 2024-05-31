@@ -635,7 +635,7 @@ async function getDriverLocation({ rideId }, userId) {
             }
         }
     });
-
+    
     if (!passenger) throw new UnauthorizedError();
 
     const cachedData = await redisClient.get(`driverLocation:${ride.DriverId}`);
@@ -817,7 +817,7 @@ async function checkOut({ tripId, uid }) {
             },
             transaction: t,
         });
-
+        
         await checkOutRide(ride, passengers, t);
 
         ride.status = 'COMPLETED';
