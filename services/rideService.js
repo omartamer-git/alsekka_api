@@ -53,9 +53,15 @@ async function getNearbyRides(uid, { startLng, startLat, endLng, endLat, date, g
 
     // TODO: Why is the date within 24 hours? It should be that entire day to avoid confusion.
     let date2 = new Date(date);
+    // date2 is either:
+    //      Time NOW in UTC
+    //      A day's start in UTC
     const today = new Date();
 
-    if(date2.getDate() == today.getDate() && date2.getMonth() == today.getMonth() && date2.getFullYear() == today.getFullYear()) {
+    const date2egy = moment.utc(date2).tz("Africa/Cairo");
+    const todayegy = moment.utc(today).tz("Africa/Cairo");
+
+    if(date2egy.isSame(todayegy, 'day')) {
         // Today, instead of adding 24 hours to date2, make date2 EOD
         date2 = new Date(
             moment.utc(new Date()).tz("Africa/Cairo").endOf('day').utc().format()
