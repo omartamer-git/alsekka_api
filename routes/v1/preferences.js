@@ -4,7 +4,7 @@ const { BadRequestError, NotFoundError, InternalServerError } = require('../../e
 const router = express.Router();
 const { UserPreference } = require("../../models/index");
 const { default: rateLimit } = require('express-rate-limit');
-const userpreferences = require('../../models/userpreferences');
+const { updateUserPreferences, createUserPreferences } = require('../../services/preferencesService');
 const limiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 6015 minutes
     max: 450, // Limit each IP to 450 requests per `window` (here, per 60 minutes)
@@ -20,12 +20,13 @@ router.get('/:userId', async (req, res, next) => {
     if (!userId) {
       return next(new BadRequestError());
     }
-  
+    
     const preferences = await UserPreference.findOne({ where: {userId}});
     if(!preferences) {
-      return next(new NotFoundError());
+      preferences = await createUserPreferences(userId);
     }
-    return res.status(200).json(preferences);
+
+    return res.json(preferences);
   } catch (err) {
     return next(new InternalServerError())
   }
@@ -38,16 +39,11 @@ router.post('/:userId', async (req, res, next) => {
 
     let preferences = await UserPreference.findOne({ where: { userId } });
     if (!preferences) {
-      preferences = await UserPreference.create({ userId, smoking, chattiness, music, rest_stop });
+      preferences = await createUserPreferences(userId);
     } else {
-      preferences.smoking = smoking;
-      preferences.chattiness = chattiness;
-      preferences.music = music;
-      preferences.rest_stop = rest_stop;
-      await preferences.save();
+      preferences = await updateUserPreferences(preferences, smoking, chattiness, music, rest_stop)
     }
-
-    res.json(preferences);
+    return res.json(preferences);
   } catch (error) {
     next(new InternalServerError());
   }
