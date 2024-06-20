@@ -13,7 +13,6 @@ async function createCommunity({ name, description, private, joinQuestion }, pic
 
     if (duplicateCommunity !== null) {
         throw new ConflictError("Community with this name already exists", "المجتمع بهذا الاسم موجود مسبقاً");
-        return;
     }
 
     const imageUrl = await uploadImage(picture);
@@ -112,7 +111,7 @@ async function getCommunities() {
 
         let coms = await findTrending(weekAgo);
 
-        if (coms.length < 3) {
+        if (coms.length < limit) {
             coms = await findTrending(new Date(2023, 1, 1));
         }
 
@@ -339,11 +338,10 @@ async function joinCommunity({ uid, communityId, answer }) {
             joinStatus: 'PENDING',
             UserId: uid,
             CommunityId: communityId
-        });
-        return member;
-
+        });        
         const ownerId = community.OwnerId;
-        sendNotificationToUser("Community Join Request", `A new user has requested to join ${community.name}`, ownerId).catch(e => console.log(e));
+
+        return member;
     } else {
         const joinRequest = await CommunityMember.create({
             UserId: uid,
