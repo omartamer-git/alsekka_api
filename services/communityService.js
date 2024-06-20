@@ -174,6 +174,9 @@ async function getUserFeed({ uid, communityId, page }) {
         datetime: {
             [Op.gt]: new Date(),
         },
+        status: {
+            [Op.not]: 'CANCELLED',
+        }
     };
 
     if (communityId !== null) {
