@@ -1,6 +1,5 @@
 const express = require('express');
-const { authenticateToken } = require('../../middleware/authenticateToken');
-const { BadRequestError, NotFoundError, InternalServerError } = require('../../errors/Errors');
+const { BadRequestError, InternalServerError } = require('../../errors/Errors');
 const router = express.Router();
 const { UserPreference } = require("../../models/index");
 const { default: rateLimit } = require('express-rate-limit');
@@ -20,10 +19,14 @@ router.get('/:userId', async (req, res, next) => {
     if (!userId) {
       return next(new BadRequestError());
     }
-    
-    const preferences = await UserPreference.findOne({ where: {userId}});
-    if(!preferences) {
-      preferences = await createUserPreferences(userId);
+
+    let preferences = await UserPreference.findOne({ where: {userId}});
+    if (!preferences) {
+      try {
+        preferences = await createUserPreferences(userId);
+      } catch (error) {
+        console.error('Error creating user preferences:', error);
+      }
     }
 
     return res.json(preferences);
@@ -39,10 +42,19 @@ router.post('/:userId', async (req, res, next) => {
 
     let preferences = await UserPreference.findOne({ where: { userId } });
     if (!preferences) {
-      preferences = await createUserPreferences(userId);
+      try {
+        preferences = await createUserPreferences(userId);
+      } catch (error) {
+        console.error('Error creating user preferences:', error);
+      }
     } else {
-      preferences = await updateUserPreferences(preferences, smoking, chattiness, music, rest_stop)
+      try {
+        preferences = await updateUserPreferences(preferences, smoking, chattiness, music, rest_stop)
+      } catch (error) {
+        console.error('Error updating user preferences:', error);
+      }
     }
+
     return res.json(preferences);
   } catch (error) {
     next(new InternalServerError());
