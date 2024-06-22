@@ -610,7 +610,7 @@ async function cancelRide({ tripId }) {
             ride.status = "CANCELLED";
             await ride.save({ transaction: t });
             await t.commit();
-            sendNotificationToRide("Ride Cancelled", "Your ride to " + ride.mainTextTo + " has been cancelled by the driver. We apologize for the inconvenience.", null, ride.topicArn).then(() => {
+            sendNotificationToRide("Ride Cancelled", "Your ride to " + ride.mainTextTo.split(',')[0].split('،')[0] + " has been cancelled by the driver. We apologize for the inconvenience.", null, ride.topicArn).then(() => {
                 // notification sent
             }).catch((e) => {
                 console.log(e);
@@ -709,7 +709,7 @@ async function cancelPassenger({ tripId }, userId) {
             await passenger.save({ transaction: t });
             await t.commit();
 
-            sendNotificationToUser("Passenger Cancelled", `One of the passengers in your trip to ${ride.mainTextTo} has cancelled their seat, you will be compensated if they cancelled outside of the free cancellation window. We apologize for the inconvenience.`, null, null, driver.DeviceId).then(() => {
+            sendNotificationToUser("Passenger Cancelled", `One of the passengers in your trip to ${ride.mainTextTo.split(',')[0].split('،')[0]} has cancelled their seat. You will be compensated if they cancelled outside of the free cancellation window.`, null, null, driver.DeviceId).then(() => {
                 // notification sent
             }).catch((e) => {
                 console.log(e);
