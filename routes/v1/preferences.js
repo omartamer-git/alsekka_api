@@ -25,7 +25,7 @@ router.get('/:userId', async (req, res, next) => {
       try {
         preferences = await createUserPreferences(userId);
       } catch (error) {
-        console.error('Error creating user preferences:', error);
+        return next(new BadRequestError());
       }
     }
 
@@ -45,13 +45,13 @@ router.post('/:userId', async (req, res, next) => {
       try {
         preferences = await createUserPreferences(userId);
       } catch (error) {
-        console.error('Error creating user preferences:', error);
+        return next(new BadRequestError());
       }
     } else {
       try {
         preferences = await updateUserPreferences(preferences, smoking, chattiness, music, rest_stop)
       } catch (error) {
-        console.error('Error updating user preferences:', error);
+        return next(new BadRequestError());
       }
     }
 
