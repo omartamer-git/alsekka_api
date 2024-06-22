@@ -7,19 +7,19 @@ module.exports = function (sequelize, DataTypes) {
       primaryKey: true,
     },
     chattiness: {
-      type: DataTypes.ENUM("I prefer talking during the ride", "I prefer a quiet ride", "I am flexible about talking"),
+      type: DataTypes.ENUM("CHATTY", "QUITE", "FLEXIBLE"),
       allowNull: true  
     },
     rest_stop: {
-      type: DataTypes.ENUM("I prefer frequent stops during the ride", "I prefer rest stops only when necessary", "I don't mind as long as we get there!"),
+      type: DataTypes.ENUM("FREQUENT", "WHEN_NECESSARY", "DONT_MIND"),
       allowNull: true  
     },
     music: {
-      type: DataTypes.ENUM("I prefer music during the ride", "I prefer no music during the ride", "I am flexible about music"),
+      type: DataTypes.ENUM("LIKE_MUSIC", "NO_MUSIC", "FLEXIBLE"),
       allowNull: true        
     },
     smoking: {
-      type: DataTypes.ENUM("I prefer a smoke-free ride", "I prefer smoking during the ride", "Cigarette breaks outside the car are ok"),
+      type: DataTypes.ENUM("SMOKE_FREE", "SMOKING", "CIGARETTE_BREAKS"),
       allowNull: true  
     },
     userId: {

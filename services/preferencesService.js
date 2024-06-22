@@ -1,5 +1,9 @@
 const { UserPreference } = require("../models/index");
 
+async function findPreferences(userId) {
+  return await UserPreference.findOne({ where: {userId}});
+}
+
 async function updateUserPreferences(preferences, smoking, chattiness, music, rest_stop) {
   preferences.smoking = smoking;
   preferences.chattiness = chattiness;
@@ -14,6 +18,7 @@ async function createUserPreferences(userId, smoking = null, chattiness = null, 
 }
 
 module.exports = {
+  findPreferences,
   updateUserPreferences,
   createUserPreferences
 };
