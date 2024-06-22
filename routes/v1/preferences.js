@@ -20,7 +20,7 @@ router.get('/:userId', async (req, res, next) => {
       return next(new BadRequestError());
     }
 
-    let preferences = findPreferences(userId);
+    let preferences = await findPreferences(userId);
     if (!preferences) {
       try {
         preferences = await createUserPreferences(userId);
@@ -40,7 +40,7 @@ router.post('/:userId', async (req, res, next) => {
     const { userId } = req.params;
     const { smoking, chattiness, music, rest_stop } = req.body;
 
-    let preferences = findPreferences(userId);
+    let preferences = await findPreferences(userId);
     if (!preferences) {
       try {
         preferences = await createUserPreferences(userId);
