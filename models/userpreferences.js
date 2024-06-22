@@ -7,7 +7,7 @@ module.exports = function (sequelize, DataTypes) {
       primaryKey: true,
     },
     chattiness: {
-      type: DataTypes.ENUM("CHATTY", "QUITE", "FLEXIBLE"),
+      type: DataTypes.ENUM("CHATTY", "QUIET", "FLEXIBLE"),
       allowNull: true  
     },
     rest_stop: {
