@@ -7,22 +7,26 @@ module.exports = function (sequelize, DataTypes) {
       primaryKey: true,
     },
     chattiness: {
-      type: DataTypes.ENUM("CHATTY", "QUIET", "FLEXIBLE"),
-      allowNull: true  
+      type: DataTypes.TINYINT,
+      defaultValue: 0,
+      allowNull: false
     },
     rest_stop: {
-      type: DataTypes.ENUM("FREQUENT", "WHEN_NECESSARY", "DONT_MIND"),
-      allowNull: true  
+      type: DataTypes.TINYINT,
+      defaultValue: 0,
+      allowNull: false
     },
     music: {
-      type: DataTypes.ENUM("LIKE_MUSIC", "NO_MUSIC", "FLEXIBLE"),
-      allowNull: true        
+      type: DataTypes.TINYINT,
+      defaultValue: 0,
+      allowNull: false
     },
     smoking: {
-      type: DataTypes.ENUM("SMOKE_FREE", "SMOKING", "CIGARETTE_BREAKS"),
-      allowNull: true  
+      type: DataTypes.TINYINT,
+      defaultValue: 0,
+      allowNull: false
     },
-    userId: {
+    UserId: {
       type: DataTypes.INTEGER,
       allowNull: false,
     }

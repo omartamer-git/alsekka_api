@@ -17,7 +17,6 @@ const sequelize = new Sequelize(dbConfig.DB, dbConfig.USER, dbConfig.PASSWORD, {
 
 const models = initModels(sequelize);
 
-// chatgpt code for duplicate index error
 // sequelize.sync({ alter: true }).then(async () => {
 //     console.log("Database is synchronized");
 

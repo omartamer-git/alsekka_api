@@ -23,6 +23,7 @@ let _invoices = require("./invoices");
 let _devices = require("./devices");
 let _driverinvoices = require("./driverinvoices");
 let _userpreferences = require('./userpreferences');
+let _socials = require('./socials');
 
 function initModels(sequelize) {
   let Announcement = _announcements(sequelize, DataTypes);
@@ -49,6 +50,7 @@ function initModels(sequelize) {
   let DriverInvoice = _driverinvoices(sequelize, DataTypes);
   let Device = _devices(sequelize, DataTypes);
   let UserPreference = _userpreferences(sequelize, DataTypes);
+  let Socials = _socials(sequelize, DataTypes);
 
   User.belongsToMany(Community, { as: 'Communities', through: CommunityMember });
   Community.belongsToMany(User, { as: 'Member', through: CommunityMember });
@@ -138,14 +140,17 @@ function initModels(sequelize) {
 
   Ride.hasOne(DriverInvoice, { foreignKey: 'RideId' })
   DriverInvoice.belongsTo(Ride, { foreignKey: 'RideId' });
+
+  User.hasOne(Socials, { foreignKey: 'UserId' });
+  Socials.belongsTo(User, { foreignKey: 'UserId' });
   
   User.hasOne(UserPreference, {
-    foreignKey: 'userId',
+    foreignKey: 'UserId',
     as: 'preferences'
   });
   
   UserPreference.belongsTo(User, {
-    foreignKey: 'userId',
+    foreignKey: 'UserId',
     as: 'user'
   });
 
@@ -175,6 +180,7 @@ function initModels(sequelize) {
     Invoice,
     Device,
     UserPreference,
+    Socials,
     sequelize,
   };
 }
