@@ -197,6 +197,69 @@ router.get("/wallet", authenticateToken, async (req, res, next) => {
     }).catch(next);
 });
 
+router.patch("/linkfacebook", authenticateToken, async (req, res, next) => {
+    const { facebookLink } = req.body;
+    const uid = req.user.userId;
+
+    if (!facebookLink) {
+        return next(new BadRequestError());
+    }
+
+    userService.updateFacebookLink(uid, req.body).then((response) => {
+        res.status(200).json(response);
+    }).catch(next);
+});
+
+router.patch("/linkinstagram", authenticateToken, async (req, res, next) => {
+    const { instagramLink } = req.body;
+    const uid = req.user.userId;
+
+    if (!instagramLink) {
+        return next(new BadRequestError());
+    }
+
+    userService.updateInstagramLink(uid, req.body).then((response) => {
+        res.status(200).json(response);
+    }).catch(next);
+});
+
+
+router.patch("/linkmusic", authenticateToken, async (req, res, next) => {
+    const { musicLink } = req.body;
+    const uid = req.user.userId;
+
+    if (!musicLink) {
+        return next(new BadRequestError());
+    }
+
+    userService.updateMusicLink(uid, req.body).then((response) => {
+        res.status(200).json(response);
+    }).catch(next);
+});
+
+router.get("/profile", authenticateToken, async (req, res, next) => {
+    const uid = req.query.userId || req.user.userId;
+
+    if (!uid) {
+        return next(new BadRequestError());
+    }
+
+    userService.getUserProfile(uid).then(profile => {
+        return res.json(profile);
+    }).catch(next);
+});
+
+router.put("/preferences", authenticateToken, async (req, res, next) => {
+    const uid = req.user.userId;
+
+    if (!uid) {
+        return next(new BadRequestError());
+    }
+
+    userService.updatePreferences(uid, req.body).then(preferences => {
+        return res.json(preferences);
+    }).catch(next);
+});
 
 
 router.post("/submitlicense", authenticateToken, async (req, res, next) => {

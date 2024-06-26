@@ -81,7 +81,10 @@ module.exports = function (sequelize, DataTypes) {
     scopes: {
       auth: {
         attributes: { exclude: [] }
-      }
+      },
+      timestamps: {
+        attributes: { exclude: ['password'] }
+      },
     },
     indexes: [
       {

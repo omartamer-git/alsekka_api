@@ -343,14 +343,19 @@ async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, 
         const { polyline, duration } = await getDirections(fromLatitude, fromLongitude, toLatitude, toLongitude);
         const SRID = 4326;
 
-        const topicName = crypto.randomUUID();
-        const params = {
-            Name: topicName
+        let topicArn;
+        try {
+            const topicName = crypto.randomUUID();
+            const params = {
+                Name: topicName
+            }
+    
+            const topicCommand = new CreateTopicCommand(params);
+            const topicData = await sns.send(topicCommand);
+            topicArn = topicData.TopicArn;    
+        } catch(e) {
+            console.log("Error ride notifs")
         }
-
-        const topicCommand = new CreateTopicCommand(params);
-        const topicData = await sns.send(topicCommand);
-        const topicArn = topicData.TopicArn;
 
         let mainTextFrom;
         let mainTextTo;
@@ -406,6 +411,7 @@ async function postRide({ fromLatitude, fromLongitude, toLatitude, toLongitude, 
 
         return newRide;
     } catch (err) {
+        console.log(err);
         throw new BadRequestError();
     }
 }

@@ -1,5 +1,5 @@
 const { Op } = require("sequelize");
-const { User, License, sequelize, Card, BankAccount, MobileWallet, Referral, Withdrawal, Device, DriverInvoice, ChatMessage } = require("../models");
+const { User, License, sequelize, Card, BankAccount, MobileWallet, Referral, Withdrawal, Device, DriverInvoice, ChatMessage, Ride, Passenger, Socials, UserPreference } = require("../models");
 const bcrypt = require("bcrypt");
 const { getCardDetails, checkCardNumber, generateOtp, addMinutes, uploadImage, uploadLicenseImage, capitalizeFirstLetter } = require("../helper");
 const { UnauthorizedError, NotFoundError, ConflictError, InternalServerError, NotAcceptableError, BadRequestError } = require("../errors/Errors");
@@ -8,7 +8,7 @@ const config = require("../config");
 const jwt = require('jsonwebtoken');
 const { JWT_SECRET, JWT_EXPIRATION, REFRESH_TOKEN_EXPIRATION, SECURITY_EXPIRATION } = require("../config/auth.config");
 const { DRIVER_FEE, PASSENGER_FEE, CARDS_ENABLED, VERIFICATIONS_DISABLED, REFERRALS_DISABLED, CITIES } = require("../config/seaats.config");
-
+const redis = require('ioredis');
 
 let otpCodes = {};
 
@@ -94,6 +94,48 @@ async function linkUserDevice(id, { deviceToken }) {
     }
 }
 
+async function getUserStats(id) {
+    const numRidesDrivenPromise = Ride.count({
+        where: {
+            DriverId: id,
+            status: 'COMPLETED'
+        }
+    });
+
+    const numRidesTakenPromise = Passenger.count({
+        where: {
+            UserId: id,
+            status: 'ARRIVED'
+        }
+    });
+
+    const createdAtPromise = User.scope('timestamps').findByPk(id, { attributes: ['createdAt'] });
+
+    const [numRidesDriven, numRidesTaken, user] = await Promise.all([numRidesDrivenPromise, numRidesTakenPromise, createdAtPromise]);
+
+    return {
+        ridesDriven: numRidesDriven,
+        ridesTaken: numRidesTaken + numRidesDriven,
+        createdAt: user.createdAt
+    }
+}
+
+async function getUserProfile(uid) {
+    // const userPromise = User.findByPk(uid);
+    const preferencesPromise = findPreferences(uid);
+    const socialsPromise = getSocials(uid);
+    const statsPromise = getUserStats(uid);
+
+    const [socials, stats, preferences] = await Promise.all([socialsPromise, statsPromise, preferencesPromise]);
+    // const [user, socials, stats, preferences] = await Promise.all([userPromise, socialsPromise, statsPromise, preferencesPromise]);
+
+    return {
+        socials,
+        stats,
+        preferences
+    }
+}
+
 async function loginUser({ phone, email, password, deviceToken }) {
     let userAccount;
     userAccount = await User.scope('auth').findOne({ where: { phone: phone } });
@@ -119,7 +161,7 @@ async function loginUser({ phone, email, password, deviceToken }) {
             userAccount.save();
         }
         const today = new Date();
-        const license = await License.findOne({
+        const licensePromise = License.findOne({
             where: {
                 UserId: userAccount.id,
                 status: 'APPROVED',
@@ -127,12 +169,20 @@ async function loginUser({ phone, email, password, deviceToken }) {
             }
         });
 
-        const chats = await ChatMessage.count({
+        const chatsPromise = ChatMessage.count({
             where: {
                 ReceiverId: userAccount.id,
                 messageread: false
             }
         });
+
+        const socialsPromise = getSocials(userAccount.id);
+
+        const statsPromise = getUserStats(userAccount.id);
+
+        const preferencesPromise = findPreferences(userAccount.id);
+
+        const [license, chats, stats, socials, preferences] = await Promise.all([licensePromise, chatsPromise, statsPromise, socialsPromise, preferencesPromise]);
 
 
         userAccount.password = undefined;
@@ -152,7 +202,10 @@ async function loginUser({ phone, email, password, deviceToken }) {
             verificationsDisabled: VERIFICATIONS_DISABLED,
             referralsDisabled: REFERRALS_DISABLED,
             cities: CITIES,
-            unreadMessages: chats
+            unreadMessages: chats,
+            stats: stats,
+            socials: socials,
+            preferences: preferences
         };
     } else {
         throw new UnauthorizedError("Incorrect phone and/or password", "رقم الهاتف أو كلمة المرور غير صحيحة. حاول مرة اخرى.");
@@ -163,7 +216,7 @@ async function userInfo({ deviceToken }, uid) {
     let userAccount = await User.findByPk(uid);
 
     const today = new Date();
-    const license = await License.findOne({
+    const licensePromise = License.findOne({
         where: {
             UserId: uid,
             status: 'APPROVED',
@@ -171,12 +224,20 @@ async function userInfo({ deviceToken }, uid) {
         }
     });
 
-    const chats = await ChatMessage.count({
+    const chatsPromise = ChatMessage.count({
         where: {
             ReceiverId: uid,
             messageread: false
         }
     });
+
+    const socialsPromise = getSocials(uid);
+
+    const statsPromise = getUserStats(uid);
+
+    const preferencesPromise = findPreferences(uid);
+
+    const [license, chats, stats, socials, preferences] = await Promise.all([licensePromise, chatsPromise, statsPromise, socialsPromise, preferencesPromise]);
 
     return {
         ...userAccount.dataValues,
@@ -187,9 +248,13 @@ async function userInfo({ deviceToken }, uid) {
         verificationsDisabled: VERIFICATIONS_DISABLED,
         referralsDisabled: REFERRALS_DISABLED,
         cities: CITIES,
+        socials: socials,
+        stats: stats,
+        preferences: preferences,
         unreadMessages: chats
     }
 }
+
 
 async function refreshToken({ refreshToken }) {
     try {
@@ -296,7 +361,7 @@ async function addReferral(uid, { referralCode }) {
     try {
         const reffererId = parseInt(referralCode);
 
-        if(reffererId > uid) {
+        if (reffererId > uid) {
             throw new BadRequestError();
         }
 
@@ -318,6 +383,113 @@ async function addReferral(uid, { referralCode }) {
         await t.rollback();
         throw new BadRequestError(err.message || "Referral account is newer than your account", err.message_ar || "حساب الإحالة أحدث من حسابك");
     }
+}
+
+async function getSocials(uid) {
+    const socials = await Socials.findOne({
+        where: {
+            UserId: uid
+        }
+    });
+
+    return socials;
+}
+
+async function updateFacebookLink(uid, { facebookLink }) {
+    // check if facebook link is validc
+    const fbRegex = /^(?:(?:http|https):\/\/)?(?:www\.)?(?:facebook|fb|m\.facebook)\.(?:com|me)\/(?:(?:\w)*#!\/)?(?:pages\/)?(?:[\w\-]*\/)*([\w\-\.]+)(?:\/)?/
+    if (!(fbRegex.test(facebookLink))) {
+        throw new BadRequestError("Invalid Facebook link", "رابط الفيسبوك غير صالح");
+    }
+
+    const social = await Socials.findOne({
+        where: {
+            UserId: uid
+        }
+    });
+
+    if (social) {
+        social.facebookLink = facebookLink;
+        await social.save();
+        return social;
+    } else {
+        const newSocial = await Socials.create({
+            UserId: uid,
+            facebookLink: facebookLink
+        });
+        return newSocial;
+    }
+}
+
+async function updateInstagramLink(uid, { instagramLink }) {
+    const igRegex = /^(https?:\/\/)?(www\.)?instagram\.com\/[a-zA-Z0-9_.]+\/?$/
+    if (!(igRegex.test(instagramLink))) {
+        throw new BadRequestError("Invalid Instagram link", "رابط الإنستغرام غير صالح");
+    }
+
+    const social = await Socials.findOne({
+        where: {
+            UserId: uid
+        }
+    });
+
+    if (social) {
+        social.instagramLink = instagramLink;
+        await social.save();
+        return social;
+    } else {
+        const newSocial = await Socials.create({
+            UserId: uid,
+            instagramLink: instagramLink
+        });
+        return newSocial;
+    }
+}
+
+async function updateMusicLink(uid, { musicLink }) {
+    const spotifyRegex = /^https?:\/\/open\.spotify\.com\/user\/.+$/
+    const anghamiRegex = /^https?:\/\/open\.anghami\.com\/[a-zA-Z0-9_]+\/?$/
+    const appleMusicRegex = /^https?:\/\/music\.apple\.com(?:$|\/)/
+
+    if(!spotifyRegex.test(musicLink) && !anghamiRegex.test(musicLink) && !appleMusicRegex.test(musicLink)){
+        throw new BadRequestError("Invalid music link", "رابط الموسيقى غير صالح");
+    }
+
+    const social = await Socials.findOne({
+        where: {
+            UserId: uid
+        }
+    });
+
+    if (social) {
+        social.musicLink = musicLink;
+        await social.save();
+        return social;
+    } else {
+        const newSocial = await Socials.create({
+            UserId: uid,
+            musicLink: musicLink
+        });
+        return newSocial;
+    }
+}
+
+async function findPreferences(uid) {
+    return await UserPreference.findOne({ where: { UserId: uid } });
+}
+
+async function updatePreferences(uid, { smoking, chattiness, music, rest_stop }) {
+    const preferences = await findPreferences(uid);
+    if (preferences) {
+        preferences.smoking = smoking;
+        preferences.chattiness = chattiness;
+        preferences.music = music;
+        preferences.rest_stop = rest_stop;
+        await preferences.save();
+    } else {
+        UserPreference.create({ UserId: uid, smoking, chattiness, music, rest_stop });
+    }
+    return preferences;
 }
 
 async function submitLicense({ uid, frontSide, backSide }) {
@@ -608,6 +780,11 @@ module.exports = {
     updateName,
     updateEmail,
     updatePhone,
+    updateFacebookLink,
+    updateInstagramLink,
+    updateMusicLink,
+    updatePreferences,
+    getUserProfile,
     addNewCard,
     refreshToken,
     userInfo,
