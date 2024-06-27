@@ -51,6 +51,7 @@ const paymentRoutes = require('./routes/v1/payment');
 const userRoutes = require('./routes/v1/user');
 const locationRoutes = require('./routes/v1/location');
 const preferencesRoutes = require('./routes/v1/preferences');
+const connectionRoutes = require('./routes/v1/connection');
 const { default: rateLimit } = require("express-rate-limit");
 const { Ride, Passenger } = require("./models");
 const { subtractDates } = require("./helper");
@@ -75,6 +76,7 @@ app.use('/v1/payment', paymentRoutes);
 app.use('/v1/user', userRoutes);
 app.use('/v1/location', locationRoutes);
 app.use('/v1/preferences', preferencesRoutes);
+app.use('/v1/connections', connectionRoutes);
 app.use('/v1/geojson', express.static('geojsons'));
 
 app.get("/version", async (req, res, next) => {

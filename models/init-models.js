@@ -23,6 +23,7 @@ let _invoices = require("./invoices");
 let _devices = require("./devices");
 let _driverinvoices = require("./driverinvoices");
 let _userpreferences = require('./userpreferences');
+let _connection = require('./connections');
 
 function initModels(sequelize) {
   let Announcement = _announcements(sequelize, DataTypes);
@@ -49,6 +50,7 @@ function initModels(sequelize) {
   let DriverInvoice = _driverinvoices(sequelize, DataTypes);
   let Device = _devices(sequelize, DataTypes);
   let UserPreference = _userpreferences(sequelize, DataTypes);
+  let Connection = _connection(sequelize, DataTypes);
 
   User.belongsToMany(Community, { as: 'Communities', through: CommunityMember });
   Community.belongsToMany(User, { as: 'Member', through: CommunityMember });
@@ -70,10 +72,7 @@ function initModels(sequelize) {
 
   Community.belongsTo(User, {as: 'Owner', foreignKey: "OwnerId"});
   User.hasMany(Community, { as: 'Administrated', foreignKey: "OwnerId" });
-
-  // Ride.belongsToMany(User, { as: 'Passengers', through: Passenger });
-  // User.belongsToMany(Ride, { as: 'Rides', through: Passenger });
-
+  
   Passenger.belongsTo(Ride);
   Ride.hasMany(Passenger);
 
@@ -149,6 +148,11 @@ function initModels(sequelize) {
     as: 'user'
   });
 
+  // TODO: check that this is a valid relation
+  User.belongsToMany(User, { as: 'Connections', through: Connection, foreignKey: 'user1_Id', otherKey: 'user2_Id' });
+  Connection.belongsTo(Ride, { foreignKey: 'last_ride_Id' });
+
+
   return {
     Announcement,
     BankAccount,
@@ -158,6 +162,7 @@ function initModels(sequelize) {
     ChatMessage,
     Community,
     Community,
+    Connection,
     License,
     Passenger,
     Ride,
