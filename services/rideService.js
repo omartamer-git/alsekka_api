@@ -15,6 +15,7 @@ const { checkUserInCommunity } = require('./communityService');
 const redis = require('ioredis');
 const { generateKashierOrderHash } = require('./kashierService');
 const { default: axios } = require('axios');
+const { updateConnections, findSecondDegreeConnections } = require('./connectionService');
 const redisClient = new redis();
 const sns = new SNSClient({ region: 'eu-central-1' })
 
@@ -815,6 +816,10 @@ async function checkOut({ tripId, uid }) {
 
         // First, gather the UserIds of all passengers
         const passengerIds = passengers.map(passenger => passenger.id);
+        const passengerUserIds = passengers.map(passenger => passenger.UserId);
+
+        // populate connections table
+        await updateConnections([uid, ...passengerUserIds], tripId);
 
         // Update all passengers' status in a bulk update
         await Passenger.update({ status: 'ARRIVED' }, {
