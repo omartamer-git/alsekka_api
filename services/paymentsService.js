@@ -1,6 +1,7 @@
 const { PASSENGER_FEE } = require("../config/seaats.config");
 const { User, Invoice, Referral, DriverInvoice, Passenger } = require("../models");
 const { sendNotificationToRide, sendNotificationToUser } = require("./appService");
+const { InternalServerError } = require('../errors/Errors')
 
 async function createInvoice(uid, seats, paymentMethod, ride, voucher, passengerId, pickupAddition, t, update = false) {
     const user = await User.findByPk(uid, {
