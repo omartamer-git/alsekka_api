@@ -113,6 +113,19 @@ router.post("/refreshToken", async (req, res, next) => {
     ).catch(next);
 });
 
+router.get("/confirmotp", async (req, res, next) => {
+    const { phone, otp } = req.query;
+    if (!phone || !otp) {
+        return next(new BadRequestError());
+    }
+
+    userService.checkOtp(req.query).then(
+        response => {
+            return res.json(response);
+        }
+    ).catch(next);
+});
+
 router.get("/verify", async (req, res, next) => {
     const phone = req.query.phone;
     if (!phone) {

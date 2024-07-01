@@ -39,9 +39,27 @@ async function accountAvailable(phone, email) {
     }
 }
 
+async function checkOtp({ phone, otp }) {
+    if (phone in otpCodes) {
+        const actualOtp = otpCodes[phone];
+        console.log(actualOtp);
+        if (actualOtp.code == otp) {
+            otpCodes[phone].verified = true;
+            return true;
+        } else {
+            throw new BadRequestError("Incorrect verification code", "رمز التحقق غير صحيح");
+        }
+    } else {
+        throw new BadRequestError("Phone number is not verified, please try again", "لم يتم التحقق من رقم الهاتف. حاول مرة اخرى");
+    }
+}
+
 async function createUser({ fname, lname, phone, email, password, gender }) {
+    // log all params
+    console.log(fname, lname, phone, email, password, gender)
     if (!VERIFICATIONS_DISABLED) {
         if (!(phone in otpCodes) || !otpCodes[phone].verified) {
+            console.log("BAD REQ ERR HERE")
             throw new BadRequestError("Phone number is not verified, please try again", "لم يتم التحقق من رقم الهاتف. حاول مرة اخرى");
         }
     }
@@ -71,6 +89,7 @@ async function createUser({ fname, lname, phone, email, password, gender }) {
         });
         return newUser;
     } catch (e) {
+        console.log(e);
         throw new InternalServerError();
     }
 }
@@ -281,35 +300,65 @@ setInterval(() => {
 
 async function getOtp(phone) {
     try {
+        let code = (Math.random() * 99999).toFixed(0).toString().padStart(5, '0');
+        
+
+        if(phone in otpCodes) {
+            return { type: "sms", success: true };
+        }
+
         otpCodes[phone] = {
             verified: false,
-            expiry: addMinutes(new Date(), config.otp.expiryMinutes)
-        }
-
-        const params = {
-            "username": "25496940dd23fdaa990ac1d54adefa05cd43607bb47b7d41c2f9016edb98039e",
-            "password": "67bd7d7edba830e85934671b5515e84a1150348fb14c020ad058490d2e1f13f8",
-            "reference": phone,
-            "message": "Welcome to Seaats! We have verified your account. Please head back to the app to continue the sign up process.\n\nمرحبا بكم في سيتس! لقد قمنا بالتحقق من حسابك. يرجى العودة إلى التطبيق لمواصلة عملية التسجيل."
+            expiry: addMinutes(new Date(), config.otp.expiryMinutes),
+            code: code
         }
 
 
-        const response = await axios.get("https://wasage.com/api/otp/", {
-            params: params,
-            headers: {
-                'Content-Type': 'application/json',
+        if (!phone.startsWith("010")) {
+            const params = {
+                "environment": 1,
+                "username": process.env.SMS_USERNAME,
+                "password": process.env.SMS_PASSWORD,
+                "sender": process.env.SMS_SENDER,
+                "language": "1",
+                "mobile": `2${phone}`,
+                "template": "e83faf6025ec41d0f40256d2812629f5fa9291d05c8322f31eea834302501da8",
+                "otp": code
             }
-        });
 
-        const data = response.data;
-        const jwtToken = jwt.sign({ phone: phone }, JWT_SECRET, { expiresIn: SECURITY_EXPIRATION });
+            console.log(params);
 
-        if (data.Code == "5500") {
-            return { uri: data.Clickable, token: jwtToken };
+            const response = await axios.post(`https://smsmisr.com/api/OTP/?environment=2&username=${params.username}&password=${params.password}&sender=${params.sender}&language=1&mobile=${params.mobile}&template=${params.template}&otp=${params.otp}`);
+
+            console.log(response.data);
+
+            return { type: "sms", success: true };
         } else {
-            throw new InternalServerError();
+            const params = {
+                "username": "25496940dd23fdaa990ac1d54adefa05cd43607bb47b7d41c2f9016edb98039e",
+                "password": "67bd7d7edba830e85934671b5515e84a1150348fb14c020ad058490d2e1f13f8",
+                "reference": phone,
+                "message": "Welcome to Seaats! We have verified your account. Please head back to the app to continue the sign up process.\n\nمرحبا بكم في سيتس! لقد قمنا بالتحقق من حسابك. يرجى العودة إلى التطبيق لمواصلة عملية التسجيل."
+            }
+            const response = await axios.get("https://wasage.com/api/otp/", {
+                params: params,
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            const data = response.data;
+            const jwtToken = jwt.sign({ phone: phone }, JWT_SECRET, { expiresIn: SECURITY_EXPIRATION });
+
+            if (data.Code == "5500") {
+                return { type: "whatsapp", uri: data.Clickable, token: jwtToken };
+            } else {
+                throw new InternalServerError();
+            }
         }
-    } catch (err) { console.log(err) }
+    } catch (err) {
+        console.log(err)
+    }
 }
 
 async function verifyOtp({ phone, otp }) {
@@ -451,7 +500,7 @@ async function updateMusicLink(uid, { musicLink }) {
     const anghamiRegex = /^https?:\/\/open\.anghami\.com\/[a-zA-Z0-9_]+\/?$/
     const appleMusicRegex = /^https?:\/\/music\.apple\.com(?:$|\/)/
 
-    if(!spotifyRegex.test(musicLink) && !anghamiRegex.test(musicLink) && !appleMusicRegex.test(musicLink)){
+    if (!spotifyRegex.test(musicLink) && !anghamiRegex.test(musicLink) && !appleMusicRegex.test(musicLink)) {
         throw new BadRequestError("Invalid music link", "رابط الموسيقى غير صالح");
     }
 
@@ -790,6 +839,7 @@ module.exports = {
     userInfo,
     updatePassword,
     addReferral,
+    checkOtp,
     isVerified,
     uploadProfilePicture,
     getUserBalance,
