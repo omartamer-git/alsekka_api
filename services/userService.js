@@ -252,7 +252,7 @@ async function getOtp(phone, type) {
             }
 
             const params = {
-                "environment": 2,
+                "environment": process.env.SMS_ENVIRONMENT,
                 "username": process.env.SMS_USERNAME,
                 "password": process.env.SMS_PASSWORD,
                 "sender": process.env.SMS_SENDER,
