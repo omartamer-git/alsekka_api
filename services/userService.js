@@ -11,6 +11,7 @@ const { DRIVER_FEE, PASSENGER_FEE, CARDS_ENABLED, VERIFICATIONS_DISABLED, REFERR
 
 
 let otpCodes = {};
+let waCodes = {};
 
 async function accountAvailable(phone, email) {
     const userAccount = await User.findOne({
@@ -39,9 +40,24 @@ async function accountAvailable(phone, email) {
     }
 }
 
+async function checkOtp({ phone, otp }) {
+    if (phone in otpCodes) {
+        const actualOtp = otpCodes[phone];
+        console.log(actualOtp);
+        if (actualOtp.code == otp) {
+            otpCodes[phone].verified = true;
+            return true;
+        } else {
+            throw new BadRequestError("Incorrect verification code", "رمز التحقق غير صحيح");
+        }
+    } else {
+        throw new BadRequestError("Phone number is not verified, please try again", "لم يتم التحقق من رقم الهاتف. حاول مرة اخرى");
+    }
+}
+
 async function createUser({ fname, lname, phone, email, password, gender }) {
     if (!VERIFICATIONS_DISABLED) {
-        if (!(phone in otpCodes) || !otpCodes[phone].verified) {
+        if ((!(phone in otpCodes) && !(phone in waCodes)) || (!otpCodes[phone].verified && !waCodes[phone].verified)) {
             throw new BadRequestError("Phone number is not verified, please try again", "لم يتم التحقق من رقم الهاتف. حاول مرة اخرى");
         }
     }
@@ -212,37 +228,79 @@ setInterval(() => {
             delete otpCodes[uid];
         }
     }
+
+    for (const [uid, codeObj] of Object.entries(waCodes)) {
+        if (codeObj.expiry > new Date()) {
+            delete waCodes[uid];
+        }
+    }
 }, 1000 * 60 * config.otp.expiryMinutes);
 
-async function getOtp(phone) {
+async function getOtp(phone, type) {
     try {
-        otpCodes[phone] = {
-            verified: false,
-            expiry: addMinutes(new Date(), config.otp.expiryMinutes)
-        }
+        let code = (Math.random() * 99999).toFixed(0).toString().padStart(5, '0');
 
-        const params = {
-            "username": "25496940dd23fdaa990ac1d54adefa05cd43607bb47b7d41c2f9016edb98039e",
-            "password": "67bd7d7edba830e85934671b5515e84a1150348fb14c020ad058490d2e1f13f8",
-            "reference": phone,
-            "message": "Welcome to Seaats! We have verified your account. Please head back to the app to continue the sign up process.\n\nمرحبا بكم في سيتس! لقد قمنا بالتحقق من حسابك. يرجى العودة إلى التطبيق لمواصلة عملية التسجيل."
-        }
-
-
-        const response = await axios.get("https://wasage.com/api/otp/", {
-            params: params,
-            headers: {
-                'Content-Type': 'application/json',
+        if (type === 'sms') {
+            if (phone in otpCodes) {
+                return { type: "sms", success: true };
             }
-        });
 
-        const data = response.data;
-        const jwtToken = jwt.sign({ phone: phone }, JWT_SECRET, { expiresIn: SECURITY_EXPIRATION });
+            otpCodes[phone] = {
+                verified: false,
+                expiry: addMinutes(new Date(), config.otp.expiryMinutes),
+                code: code
+            }
 
-        if (data.Code == "5500") {
-            return { uri: data.Clickable, token: jwtToken };
+            const params = {
+                "environment": 2,
+                "username": process.env.SMS_USERNAME,
+                "password": process.env.SMS_PASSWORD,
+                "sender": process.env.SMS_SENDER,
+                "language": "1",
+                "mobile": `2${phone}`,
+                "template": "e83faf6025ec41d0f40256d2812629f5fa9291d05c8322f31eea834302501da8",
+                "otp": code
+            }
+
+            console.log(params);
+
+            const response = await axios.post(`https://smsmisr.com/api/OTP/?environment=${params.environment}&username=${params.username}&password=${params.password}&sender=${params.sender}&language=1&mobile=${params.mobile}&template=${params.template}&otp=${params.otp}`);
+            console.log(response.data);
+            const jwtToken = jwt.sign({ phone: phone }, JWT_SECRET, { expiresIn: SECURITY_EXPIRATION });
+
+            return { type: "sms", success: true, token: jwtToken };
         } else {
-            throw new InternalServerError();
+            if (phone in waCodes) {
+                return { type: "whatsapp", success: true };
+            }
+
+            waCodes[phone] = {
+                verified: false,
+                expiry: addMinutes(new Date(), config.otp.expiryMinutes),
+                code: code
+            }
+
+            const params = {
+                "username": "25496940dd23fdaa990ac1d54adefa05cd43607bb47b7d41c2f9016edb98039e",
+                "password": "67bd7d7edba830e85934671b5515e84a1150348fb14c020ad058490d2e1f13f8",
+                "reference": phone,
+                "message": "Welcome to Seaats! We have verified your account. Please head back to the app to continue the sign up process.\n\nمرحبا بكم في سيتس! لقد قمنا بالتحقق من حسابك. يرجى العودة إلى التطبيق لمواصلة عملية التسجيل."
+            }
+            const response = await axios.get("https://wasage.com/api/otp/", {
+                params: params,
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            const data = response.data;
+            const jwtToken = jwt.sign({ phone: phone }, JWT_SECRET, { expiresIn: SECURITY_EXPIRATION });
+
+            if (data.Code == "5500") {
+                return { type: "whatsapp", uri: data.Clickable, token: jwtToken };
+            } else {
+                throw new InternalServerError();
+            }
         }
     } catch (err) { console.log(err) }
 }
@@ -266,9 +324,18 @@ async function verifyOtp({ phone, otp }) {
 
 async function verifyUser(phone) {
     try {
-        otpCodes[phone] = {
-            verified: true,
-            expiry: addMinutes(new Date(), 15)
+        if (phone in otpCodes) {
+            otpCodes[phone] = {
+                verified: true,
+                expiry: addMinutes(new Date(), 15)
+            }
+        }
+
+        if (phone in waCodes) {
+            waCodes[phone] = {
+                verified: true,
+                expiry: addMinutes(new Date(), 15)
+            }
         }
     } catch (e) {
         console.log(e);
@@ -278,6 +345,9 @@ async function verifyUser(phone) {
 async function isVerified(phone) {
     if (phone in otpCodes) {
         return otpCodes[phone].verified;
+    }
+    if (phone in waCodes) {
+        return waCodes[phone].verified;
     }
     return false;
 }
@@ -296,7 +366,7 @@ async function addReferral(uid, { referralCode }) {
     try {
         const reffererId = parseInt(referralCode);
 
-        if(reffererId > uid) {
+        if (reffererId > uid) {
             throw new BadRequestError();
         }
 
@@ -612,6 +682,7 @@ module.exports = {
     refreshToken,
     userInfo,
     updatePassword,
+    checkOtp,
     addReferral,
     isVerified,
     uploadProfilePicture,
