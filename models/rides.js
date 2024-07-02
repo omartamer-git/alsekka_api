@@ -74,7 +74,7 @@ module.exports = function (sequelize, DataTypes) {
     },
     topicArn: {
       type: DataTypes.TEXT,
-      allowNull: true
+      allowNull: false
     }
   }, {
     sequelize,
