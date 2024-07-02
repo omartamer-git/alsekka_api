@@ -113,13 +113,28 @@ router.post("/refreshToken", async (req, res, next) => {
     ).catch(next);
 });
 
+router.get("/confirmotp", async (req, res, next) => {
+    const { phone, otp } = req.query;
+    if (!phone || !otp) {
+        return next(new BadRequestError());
+    }
+
+    userService.checkOtp(req.query).then(
+        response => {
+            return res.json(response);
+        }
+    ).catch(next);
+});
+
 router.get("/verify", async (req, res, next) => {
     const phone = req.query.phone;
+    const type = req.query?.type || 'whatsapp';
+
     if (!phone) {
         return next(new BadRequestError());
     }
 
-    userService.getOtp(phone).then(response => {
+    userService.getOtp(phone, type).then(response => {
         return res.json(response);
     }).catch(next);
 });
