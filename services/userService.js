@@ -11,6 +11,7 @@ const { DRIVER_FEE, PASSENGER_FEE, CARDS_ENABLED, VERIFICATIONS_DISABLED, REFERR
 const redis = require('ioredis');
 
 let otpCodes = {};
+let waCodes = {};
 
 async function accountAvailable(phone, email) {
     const userAccount = await User.findOne({
@@ -39,6 +40,7 @@ async function accountAvailable(phone, email) {
     }
 }
 
+// SMS Only
 async function checkOtp({ phone, otp }) {
     if (phone in otpCodes) {
         const actualOtp = otpCodes[phone];
@@ -58,7 +60,7 @@ async function createUser({ fname, lname, phone, email, password, gender }) {
     // log all params
     console.log(fname, lname, phone, email, password, gender)
     if (!VERIFICATIONS_DISABLED) {
-        if (!(phone in otpCodes) || !otpCodes[phone].verified) {
+        if ((!(phone in otpCodes) && !(phone in waCodes)) || (!otpCodes[phone].verified && !waCodes[phone].verified)) {
             console.log("BAD REQ ERR HERE")
             throw new BadRequestError("Phone number is not verified, please try again", "لم يتم التحقق من رقم الهاتف. حاول مرة اخرى");
         }
@@ -296,25 +298,30 @@ setInterval(() => {
             delete otpCodes[uid];
         }
     }
+
+    for (const [uid, codeObj] of Object.entries(waCodes)) {
+        if (codeObj.expiry > new Date()) {
+            delete waCodes[uid];
+        }
+    }
 }, 1000 * 60 * config.otp.expiryMinutes);
 
-async function getOtp(phone) {
+async function getOtp(phone, type) {
     try {
         let code = (Math.random() * 99999).toFixed(0).toString().padStart(5, '0');
-        
-
-        if(phone in otpCodes) {
-            return { type: "sms", success: true };
-        }
-
-        otpCodes[phone] = {
-            verified: false,
-            expiry: addMinutes(new Date(), config.otp.expiryMinutes),
-            code: code
-        }
 
 
-        if (!phone.startsWith("010")) {
+        if (type === 'sms') {
+            if (phone in otpCodes) {
+                return { type: "sms", success: true };
+            }
+
+            otpCodes[phone] = {
+                verified: false,
+                expiry: addMinutes(new Date(), config.otp.expiryMinutes),
+                code: code
+            }
+
             const params = {
                 "environment": 1,
                 "username": process.env.SMS_USERNAME,
@@ -328,12 +335,23 @@ async function getOtp(phone) {
 
             console.log(params);
 
-            const response = await axios.post(`https://smsmisr.com/api/OTP/?environment=2&username=${params.username}&password=${params.password}&sender=${params.sender}&language=1&mobile=${params.mobile}&template=${params.template}&otp=${params.otp}`);
+            const response = await axios.post(`https://smsmisr.com/api/OTP/?environment=1&username=${params.username}&password=${params.password}&sender=${params.sender}&language=1&mobile=${params.mobile}&template=${params.template}&otp=${params.otp}`);
 
             console.log(response.data);
+            const jwtToken = jwt.sign({ phone: phone }, JWT_SECRET, { expiresIn: SECURITY_EXPIRATION });
 
-            return { type: "sms", success: true };
+            return { type: "sms", success: true, token: jwtToken };
         } else {
+            if (phone in waCodes) {
+                return { type: "whatsapp", success: true };
+            }
+
+            waCodes[phone] = {
+                verified: false,
+                expiry: addMinutes(new Date(), config.otp.expiryMinutes),
+                code: code
+            }
+
             const params = {
                 "username": "25496940dd23fdaa990ac1d54adefa05cd43607bb47b7d41c2f9016edb98039e",
                 "password": "67bd7d7edba830e85934671b5515e84a1150348fb14c020ad058490d2e1f13f8",
@@ -380,9 +398,18 @@ async function verifyOtp({ phone, otp }) {
 
 async function verifyUser(phone) {
     try {
-        otpCodes[phone] = {
-            verified: true,
-            expiry: addMinutes(new Date(), 15)
+        if (phone in otpCodes) {
+            otpCodes[phone] = {
+                verified: true,
+                expiry: addMinutes(new Date(), 15)
+            }
+        }
+
+        if (phone in waCodes) {
+            waCodes[phone] = {
+                verified: true,
+                expiry: addMinutes(new Date(), 15)
+            }
         }
     } catch (e) {
         console.log(e);
@@ -392,6 +419,9 @@ async function verifyUser(phone) {
 async function isVerified(phone) {
     if (phone in otpCodes) {
         return otpCodes[phone].verified;
+    }
+    if (phone in waCodes) {
+        return waCodes[phone].verified;
     }
     return false;
 }
