@@ -55,6 +55,10 @@ async function checkOtp({ phone, otp }) {
     }
 }
 
+function getVerificationsStatus() {
+    return { VERIFICATIONS_DISABLED };
+}
+
 async function createUser({ fname, lname, phone, email, password, gender }) {
     if (!VERIFICATIONS_DISABLED) {
         if ((!(phone in otpCodes) && !(phone in waCodes)) || (!otpCodes[phone].verified && !waCodes[phone].verified)) {
@@ -675,6 +679,7 @@ module.exports = {
     getBanks,
     addMobileWallet,
     getMobileWallets,
+    getVerificationsStatus,
     updateName,
     updateEmail,
     updatePhone,

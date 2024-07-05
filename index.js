@@ -130,6 +130,10 @@ app.get("/allowedemails", async (req, res, next) => {
     res.status(200).send(ALLOWED_EMAILS);
 });
 
+app.get("/verificationsstatus", async (req, res, next) => {
+    res.status(200).json(userService.getVerificationsStatus());
+});
+
 
 app.get("/otpcallback", async (req, res, next) => {
     if (req.query.Secret !== "13053a5e941fd14089aa0fe0138fddbedefcce22168e1d01f2da199ad09e8d38") {
