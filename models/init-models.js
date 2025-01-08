@@ -24,6 +24,7 @@ let _devices = require("./devices");
 let _driverinvoices = require("./driverinvoices");
 let _userpreferences = require('./userpreferences');
 let _socials = require('./socials');
+let _nationalids = require('./nationalids');
 
 function initModels(sequelize) {
   let Announcement = _announcements(sequelize, DataTypes);
@@ -51,6 +52,7 @@ function initModels(sequelize) {
   let Device = _devices(sequelize, DataTypes);
   let UserPreference = _userpreferences(sequelize, DataTypes);
   let Socials = _socials(sequelize, DataTypes);
+  let NationalID = _nationalids(sequelize, DataTypes);
 
   User.belongsToMany(Community, { as: 'Communities', through: CommunityMember });
   Community.belongsToMany(User, { as: 'Member', through: CommunityMember });
@@ -111,6 +113,9 @@ function initModels(sequelize) {
   License.belongsTo(User);
   User.hasMany(License);
 
+  NationalID.belongsTo(User);
+  User.hasMany(NationalID);
+
   BankAccount.belongsTo(User);
   User.hasMany(BankAccount);
 
@@ -164,6 +169,7 @@ function initModels(sequelize) {
     Community,
     Community,
     License,
+    NationalID,
     Passenger,
     Ride,
     User,

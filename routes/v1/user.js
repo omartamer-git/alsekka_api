@@ -100,6 +100,26 @@ router.post('/uploadprofilepicture', authenticateToken, async (req, res, next) =
     }
 });
 
+router.post('/verifyidfront', authenticateToken, async (req, res, next) => {
+    if (!req.files) {
+        return next(new BadRequestError());
+    }
+
+    userService.verifyIdFront(req.files[0], req.body.manual).then(response => {
+        res.json(response);
+    }).catch(next)
+});
+
+router.post('/verifyidback', authenticateToken, async (req, res, next) => {
+    if (!req.files || !req.body.token) {
+        return next(new BadRequestError());
+    }
+
+    userService.verifyIdBack(req.user.userId, req.files[0], req.body.token, req.body.manual).then(response => {
+        res.json(response);
+    }).catch(next)
+});
+
 router.post("/refreshToken", async (req, res, next) => {
     const { refreshToken } = req.body;
     if (!refreshToken) {

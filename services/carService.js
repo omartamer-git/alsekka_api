@@ -27,7 +27,8 @@ async function newCar({uid, brand, year, model, color, licensePlateLetters, lice
         licensePlateLetters: licensePlateLetters,
         licensePlateNumbers: licensePlateNumbers,
         license_front: frontUrl,
-        license_back: backUrl
+        license_back: backUrl,
+        status: 'APPROVED'
     });
 
     return newCar;

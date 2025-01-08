@@ -39,7 +39,7 @@ router.post("/newcar", authenticateToken, async (req, res, next) => {
     }
 
     carService.newCar({ uid, brand, year, model, color, licensePlateLetters, licensePlateNumbers, license_front, license_back }).then(newCar => {
-        res.json({ success: 1 });
+        res.json(newCar);
     }).catch(next);
 });
 

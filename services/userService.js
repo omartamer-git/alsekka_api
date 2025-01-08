@@ -1,5 +1,5 @@
 const { Op } = require("sequelize");
-const { User, License, sequelize, Card, BankAccount, MobileWallet, Referral, Withdrawal, Device, DriverInvoice, ChatMessage, Ride, Passenger, Socials, UserPreference } = require("../models");
+const { User, License, sequelize, Card, BankAccount, MobileWallet, Referral, Withdrawal, Device, DriverInvoice, ChatMessage, Ride, Passenger, Socials, UserPreference, NationalID } = require("../models");
 const bcrypt = require("bcrypt");
 const { getCardDetails, checkCardNumber, generateOtp, addMinutes, uploadImage, uploadLicenseImage, capitalizeFirstLetter } = require("../helper");
 const { UnauthorizedError, NotFoundError, ConflictError, InternalServerError, NotAcceptableError, BadRequestError } = require("../errors/Errors");
@@ -7,8 +7,11 @@ const { default: axios } = require("axios");
 const config = require("../config");
 const jwt = require('jsonwebtoken');
 const { JWT_SECRET, JWT_EXPIRATION, REFRESH_TOKEN_EXPIRATION, SECURITY_EXPIRATION } = require("../config/auth.config");
-const { DRIVER_FEE, PASSENGER_FEE, CARDS_ENABLED, VERIFICATIONS_DISABLED, REFERRALS_DISABLED, CITIES } = require("../config/seaats.config");
+const { DRIVER_FEE, PASSENGER_FEE, CARDS_ENABLED, VERIFICATIONS_DISABLED, REFERRALS_DISABLED, CITIES, VERIFICATIONS_HOST } = require("../config/seaats.config");
 const redis = require('ioredis');
+const fs = require('fs');
+var FormData = require('form-data');
+const { Readable } = require('stream');
 
 let otpCodes = {};
 
@@ -72,6 +75,160 @@ async function createUser({ fname, lname, phone, email, password, gender }) {
         return newUser;
     } catch (e) {
         throw new InternalServerError();
+    }
+}
+
+async function verifyIdFront(image, manual) {
+    console.log('man')
+    console.log(manual);
+    console.log(typeof manual);
+    if (manual === 'true') {
+        console.log('wtf?');
+        const frontUrl = await uploadLicenseImage(image);
+        const token = jwt.sign({ frontSideImage: frontUrl, manual: true }, JWT_SECRET, { expiresIn: SECURITY_EXPIRATION });
+
+        return { token };
+    }
+    console.log('cont');
+    const formData = new FormData();
+
+    const stream = new Readable();
+    stream.push(image.buffer);
+    stream.push(null);
+
+    formData.append('image', stream, {
+        filename: image.originalname,
+        contentType: image.mimetype,
+    });
+
+    try {
+        const response = await axios.post(`${VERIFICATIONS_HOST}/front`, formData, {
+            headers: {
+                ...formData.getHeaders()
+            }
+        });
+
+        const data = response.data;
+        const frontUrl = await uploadLicenseImage(image);
+        data.frontSideImage = frontUrl;
+
+        const token = jwt.sign(data, JWT_SECRET, { expiresIn: SECURITY_EXPIRATION });
+        return { token };
+    } catch (error) {
+        if (error.response) {
+            // Check status
+            if (error.response.status === 400) {
+                throw new BadRequestError(
+                    "Verification failed, please try again.",
+                    "فشل التحقق، يرجى المحاولة مرة أخرى."
+                );
+            } else {
+                throw new InternalServerError(
+                    "Something went wrong, please try again.",
+                    "حدث خطأ ما، يرجى المحاولة مرة أخرى."
+                );
+            }
+        } else {
+            // Something happened in setting up the request that triggered an Error
+            throw new InternalServerError(
+                "Something went wrong, please try again.",
+                "حدث خطأ ما، يرجى المحاولة مرة أخرى."
+            );
+        }
+    }
+
+}
+
+async function verifyIdBack(uid, image, token, manual) {
+    // console.log(image);
+    console.log('serv')
+    console.log(uid);
+    // get token details
+    const decoded = jwt.verify(token, JWT_SECRET);
+    /*
+    {
+        nid: {
+            id_number: xx
+            year_of_birth: xxxx
+            month_of_birth: xx
+            day_of_birth: xx
+            governorate: xxxx
+            type: Male | Female
+        },
+        firstName: xxx,
+        lastName: xxxx,
+        address: xxxx,
+        frontUrl: xxxx
+    }
+    */
+    const formData = new FormData();
+
+    const stream = new Readable();
+    stream.push(image.buffer);
+    stream.push(null);
+
+    formData.append('image', stream, {
+        filename: image.originalname,
+        contentType: image.mimetype,
+    });
+
+    try {
+        let nationalId;
+        if (manual === 'true' || decoded.manual === 'true') {
+            const backUrl = await uploadLicenseImage(image);
+            // data.backSideImage = backUrl;
+    
+            nationalId = await NationalID.create({
+                front: decoded.frontSideImage,
+                back: backUrl,
+                status: 'PENDING',
+                UserId: uid
+            })
+        } else {
+            const response = await axios.post(`${VERIFICATIONS_HOST}/back`, formData, {
+                headers: {
+                    ...formData.getHeaders()
+                }
+            });
+
+            const data = response.data;
+            const backUrl = await uploadLicenseImage(image);
+            // data.backSideImage = backUrl;    
+
+            nationalId = await NationalID.create({
+                nationalId: decoded.nid.id_number,
+                front: decoded.frontSideImage,
+                back: backUrl,
+                expirydate: data.expiry ? new Date(data.expiry) : null,
+                dob: new Date(decoded.nid.year_of_birth, decoded.nid.month_of_birth - 1, decoded.nid.day_of_birth),
+                governorate: decoded.nid.governorate,
+                legalFirstName: decoded.firstName,
+                legalLastName: decoded.lastName,
+                address: decoded.address,
+                status: 'APPROVED',
+                UserId: uid
+            });
+        }
+
+
+        // const token = jwt.sign(data, JWT_SECRET, { expiresIn: SECURITY_EXPIRATION });
+        // return { token };
+        return nationalId;
+    } catch (error) {
+        console.log(error)
+        if (error.response && error.response.status === 400) {
+            // Check status
+            throw new BadRequestError(
+                "We couldn't verify your ID, please try again.",
+                "فشل التحقق، يرجى المحاولة مرة أخرى."
+            );
+        } else {
+            // Something happened in setting up the request that triggered an Error
+            throw new InternalServerError(
+                "We couldn't verify your ID, please try again.",
+                "حدث خطأ ما، يرجى المحاولة مرة أخرى."
+            );
+        }
     }
 }
 
@@ -161,11 +318,11 @@ async function loginUser({ phone, email, password, deviceToken }) {
             userAccount.save();
         }
         const today = new Date();
-        const licensePromise = License.findOne({
+        const licensePromise = NationalID.findOne({
             where: {
                 UserId: userAccount.id,
                 status: 'APPROVED',
-                expiryDate: { [Op.gt]: today }
+                // expiryDate: { [Op.gt]: today }
             }
         });
 
@@ -215,12 +372,12 @@ async function loginUser({ phone, email, password, deviceToken }) {
 async function userInfo({ deviceToken }, uid) {
     let userAccount = await User.findByPk(uid);
 
-    const today = new Date();
-    const licensePromise = License.findOne({
+    // const today = new Date();
+    const licensePromise = NationalID.findOne({
         where: {
             UserId: uid,
             status: 'APPROVED',
-            expiryDate: { [Op.gt]: today }
+            // expiryDate: { [Op.gt]: today }
         }
     });
 
@@ -451,7 +608,7 @@ async function updateMusicLink(uid, { musicLink }) {
     const anghamiRegex = /^https?:\/\/open\.anghami\.com\/[a-zA-Z0-9_]+\/?$/
     const appleMusicRegex = /^https?:\/\/music\.apple\.com(?:$|\/)/
 
-    if(!spotifyRegex.test(musicLink) && !anghamiRegex.test(musicLink) && !appleMusicRegex.test(musicLink)){
+    if (!spotifyRegex.test(musicLink) && !anghamiRegex.test(musicLink) && !appleMusicRegex.test(musicLink)) {
         throw new BadRequestError("Invalid music link", "رابط الموسيقى غير صالح");
     }
 
@@ -774,6 +931,8 @@ module.exports = {
     submitLicense,
     getLicense,
     addBank,
+    verifyIdFront,
+    verifyIdBack,
     getBanks,
     addMobileWallet,
     getMobileWallets,
@@ -795,5 +954,5 @@ module.exports = {
     getUserBalance,
     submitWithdrawalRequest,
     getWithdrawalRequests,
-    settleBalance
+    settleBalance,
 }
